@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Translator Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e6e6ff 100%);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        .video-container {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.05));
+            pointer-events: none;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-active {
+            background-color: #10B981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+        }
+        .status-inactive {
+            background-color: #EF4444;
+        }
+        .detection-box {
+            transition: all 0.3s ease;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to right, #f0f9ff, #e0f2fe);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .word-box, .sentence-box {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .word-box::before, .sentence-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+        .word-box::before {
+            background: linear-gradient(to bottom, #10B981, #059669);
+        }
+        .sentence-box::before {
+            background: linear-gradient(to bottom, #3B82F6, #2563EB);
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .btn {
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 350px;
+        }
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .notification.error {
+            border-left: 4px solid #EF4444;
+        }
+        .notification.success {
+            border-left: 4px solid #10B981;
+        }
+        .notification.info {
+            border-left: 4px solid #3B82F6;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-6 flex items-center justify-center">
+    <div class="card rounded-2xl p-6 sm:p-8 w-full max-w-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
+                Sign Language Translator
+            </h1>
+            <p class="text-gray-600">Translate sign language gestures to text in real-time</p>
+        </div>
+
+        <!-- Video stream area -->
+        <div class="video-container mb-6">
+            <video id="webcamFeed" class="w-full h-auto block transform scale-x-[-1]" autoplay playsinline></video>
+            <div class="video-overlay"></div>
+        </div>
+
+        <!-- Controls and Status -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
+            <div class="flex items-center">
+                <span id="statusIndicator" class="status-indicator status-inactive"></span>
+                <span id="statusMessage" class="text-gray-700 font-medium">Ready to start</span>
+            </div>
+            <button id="startStopBtn"
+                    class="btn px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 w-full sm:w-auto pulse-animation">
+                <i class="fas fa-video"></i>
+                Start Webcam
+            </button>
+        </div>
+
+        <!-- Current Letter Detection -->
+        <div class="detection-box rounded-xl p-5 mb-6">
+            <div class="text-center">
+                <p class="text-sm text-indigo-600 font-medium mb-1">CURRENT LETTER</p>
+                <p id="translationOutput" class="text-3xl font-bold text-indigo-800">—</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            <!-- Formed Word Display -->
+            <div class="word-box bg-green-50 rounded-xl p-5">
+                <p class="text-center font-medium text-green-700 mb-2"><i class="fas fa-font mr-2"></i>FORMED WORD</p>
+                <p id="formedWordDisplay" class="text-center text-2xl font-bold text-green-900">—</p>
+            </div>
+
+            <!-- Formed Sentence Display -->
+            <div class="sentence-box bg-blue-50 rounded-xl p-5">
+                <p class="text-center font-medium text-blue-700 mb-2"><i class="fas fa-align-left mr-2"></i>FORMED SENTENCE</p>
+                <p id="formedSentenceDisplay" class="text-center text-xl font-bold text-blue-900">—</p>
+            </div>
+        </div>
+
+        <!-- Button Group -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button id="newWordBtn" 
+                    class="btn px-4 py-3 bg-blue-100 text-blue-700 font-semibold rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all">
+                <i class="fas fa-plus"></i>
+                New Word
+            </button>
+            <button id="newSentenceBtn" 
+                    class="btn px-4 py-3 bg-purple-100 text-purple-700 font-semibold rounded-lg hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300 transition-all">
+                <i class="fas fa-broom"></i>
+                Clear Sentence
+            </button>
+            <button id="correctSentenceBtn" 
+                    class="btn px-4 py-3 bg-pink-100 text-pink-700 font-semibold rounded-lg hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all">
+                <i class="fas fa-spell-check"></i>
+                Correct Sentence
+            </button>
+            <button id="generateSoundBtn" 
+                    class="btn px-4 py-3 bg-green-100 text-green-700 font-semibold rounded-lg hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all" disabled>
+                <i class="fas fa-volume-up"></i>
+                Generate Sound
+            </button>
+        </div>
+
+        <!-- Hidden audio element for playback -->
+        <audio id="audioPlayer" class="hidden"></audio>
+    </div>
+
+    <div id="notification" class="notification">
+        <i class="fas fa-info-circle text-blue-500"></i>
+        <div>
+            <p class="font-medium" id="notification-title">Notification</p>
+            <p class="text-sm text-gray-600 mt-1" id="notification-message">This is a notification message</p>
+        </div>
+        <button class="ml-auto text-gray-400 hover:text-gray-600" onclick="hideNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+        // Notification system
+        function showNotification(title, message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const titleEl = document.getElementById('notification-title');
+            const messageEl = document.getElementById('notification-message');
+            const icon = notification.querySelector('i');
+            
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            // Set style based on type
+            notification.className = 'notification';
+            if (type === 'error') {
+                notification.classList.add('error');
+                icon.className = 'fas fa-exclamation-circle text-red-500';
+            } else if (type === 'success') {
+                notification.classList.add('success');
+                icon.className = 'fas fa-check-circle text-green-500';
+            } else {
+                notification.classList.add('info');
+                icon.className = 'fas fa-info-circle text-blue-500';
+            }
+            
+            notification.classList.add('show');
+            
+            // Auto hide after 5 seconds
+            setTimeout(hideNotification, 5000);
+        }
+        
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('show');
+        }
+
+        const arabicLabels = [
+            "ع",    // ain
+            "ال",   // al
+            "ا",    // aleff
+            "ب",    // bb
+            "د",    // dal
+            "ظ",    // dha
+            "ض",    // dhad
+            "ف",    // fa
+            "ق",    // gaaf
+            "غ",    // ghain
+            "ه",    // ha
+            "ح",    // haa
+            "ج",    // jeem
+            "ك",    // kaaf
+            "خ",    // khaa
+            "لا",   // la
+            "ل",    // laam
+            "م",    // meem
+            "ن",    // nun
+            "ر",    // ra
+            "ص",    // saad
+            "س",    // seen
+            "ش",    // sheen
+            "ت",    // ta
+            "ط",    // taa
+            "ث",    // thaa
+            "ذ",    // thal
+            "ة",    // toot
+            "و",    // waw
+            "ئ",    // ya
+            "ي",    // yaa
+            "ز"     // zay
+        ];
+
+        // Global variables for elements and state
+        const webcamFeed = document.getElementById('webcamFeed');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const translationOutput = document.getElementById('translationOutput');
+        const newWordBtn = document.getElementById('newWordBtn');
+        const newSentenceBtn = document.getElementById('newSentenceBtn');
+        const correctSentenceBtn = document.getElementById('correctSentenceBtn');
+        const generateSoundBtn = document.getElementById('generateSoundBtn');
+        const formedWordDisplay = document.getElementById('formedWordDisplay');
+        const formedSentenceDisplay = document.getElementById('formedSentenceDisplay');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        // Variables to manage state
+        let lastPrediction = '';
+        let lastPredictionTime = 0;
+        const cooldown = 1000; // in milliseconds (1 second)
+        
+        let stream = null;
+        let isStreaming = false;
+        let frameIntervalId = null;
+        const frameSendInterval = 200; // Send a frame every 200ms (5 FPS)
+        const CANVAS_WIDTH = 224;
+        const CANVAS_HEIGHT = 224;
+        
+        let currentWord = ""; // Holds the currently formed word
+        let currentSentence = ""; // Holds the formed sentence
+
+        // Define the endpoint URL
+        const API_BASE_URL = '/api'; // Use your local URL or Ngrok URL
+
+        // Utility function to convert a base64 string to an ArrayBuffer.
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        // Utility function to convert raw PCM audio data to a WAV file Blob.
+        const pcmToWav = (pcmData, sampleRate) => {
+            const pcm16 = new Int16Array(pcmData);
+            const wavHeader = new ArrayBuffer(44);
+            const view = new DataView(wavHeader);
+            
+            // RIFF identifier
+            view.setUint32(0, 0x52494646, false);
+            // File length
+            view.setUint32(4, 36 + pcm16.length * 2, true);
+            // RIFF type "WAVE"
+            view.setUint32(8, 0x57415645, false);
+            // Format chunk identifier "fmt "
+            view.setUint32(12, 0x666d7420, false);
+            // Format chunk length
+            view.setUint32(16, 16, true);
+            // Sample format (1 = PCM)
+            view.setUint16(20, 1, true);
+            // Number of channels (1)
+            view.setUint16(22, 1, true);
+            // Sample rate
+            view.setUint32(24, sampleRate, true);
+            // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
+            view.setUint32(28, sampleRate * 1 * 2, true);
+            // Block align (NumChannels * BitsPerSample/8)
+            view.setUint16(32, 1 * 2, true);
+            // Bits per sample
+            view.setUint16(34, 16, true);
+            // Data chunk identifier "data"
+            view.setUint32(36, 0x64617461, false);
+            // Data chunk length
+            view.setUint32(40, pcm16.length * 2, true);
+
+            const wavData = new Uint8Array(44 + pcm16.length * 2);
+            wavData.set(new Uint8Array(wavHeader), 0);
+            wavData.set(new Uint8Array(pcm16.buffer), 44);
+
+            return new Blob([wavData], { type: 'audio/wav' });
+        };
+
+
+        // Function to start the webcam feed
+        async function startWebcam() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamFeed.srcObject = stream;
+                isStreaming = true;
+                startStopBtn.innerHTML = '<i class="fas fa-video-slash"></i> Stop Webcam';
+                startStopBtn.classList.remove('bg-indigo-600', 'pulse-animation');
+                startStopBtn.classList.add('bg-red-600');
+                statusMessage.textContent = 'Webcam active. Detecting letters...';
+                statusIndicator.classList.remove('status-inactive');
+                statusIndicator.classList.add('status-active');
+
+                webcamFeed.onloadedmetadata = () => {
+                    webcamFeed.play();
+                    startSendingFrames();
+                };
+
+            } catch (err) {
+                console.error('Error accessing webcam:', err);
+                statusMessage.textContent = 'Error: Could not access webcam';
+                statusIndicator.classList.remove('status-active');
+                statusIndicator.classList.add('status-inactive');
+                
+                showNotification('Webcam Error', 'Could not access webcam. Please ensure you have a webcam and allow camera access.', 'error');
+
+                startStopBtn.innerHTML = '<i class="fas fa-video"></i> Start Webcam';
+                startStopBtn.classList.remove('bg-red-600');
+                startStopBtn.classList.add('bg-indigo-600', 'pulse-animation');
+                isStreaming = false;
+            }
+        }
+
+        // Function to stop the webcam feed
+        function stopWebcam() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                webcamFeed.srcObject = null;
+            }
+            isStreaming = false;
+            stopSendingFrames();
+            startStopBtn.innerHTML = '<i class="fas fa-video"></i> Start Webcam';
+            startStopBtn.classList.remove('bg-red-600');
+            startStopBtn.classList.add('bg-indigo-600', 'pulse-animation');
+            statusMessage.textContent = 'Webcam stopped';
+            statusIndicator.classList.remove('status-active');
+            statusIndicator.classList.add('status-inactive');
+            translationOutput.textContent = '—';
+        }
+
+        // Function to start sending video frames to the server
+        function startSendingFrames() {
+            if (frameIntervalId) {
+                clearInterval(frameIntervalId);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+
+            frameIntervalId = setInterval(async () => {
+                if (webcamFeed.readyState === webcamFeed.HAVE_ENOUGH_DATA) {
+                    context.save();
+                    context.scale(-1, 1);
+                    context.drawImage(webcamFeed, -canvas.width, 0, canvas.width, canvas.height);
+                    context.restore();
+
+                    const imageData = canvas.toDataURL('image/jpeg', 0.7);
+                    await sendFrameToServer(imageData);
+                }
+            }, frameSendInterval);
+        }
+
+        // Function to stop sending video frames
+        function stopSendingFrames() {
+            if (frameIntervalId) {
+                clearInterval(frameIntervalId);
+                frameIntervalId = null;
+            }
+        }
+
+        // Function to send the image frame to the server endpoint
+        async function sendFrameToServer(imageData) {
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator`;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ imageData: imageData }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Display the detected letter
+                translationOutput.textContent = result.translation || '—';
+                
+                // Process the detected letter for word formation
+                if (result.translation && arabicLabels.includes(result.translation)) {
+                    const lastAdded = currentWord.slice(-result.translation.length);
+                    
+                    // Only add the letter if it's different from the last one or after cooldown
+                    if (lastAdded !== result.translation || Date.now() - lastPredictionTime > cooldown) {
+                        currentWord += result.translation;
+                        lastPrediction = result.translation;
+                        lastPredictionTime = Date.now();
+                        
+                        // Update the formed word display in real-time
+                        formedWordDisplay.textContent = currentWord || "—";
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error sending frame or receiving translation:', error);
+                statusMessage.textContent = 'Error: Failed to get translation';
+                translationOutput.textContent = '—';
+            }
+        }
+
+        // New function to correct the formed sentence using the backend
+        async function correctSentence() {
+            if (!currentSentence || currentSentence === "—") {
+                showNotification('Correction Error', 'No sentence to correct. Please form a sentence first.', 'error');
+                return;
+            }
+
+            statusMessage.textContent = 'Correcting sentence...';
+            formedSentenceDisplay.textContent = 'Correcting...';
+
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator/correctsentence`;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sentence: currentSentence }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Handle the new response format with suggestion wrapper
+                if (result.suggestion && result.suggestion.correctedSentence) {
+                    // Update the sentence display with the corrected version
+                    currentSentence = result.suggestion.correctedSentence;
+                    formedSentenceDisplay.textContent = currentSentence;
+                    statusMessage.textContent = 'Webcam active. Detecting letters...';
+                    showNotification('Success', 'Sentence corrected successfully!', 'success');
+                } else {
+                    throw new Error('Invalid response format from server');
+                }
+
+            } catch (error) {
+                console.error('Error correcting sentence:', error);
+                statusMessage.textContent = 'Error: Failed to correct sentence';
+                formedSentenceDisplay.textContent = currentSentence;
+                showNotification('Correction Error', 'Failed to correct sentence. Please try again.', 'error');
+            }
+        }
+        
+        // New function to generate and play audio from the current sentence
+        async function generateSoundFromSentence() {
+            if (!currentSentence || currentSentence === "—") {
+                showNotification('Audio Error', 'No sentence to generate audio for. Please form a sentence first.', 'error');
+                return;
+            }
+
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator/GenerateAudio`;
+            
+            // Set a loading state
+            statusMessage.textContent = 'Generating audio...';
+            generateSoundBtn.disabled = true;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: currentSentence }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Decode the base64 audio data and create a playable audio blob
+                const pcmData = base64ToArrayBuffer(result.audioData);
+                const wavBlob = pcmToWav(pcmData, result.sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+                
+                // Set the audio source and play it
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+                
+                statusMessage.textContent = 'Webcam active. Detecting letters...';
+                showNotification('Audio', 'Playing generated audio...', 'success');
+            } catch (error) {
+                console.error('Error generating or playing audio:', error);
+                statusMessage.textContent = 'Error: Failed to generate audio';
+                showNotification('Audio Error', 'Failed to generate audio. Please try again.', 'error');
+            } finally {
+                // Always re-enable the button after the operation completes
+                generateSoundBtn.disabled = false;
+            }
+        }
+        
+        // Event listeners
+        startStopBtn.addEventListener('click', () => {
+            if (isStreaming) {
+                stopWebcam();
+            } else {
+                startWebcam();
+            }
+        });
+
+        newWordBtn.addEventListener('click', () => {
+            // Add the current word to the sentence
+            if (currentWord) {
+                if (currentSentence && currentSentence !== "—") {
+                    currentSentence += " " + currentWord;
+                } else {
+                    currentSentence = currentWord;
+                }
+                formedSentenceDisplay.textContent = currentSentence || "—";
+            }
+            
+            // Clear the current word and reset the display
+            currentWord = "";
+            formedWordDisplay.textContent = "—";
+            statusMessage.textContent = isStreaming ? 'Webcam active. Detecting letters...' : 'Webcam stopped';
+            
+            // Update sound button state
+            updateSoundButtonState();
+        });
+
+        newSentenceBtn.addEventListener('click', () => {
+            // Clear both the current word and sentence
+            currentWord = "";
+            currentSentence = "";
+            formedWordDisplay.textContent = "—";
+            formedSentenceDisplay.textContent = "—";
+            statusMessage.textContent = isStreaming ? 'Webcam active. Detecting letters...' : 'Webcam stopped';
+            
+            // Update sound button state
+            updateSoundButtonState();
+        });
+
+        correctSentenceBtn.addEventListener('click', correctSentence);
+        generateSoundBtn.addEventListener('click', generateSoundFromSentence);
+
+        // Helper function to manage the state of the "Generate Sound" button
+        function updateSoundButtonState() {
+            if (currentSentence && currentSentence !== "—") {
+                generateSoundBtn.disabled = false;
+            } else {
+                generateSoundBtn.disabled = true;
+            }
+        }
+
+        // Ensure webcam is stopped if the user navigates away or closes the tab
+        window.addEventListener('beforeunload', () => {
+            if (isStreaming) {
+                stopWebcam();
+            }
+        });
+    </script>
+</body>
+</html>

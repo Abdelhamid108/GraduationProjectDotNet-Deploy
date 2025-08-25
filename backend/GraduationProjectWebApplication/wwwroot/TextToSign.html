@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحويل النص العربي إلى لغة الإشارة</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #e74c3c;
+            --secondary-dark: #c0392b;
+            --accent: #9b59b6;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --text: #333;
+            --text-light: #777;
+            --gradient-start: #6a11cb;
+            --gradient-end: #2575fc;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.8s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: var(--dark);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 25%;
+            width: 50%;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            border-radius: 2px;
+        }
+
+        .description {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            max-width: 80%;
+            margin: 0 auto;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            min-height: 150px;
+            resize: vertical;
+            transition: var(--transition);
+            background: var(--light);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #convertBtn {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        #recordBtn {
+            background: linear-gradient(to right, var(--secondary), var(--secondary-dark));
+            color: white;
+        }
+
+        #recordBtn.recording {
+            animation: pulse 1.5s infinite;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 30px 0;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        .error {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            border-left: 4px solid var(--secondary);
+            display: none;
+        }
+
+        .result {
+            margin-top: 40px;
+        }
+
+        .word-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.5s ease;
+        }
+
+        .word-label {
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .word-label i {
+            color: var(--accent);
+        }
+
+        .letters-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+        }
+
+        .letter-container {
+            text-align: center;
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .letter-image-container {
+            width: 120px;
+            height: 150px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .letter-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            animation: bounceIn 0.8s ease forwards;
+        }
+
+        .letter-label {
+            margin-top: 15px;
+            font-weight: bold;
+            color: var(--dark);
+            font-size: 1.1rem;
+            background: var(--light);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-light);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% { 
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            70% { 
+                transform: scale(0.9);
+            }
+            100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .description {
+                max-width: 100%;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            .letter-image-container {
+                width: 100px;
+                height: 130px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>تحويل النص العربي إلى لغة الإشارة</h1>
+            <p class="description">أدخل النص العربي أو سجله صوتياً لتحويله إلى لغة الإشارة وعرض الحروف بطريقة تفاعلية جميلة</p>
+        </header>
+        
+        <div class="input-section">
+            <textarea id="arabicText" placeholder="أدخل النص العربي هنا..."></textarea>
+            
+            <div class="button-group">
+                <button id="convertBtn">
+                    <i class="fas fa-language"></i>
+                    تحويل النص
+                </button>
+                <button id="recordBtn">
+                    <i class="fas fa-microphone"></i>
+                    تسجيل صوتي
+                </button>
+            </div>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>جاري تحويل النص، يرجى الانتظار...</p>
+            </div>
+            
+            <div id="error" class="error"></div>
+        </div>
+        
+        <div id="result" class="result">
+            <div class="empty-state">
+                <i class="fas fa-hands"></i>
+                <h3>لا يوجد نص للعرض حالياً</h3>
+                <p>سيتم عرض إشارات الحروف هنا بعد إدخال النص</p>
+            </div>
+        </div>
+        
+        <footer>
+        </footer>
+    </div>
+
+    <script>
+        // Mock data for demonstration - in a real app, this would come from the API
+       
+
+        const API_BASE_URL = 'http://localhost:5001/api';
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const convertBtn = document.getElementById('convertBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const arabicTextarea = document.getElementById('arabicText');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        const loadingDiv = document.getElementById('loading');
+
+        // Convert text to sign language
+        convertBtn.addEventListener('click', async function() {
+            const text = arabicTextarea.value.trim();
+            clearUI();
+            
+            if (!text) {
+                showError('الرجاء إدخال نص لتحويله');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // In a real app, you would use the actual API:
+                const endpointUrl = `${API_BASE_URL}/ArabicLanguageTranslator/text-to-sign`;
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ Text: text })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('حدث خطأ أثناء تحويل النص');
+                }
+                
+                const data = await response.json();
+                
+                // For demo purposes, using mock data if API is not available
+                // const data = mockSignData;
+                
+                if (data.length === 0) {
+                    resultDiv.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><h3>لا توجد إشارات متاحة للنص المدخل</h3></div>';
+                    return;
+                }
+                
+                displaySignLanguageImages(data, text);
+            } catch (error) {
+                console.error('Error:', error);
+                // For demo purposes, using mock data if API is not available
+                displaySignLanguageImages(mockSignData, text);
+                // showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        // Handle recording and transcribing audio
+        recordBtn.addEventListener('click', async function() {
+            if (isRecording) {
+                // Stop recording
+                mediaRecorder.stop();
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i> جاري المعالجة...';
+                recordBtn.classList.remove('recording');
+                recordBtn.disabled = true;
+                isRecording = false;
+            } else {
+                // Start recording
+                clearUI();
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = async () => {
+                        showLoading('جاري تحليل الصوت...');
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm; codecs=opus' });
+                        
+                        // Convert blob to base64
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        
+                        reader.onloadend = async function() {
+                            const base64Audio = reader.result.split(',')[1];
+                            await sendAudioToAPI(base64Audio, audioBlob.type);
+                        };
+                        
+                        // Stop the microphone stream
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.start();
+                    recordBtn.innerHTML = '<i class="fas fa-stop-circle"></i> إيقاف التسجيل';
+                    recordBtn.classList.add('recording');
+                    isRecording = true;
+                } catch (err) {
+                    console.error('Error accessing microphone:', err);
+                    showError('تعذر الوصول إلى الميكروفون. يرجى التأكد من السماح بالوصول.');
+                }
+            }
+        });
+
+        async function sendAudioToAPI(base64Audio, mimeType) {
+            try {
+                const endpointUrl = `${API_BASE_URL}/ArabicLanguageTranslator/audio-to-text`;
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audioData: base64Audio,
+                        mimeType: mimeType
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`خطأ في الخادم: ${errorText}`);
+                }
+
+                const transcribedText = await response.text();
+                arabicTextarea.value = transcribedText;
+                
+                // Automatically convert the transcribed text
+                convertBtn.click();
+                
+            } catch (error) {
+                console.error('Transcription error:', error);
+                showError(error.message);
+            } finally {
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i> تسجيل صوتي';
+                recordBtn.classList.remove('recording');
+                recordBtn.disabled = false;
+                hideLoading();
+            }
+        }
+
+        function clearUI() {
+            resultDiv.innerHTML = '';
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
+
+        function showLoading(message = 'جاري تحويل النص...') {
+            loadingDiv.style.display = 'block';
+            loadingDiv.querySelector('p').textContent = message;
+        }
+
+        function hideLoading() {
+            loadingDiv.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function displaySignLanguageImages(data, text) {
+            const words = text.split(' ');
+            
+            // Remove empty words
+            const filteredWords = words.filter(word => word.trim() !== '');
+            
+            let html = '';
+            
+            filteredWords.forEach((word, wordIndex) => {
+                if (wordIndex < data.length) {
+                    const wordImages = data[wordIndex];
+                    
+                    html += `
+                        <div class="word-container">
+                            <div class="word-label">
+                                <i class="fas fa-hand-point-right"></i>
+                                كلمة: ${word}
+                            </div>
+                            <div class="letters-container">
+                    `;
+                    
+                    for (let i = 0; i < word.length; i++) {
+                        if (i < wordImages.length) {
+                            // Add increasing delay for animation
+                            const delay = (wordIndex * word.length + i) * 0.1;
+                            
+                            html += `
+                                <div class="letter-container" style="animation-delay: ${delay}s">
+                                    <div class="letter-image-container">
+                                        <img src="${wordImages[i]}" alt="إشارة الحرف ${word[i]}" class="letter-image">
+                                    </div>
+                                    <div class="letter-label">حرف: ${word[i]}</div>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            resultDiv.innerHTML = html;
+        }
+
+        // Handle API connection errors
+        window.addEventListener('unhandledrejection', event => {
+            if (event.reason && event.reason.message && 
+                (event.reason.message.includes('Failed to fetch') || 
+                 event.reason.message.includes('NetworkError'))) {
+                showError('تعذر الاتصال بالخادم. يرجى التأكد من تشغيل الخادم المحلي على المنفذ 7279');
+            }
+        });
+    </script>
+</body>
+</html>

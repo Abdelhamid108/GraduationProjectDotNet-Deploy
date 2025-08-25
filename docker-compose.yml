@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./Models:/app/Models
+    restart: always    
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/public:/usr/share/nginx/html 
+      - /etc/letsencrypt/live/emaaha.ddns.net:/etc/letsencrypt/live/emaaha.ddns.net:ro
+      - /etc/letsencrypt/archive/emaaha.ddns.net:/etc/letsencrypt/archive/emaaha.ddns.net:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always    
+    depends_on:
+      - backend
+

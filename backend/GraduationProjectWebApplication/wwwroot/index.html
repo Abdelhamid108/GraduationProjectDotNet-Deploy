@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Translator Client</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 bg-gradient-to-br from-indigo-50 to-purple-100">
+
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-lg w-full transform transition-all hover:scale-105 duration-300">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-6 text-gray-800">Sign Language Translator</h1>
+
+        <!-- Video stream area -->
+        <div class="mb-6 bg-gray-900 rounded-xl overflow-hidden shadow-inner border border-gray-700">
+            <video id="webcamFeed" class="w-full h-auto rounded-xl block transform scale-x-[-1]" autoplay playsinline></video>
+        </div>
+
+        <!-- Controls and Status -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+            <button id="startStopBtn"
+                    class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 w-full sm:w-auto">
+                Start Webcam
+            </button>
+            <span id="statusMessage" class="text-gray-600 text-sm sm:text-base font-medium text-center sm:text-left">Ready to start.</span>
+        </div>
+
+        <!-- Current Letter Detection -->
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 min-h-[80px] flex items-center justify-center mb-4">
+            <p id="translationOutput" class="text-lg text-indigo-800 font-semibold text-center break-words">Detected letter will appear here...</p>
+        </div>
+
+        <!-- Formed Word Display -->
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+            <p class="text-center font-medium text-green-700">Formed Word:</p>
+            <p id="formedWordDisplay" class="text-center text-2xl font-bold text-green-900 mt-2">[None]</p>
+        </div>
+
+        <!-- Formed Sentence Display -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+            <p class="text-center font-medium text-blue-700">Formed Sentence:</p>
+            <p id="formedSentenceDisplay" class="text-center text-xl font-bold text-blue-900 mt-2">[None]</p>
+        </div>
+
+        <!-- Button Group -->
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <button id="newWordBtn" 
+                    class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300">
+                Start New Word
+            </button>
+            <button id="newSentenceBtn" 
+                    class="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-300">
+                New Sentence
+            </button>
+            <button id="correctSentenceBtn" 
+                    class="px-6 py-2 bg-pink-600 text-white font-semibold rounded-lg shadow hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-300">
+                Correct Sentence
+            </button>
+            <button id="generateSoundBtn" 
+                    class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300" disabled>
+                Generate Sound
+            </button>
+        </div>
+
+        <!-- Hidden audio element for playback -->
+        <audio id="audioPlayer" class="hidden"></audio>
+    </div>
+
+    <script>
+        const arabicLabels = [
+            "ع",    // ain
+            "ال",   // al
+            "ا",    // aleff
+            "ب",    // bb
+            "د",    // dal
+            "ظ",    // dha
+            "ض",    // dhad
+            "ف",    // fa
+            "ق",    // gaaf
+            "غ",    // ghain
+            "ه",    // ha
+            "ح",    // haa
+            "ج",    // jeem
+            "ك",    // kaaf
+            "خ",    // khaa
+            "لا",   // la
+            "ل",    // laam
+            "م",    // meem
+            "ن",    // nun
+            "ر",    // ra
+            "ص",    // saad
+            "س",    // seen
+            "ش",    // sheen
+            "ت",    // ta
+            "ط",    // taa
+            "ث",    // thaa
+            "ذ",    // thal
+            "ة",    // toot
+            "و",    // waw
+            "ئ",    // ya
+            "ي",    // yaa
+            "ز"     // zay
+        ];
+
+        // Global variables for elements and state
+        const webcamFeed = document.getElementById('webcamFeed');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const translationOutput = document.getElementById('translationOutput');
+        const newWordBtn = document.getElementById('newWordBtn');
+        const newSentenceBtn = document.getElementById('newSentenceBtn');
+        const correctSentenceBtn = document.getElementById('correctSentenceBtn');
+        const generateSoundBtn = document.getElementById('generateSoundBtn');
+        const formedWordDisplay = document.getElementById('formedWordDisplay');
+        const formedSentenceDisplay = document.getElementById('formedSentenceDisplay');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        // Variables to manage state
+        let lastPrediction = '';
+        let lastPredictionTime = 0;
+        const cooldown = 1000; // in milliseconds (1 second)
+        
+        let stream = null;
+        let isStreaming = false;
+        let frameIntervalId = null;
+        const frameSendInterval = 200; // Send a frame every 200ms (5 FPS)
+        const CANVAS_WIDTH = 224;
+        const CANVAS_HEIGHT = 224;
+        
+        let currentWord = ""; // Holds the currently formed word
+        let currentSentence = ""; // Holds the formed sentence
+
+        // Define the endpoint URL
+        const API_BASE_URL = 'http://localhost:5001/api'; // Use your local URL or Ngrok URL
+
+        // Utility function to convert a base64 string to an ArrayBuffer.
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        // Utility function to convert raw PCM audio data to a WAV file Blob.
+        const pcmToWav = (pcmData, sampleRate) => {
+            const pcm16 = new Int16Array(pcmData);
+            const wavHeader = new ArrayBuffer(44);
+            const view = new DataView(wavHeader);
+            
+            // RIFF identifier
+            view.setUint32(0, 0x52494646, false);
+            // File length
+            view.setUint32(4, 36 + pcm16.length * 2, true);
+            // RIFF type "WAVE"
+            view.setUint32(8, 0x57415645, false);
+            // Format chunk identifier "fmt "
+            view.setUint32(12, 0x666d7420, false);
+            // Format chunk length
+            view.setUint32(16, 16, true);
+            // Sample format (1 = PCM)
+            view.setUint16(20, 1, true);
+            // Number of channels (1)
+            view.setUint16(22, 1, true);
+            // Sample rate
+            view.setUint32(24, sampleRate, true);
+            // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
+            view.setUint32(28, sampleRate * 1 * 2, true);
+            // Block align (NumChannels * BitsPerSample/8)
+            view.setUint16(32, 1 * 2, true);
+            // Bits per sample
+            view.setUint16(34, 16, true);
+            // Data chunk identifier "data"
+            view.setUint32(36, 0x64617461, false);
+            // Data chunk length
+            view.setUint32(40, pcm16.length * 2, true);
+
+            const wavData = new Uint8Array(44 + pcm16.length * 2);
+            wavData.set(new Uint8Array(wavHeader), 0);
+            wavData.set(new Uint8Array(pcm16.buffer), 44);
+
+            return new Blob([wavData], { type: 'audio/wav' });
+        };
+
+
+        // Function to start the webcam feed
+        async function startWebcam() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamFeed.srcObject = stream;
+                isStreaming = true;
+                startStopBtn.textContent = 'Stop Webcam';
+                startStopBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                startStopBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                statusMessage.textContent = 'Webcam active. Detecting letters...';
+
+                webcamFeed.onloadedmetadata = () => {
+                    webcamFeed.play();
+                    startSendingFrames();
+                };
+
+            } catch (err) {
+                console.error('Error accessing webcam:', err);
+                statusMessage.textContent = 'Error: Could not access webcam. Please allow camera access.';
+                // Use a custom message box instead of alert()
+                const messageBox = document.createElement('div');
+                messageBox.classList.add('fixed', 'bottom-4', 'right-4', 'bg-red-500', 'text-white', 'p-4', 'rounded-lg', 'shadow-lg');
+                messageBox.textContent = 'Error: Could not access webcam. Please ensure you have a webcam and allow camera access.';
+                document.body.appendChild(messageBox);
+                setTimeout(() => messageBox.remove(), 5000);
+
+                startStopBtn.textContent = 'Start Webcam';
+                startStopBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                startStopBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                isStreaming = false;
+            }
+        }
+
+        // Function to stop the webcam feed
+        function stopWebcam() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                webcamFeed.srcObject = null;
+            }
+            isStreaming = false;
+            stopSendingFrames();
+            startStopBtn.textContent = 'Start Webcam';
+            startStopBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+            startStopBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            statusMessage.textContent = 'Webcam stopped. Ready to start.';
+            translationOutput.textContent = 'Detected letter will appear here...';
+        }
+
+        // Function to start sending video frames to the server
+        function startSendingFrames() {
+            if (frameIntervalId) {
+                clearInterval(frameIntervalId);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+
+            frameIntervalId = setInterval(async () => {
+                if (webcamFeed.readyState === webcamFeed.HAVE_ENOUGH_DATA) {
+                    context.save();
+                    context.scale(-1, 1);
+                    context.drawImage(webcamFeed, -canvas.width, 0, canvas.width, canvas.height);
+                    context.restore();
+
+                    const imageData = canvas.toDataURL('image/jpeg', 0.7);
+                    await sendFrameToServer(imageData);
+                }
+            }, frameSendInterval);
+        }
+
+        // Function to stop sending video frames
+        function stopSendingFrames() {
+            if (frameIntervalId) {
+                clearInterval(frameIntervalId);
+                frameIntervalId = null;
+            }
+        }
+
+        // Function to send the image frame to the server endpoint
+        async function sendFrameToServer(imageData) {
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator`;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ imageData: imageData }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Display the detected letter
+                translationOutput.textContent = result.translation || 'No letter detected';
+                
+                // Process the detected letter for word formation
+                if (result.translation && arabicLabels.includes(result.translation)) {
+                    const lastAdded = currentWord.slice(-result.translation.length);
+                    
+                    // Only add the letter if it's different from the last one or after cooldown
+                    if (lastAdded !== result.translation || Date.now() - lastPredictionTime > cooldown) {
+                        currentWord += result.translation;
+                        lastPrediction = result.translation;
+                        lastPredictionTime = Date.now();
+                        
+                        // Update the formed word display in real-time
+                        formedWordDisplay.textContent = currentWord || "[None]";
+                        formedWordDisplay.classList.remove('text-gray-500');
+                        formedWordDisplay.classList.add('text-green-900');
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error sending frame or receiving translation:', error);
+                statusMessage.textContent = 'Error: Failed to get translation.';
+                translationOutput.textContent = 'Error during detection. Check console.';
+            }
+        }
+
+        // New function to correct the formed sentence using the backend
+        async function correctSentence() {
+            if (!currentSentence || currentSentence === "[None]") {
+                statusMessage.textContent = 'Error: No sentence to correct.';
+                return;
+            }
+
+            statusMessage.textContent = 'Correcting sentence...';
+            formedSentenceDisplay.textContent = 'Correcting...';
+
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator/correctsentence`;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sentence: currentSentence }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Handle the new response format with suggestion wrapper
+                if (result.suggestion && result.suggestion.correctedSentence) {
+                    // Update the sentence display with the corrected version
+                    currentSentence = result.suggestion.correctedSentence;
+                    formedSentenceDisplay.textContent = currentSentence;
+                    statusMessage.textContent = 'Sentence corrected successfully!';
+                } else {
+                    throw new Error('Invalid response format from server');
+                }
+
+            } catch (error) {
+                console.error('Error correcting sentence:', error);
+                statusMessage.textContent = 'Error: Failed to correct sentence.';
+                formedSentenceDisplay.textContent = 'Correction failed.';
+                
+                // Optional: Display more detailed error if available
+                if (error.message.includes('Invalid response format')) {
+                    formedSentenceDisplay.textContent = 'Server returned invalid format';
+                }
+            }
+        }
+        
+        // New function to generate and play audio from the current sentence
+        async function generateSoundFromSentence() {
+            if (!currentSentence || currentSentence === "[None]") {
+                // Use a custom message box instead of alert()
+                const messageBox = document.createElement('div');
+                messageBox.classList.add('fixed', 'bottom-4', 'right-4', 'bg-red-500', 'text-white', 'p-4', 'rounded-lg', 'shadow-lg');
+                messageBox.textContent = 'Error: No sentence to generate audio for.';
+                document.body.appendChild(messageBox);
+                setTimeout(() => messageBox.remove(), 5000);
+                return;
+            }
+
+            const endpointUrl = `${API_BASE_URL}/signlanguagetranslator/GenerateAudio`;
+            
+            // Set a loading state
+            statusMessage.textContent = 'Generating audio...';
+            generateSoundBtn.disabled = true;
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: currentSentence }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Decode the base64 audio data and create a playable audio blob
+                const pcmData = base64ToArrayBuffer(result.audioData);
+                const wavBlob = pcmToWav(pcmData, result.sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+                
+                // Set the audio source and play it
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+                
+                statusMessage.textContent = 'Audio generated and playing!';
+            } catch (error) {
+                console.error('Error generating or playing audio:', error);
+                statusMessage.textContent = 'Error: Failed to generate audio. Check server logs.';
+            } finally {
+                // Always re-enable the button after the operation completes
+                generateSoundBtn.disabled = false;
+            }
+        }
+        
+        // Event listeners
+        startStopBtn.addEventListener('click', () => {
+            if (isStreaming) {
+                stopWebcam();
+            } else {
+                startWebcam();
+            }
+        });
+
+        newWordBtn.addEventListener('click', () => {
+            // Add the current word to the sentence
+            if (currentWord) {
+                if (currentSentence && currentSentence !== "[None]") {
+                    currentSentence += " " + currentWord;
+                } else {
+                    currentSentence = currentWord;
+                }
+                formedSentenceDisplay.textContent = currentSentence || "[None]";
+                formedSentenceDisplay.classList.remove('text-gray-500');
+                formedSentenceDisplay.classList.add('text-blue-900');
+            }
+            
+            // Clear the current word and reset the display
+            currentWord = "";
+            formedWordDisplay.textContent = "[None]";
+            formedWordDisplay.classList.remove('text-green-900');
+            formedWordDisplay.classList.add('text-gray-500');
+            statusMessage.textContent = 'New word started. Ready to detect letters.';
+            // Update sound button state
+            updateSoundButtonState();
+        });
+
+        newSentenceBtn.addEventListener('click', () => {
+            // Clear both the current word and sentence
+            currentWord = "";
+            currentSentence = "";
+            formedWordDisplay.textContent = "[None]";
+            formedSentenceDisplay.textContent = "[None]";
+            formedWordDisplay.classList.remove('text-green-900');
+            formedWordDisplay.classList.add('text-gray-500');
+            formedSentenceDisplay.classList.remove('text-blue-900');
+            formedSentenceDisplay.classList.add('text-gray-500');
+            statusMessage.textContent = 'New sentence started. Ready to detect letters.';
+            // Update sound button state
+            updateSoundButtonState();
+        });
+
+        correctSentenceBtn.addEventListener('click', correctSentence);
+        generateSoundBtn.addEventListener('click', generateSoundFromSentence);
+
+        // Helper function to manage the state of the "Generate Sound" button
+        function updateSoundButtonState() {
+            if (currentSentence && currentSentence !== "[None]") {
+                generateSoundBtn.disabled = false;
+            } else {
+                generateSoundBtn.disabled = true;
+            }
+        }
+
+        // Ensure webcam is stopped if the user navigates away or closes the tab
+        window.addEventListener('beforeunload', () => {
+            if (isStreaming) {
+                stopWebcam();
+            }
+        });
+    </script>
+</body>
+</html>
