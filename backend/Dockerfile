@@ -1,33 +1,29 @@
-# Start with .NET SDK As Base Image fo stage #1
+# Stage 1: Build the application using the .NET 8 SDK
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-# Change directory to /src
-WORKDIR /src 
+# Set the working directory for the build commands
+WORKDIR /src
 
-# Copy Backend files to The Working Directory
+# Copy the entire project source code into the container
 COPY . .
 
-# Restore dependencies
+# Restore the project dependencies and NuGet packages
 RUN dotnet restore
 
-WORKDIR /src/GraduationProjectWebApplication
-
-# Generate dll files 
+# Publish the application for release to the /app/publish folder
 RUN dotnet publish -c Release -o /app/publish
 
-# stage #2
-FROM  mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# Stage 2: Create the final runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
-# Change Directory 
+# Set the working directory for the application
 WORKDIR /app
 
-# Copy dll files Created From Sage #1
+# Copy only the published files from the build stage
 COPY --from=build /app/publish .
 
-# Make Container listen on port 5001
+# Document that the container listens on port 5001 at runtime
 EXPOSE 5001
 
-# Run API
+# Define the command to run the application
 ENTRYPOINT ["dotnet", "GraduationProjectWebApplication.dll"]
-
-

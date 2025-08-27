@@ -1,26 +1,52 @@
+# Docker Compose configuration for a multi-service application (backend API & frontend web server)
+# Version: (Note: The 'version' tag is omitted, typically used with Docker Compose v3+)
+
 services:
+  # Backend API Service
   backend:
     build:
+      # Specifies the build context (directory) for the backend image.
       context: ./backend
+      # Specifies the Dockerfile to use within the build context.
       dockerfile: Dockerfile
     ports:
+      # Maps host port 5001 to container port 5001.
+      # This exposes the backend service running inside the container on port 5001 to the host machine.
       - "5001:5001"
     volumes:
+      # Binds the host directory './Models' to the container directory '/app/Models'.
+      # This allows for persistent storage and live updates of model files without rebuilding the image.
       - ./Models:/app/Models
-    restart: always    
+    restart: always
+      # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
+      # This ensures the backend service remains available after a reboot or crash.
 
+  # Frontend Web Server Service (Nginx)
   frontend:
     build:
+      # Specifies the build context (directory) for the frontend image.
       context: ./frontend
+      # Specifies the Dockerfile to use within the build context.
       dockerfile: Dockerfile
     volumes:
-      - ./frontend/public:/usr/share/nginx/html 
+      # Binds the host directory './frontend/public' to the NGINX web root '/usr/share/nginx/html'.
+      # This allows for serving static frontend files and potentially live-updating them on the host.
+      - ./frontend/public:/usr/share/nginx/html
+
+      # Read-only bind mounts for SSL/TLS certificates from Let's Encrypt.
+      # These volumes provide the frontend (NGINX) with the necessary SSL certificates to enable HTTPS.
+      # The ':ro' flag mounts them in read-only mode for security.
       - /etc/letsencrypt/live/emaaha.ddns.net:/etc/letsencrypt/live/emaaha.ddns.net:ro
       - /etc/letsencrypt/archive/emaaha.ddns.net:/etc/letsencrypt/archive/emaaha.ddns.net:ro
     ports:
+      # Maps host port 80 to container port 80. Used for HTTP traffic and likely HTTP->HTTPS redirection.
       - "80:80"
+      # Maps host port 443 to container port 443. Used for HTTPS (secure) traffic.
       - "443:443"
-    restart: always    
+    restart: always
+      # Policy: The container will always restart if it stops.
+      # This ensures the web server, a critical entry point, is always available.
     depends_on:
+      # Defines a dependency: the 'frontend' service will not start until the 'backend' service is started.
+      # Note: This controls startup order only; it does not wait for the backend application *inside* the container to be fully healthy.
       - backend
-
