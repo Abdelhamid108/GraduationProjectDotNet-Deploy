@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة مفاتيح لغة الإشارة العربية</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com/3.3.5"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#8b5cf6',
+                        accent: '#ec4899'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .keyboard-key {
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .keyboard-key:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .keyboard-key:active {
+            transform: translateY(1px);
+        }
+        
+        .letter-display {
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease forwards;
+        }
+        
+        .bounce {
+            animation: bounce 0.6s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+        
+        .key-highlight {
+            animation: highlight 1s ease;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: #e6f7ff; }
+            100% { background-color: #ffffff; }
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 350px;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.error {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .notification.info {
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .control-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .play-all-active {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center py-8 px-4">
+    <div class="w-full max-w-4xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-800">لوحة مفاتيح لغة الإشارة العربية</h1>
+            <p class="text-gray-600 mt-2">انقر على الحروف لعرض إشارات لغة الإشارة</p>
+        </div>
+        
+        <!-- Display Screen -->
+        <div class="bg-white rounded-xl shadow-xl p-6 mb-8 letter-display">
+            <div class="text-center">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">عرض الإشارة</h2>
+                <div class="min-h-[300px] flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300" id="imageContainer">
+                    <div class="text-gray-400" id="placeholderText">
+                        <i class="fas fa-hand-point-up text-4xl mb-3"></i>
+                        <p>اختر حرفاً من لوحة المفاتيح أدناه</p>
+                    </div>
+                    <img id="signImage" class="hidden max-h-[280px] mx-auto" alt="إشارة لغة الإشارة">
+                </div>
+                <div class="mt-4">
+                    <p class="text-4xl font-bold text-blue-800" id="selectedLetter">-</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Arabic Keyboard -->
+        <div class="bg-white rounded-xl shadow-xl p-6">
+            <h2 class="text-xl font-semibold text-center text-gray-700 mb-6">لوحة المفاتيح العربية</h2>
+            
+            <!-- First Row -->
+            <div class="flex flex-wrap justify-center gap-3 mb-3">
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ا">ا</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ب">ب</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ت">ت</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ث">ث</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ج">ج</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="ح">ح</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-letter="خ">خ</button>
+            </div>
+            
+            <!-- Second Row -->
+            <div class="flex flex-wrap justify-center gap-3 mb-3">
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="د">د</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="ذ">ذ</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="ر">ر</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="ز">ز</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="س">س</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-green-100 text-green-700 border border-green-200" data-letter="ش">ش</button>
+            </div>
+            
+            <!-- Third Row -->
+            <div class="flex flex-wrap justify-center gap-3 mb-3">
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="ص">ص</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="ض">ض</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="ط">ط</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="ظ">ظ</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="ع">ع</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-purple-100 text-purple-700 border border-purple-200" data-letter="غ">غ</button>
+            </div>
+            
+            <!-- Fourth Row -->
+            <div class="flex flex-wrap justify-center gap-3 mb-3">
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="ف">ف</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="ق">ق</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="ك">ك</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="ل">ل</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="م">م</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-yellow-100 text-yellow-700 border border-yellow-200" data-letter="ن">ن</button>
+            </div>
+            
+            <!-- Fifth Row -->
+            <div class="flex flex-wrap justify-center gap-3">
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-red-100 text-red-700 border border-red-200" data-letter="ه">ه</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-red-100 text-red-700 border border-red-200" data-letter="و">و</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-red-100 text-red-700 border border-red-200" data-letter="ي">ي</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-red-100 text-red-700 border border-red-200" data-letter="ة">ة</button>
+                <button class="keyboard-key text-2xl w-14 h-14 rounded-lg bg-red-100 text-red-700 border border-red-200" data-letter="ئ">ئ</button>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-center mt-6 gap-4">
+                <button id="clearBtn" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition control-btn">
+                    <i class="fas fa-eraser ml-2"></i>مسح
+                </button>
+                <button id="playAllBtn" class="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition control-btn">
+                    <i class="fas fa-play ml-2"></i>تشغيل الكل
+                </button>
+                <button id="pauseBtn" class="px-5 py-2 bg-yellow-500 text-white rounded-lg font-semibold hover:bg-yellow-600 transition control-btn" disabled>
+                    <i class="fas fa-pause ml-2"></i>إيقاف مؤقت
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">
+        <i class="fas fa-info-circle text-blue-500"></i>
+        <div>
+            <p class="font-medium" id="notification-title">Notification</p>
+            <p class="text-sm text-gray-600 mt-1" id="notification-message">This is a notification message</p>
+        </div>
+        <button class="ml-auto text-gray-400 hover:text-gray-600" onclick="hideNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+        // Notification system
+        function showNotification(title, message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const titleEl = document.getElementById('notification-title');
+            const messageEl = document.getElementById('notification-message');
+            const icon = notification.querySelector('i');
+            
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            // Set style based on type
+            notification.className = 'notification';
+            if (type === 'error') {
+                notification.classList.add('error');
+                icon.className = 'fas fa-exclamation-circle text-red-500';
+            } else {
+                notification.classList.add('info');
+                icon.className = 'fas fa-info-circle text-blue-500';
+            }
+            
+            notification.classList.add('show');
+            
+            // Auto hide after 5 seconds
+            setTimeout(hideNotification, 5000);
+        }
+        
+        function hideNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.remove('show');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const keyboardKeys = document.querySelectorAll('.keyboard-key');
+            const signImage = document.getElementById('signImage');
+            const placeholderText = document.getElementById('placeholderText');
+            const selectedLetter = document.getElementById('selectedLetter');
+            const clearBtn = document.getElementById('clearBtn');
+            const playAllBtn = document.getElementById('playAllBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const imageContainer = document.getElementById('imageContainer');
+            
+            // Base URL for API endpoint - Use your ASP.NET Core development server URL
+            const API_BASE_URL = 'https://localhost:5001';            
+            
+            // Variables for play all functionality
+            let currentLetter = '';
+            let playAllInterval = null;
+            let isPlayAllActive = false;
+            let currentLetterIndex = 0;
+            let letters = Array.from(keyboardKeys).map(key => key.getAttribute('data-letter'));
+            
+            // Function to fetch and display sign image
+            async function fetchSignImage(letter) {
+                try {
+                    // Show loading state
+                    placeholderText.innerHTML = '<i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>جاري تحميل الإشارة...</p>';
+                    placeholderText.classList.remove('hidden');
+                    signImage.classList.add('hidden');
+                    
+                    // Call the API endpoint with GET request and query parameter
+                    const response = await fetch(`${API_BASE_URL}/api/ArabicLanguageTranslator/letters-keyboard?letter=${encodeURIComponent(letter)}`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.errorMessage || `HTTP error! status: ${response.status}`);
+                    }
+                    
+                    // Parse the JSON response
+                    const responseData = await response.json();
+                    
+                    // Check if the API request was successful
+                    if (!responseData.success) {
+                        throw new Error(responseData.errorMessage || 'فشل تحميل صورة الإشارة');
+                    }
+                    
+                    // Extract the image data from the response (base64 string)
+                    const imageData = responseData.data;
+                    
+                    // Display the image with animation
+                    signImage.src = imageData;
+                    signImage.classList.remove('hidden');
+                    placeholderText.classList.add('hidden');
+                    
+                    // Add animation
+                    signImage.classList.add('bounce');
+                    setTimeout(() => {
+                        signImage.classList.remove('bounce');
+                    }, 600);
+                    
+                    // Update the selected letter text
+                    selectedLetter.textContent = letter;
+                    
+                } catch (error) {
+                    console.error('Error fetching sign image:', error);
+                    placeholderText.innerHTML = '<i class="fas fa-exclamation-circle text-3xl mb-3 text-red-500"></i><p>حدث خطأ أثناء تحميل الصورة</p>';
+                    showNotification('خطأ', error.message || 'تعذر تحميل صورة الإشارة. تأكد من أن الخادم يعمل.', 'error');
+                }
+            }
+            
+            // Add click event listeners to keyboard keys
+            keyboardKeys.forEach(key => {
+                key.addEventListener('click', () => {
+                    // If play all is active, stop it
+                    if (isPlayAllActive) {
+                        stopPlayAll();
+                    }
+                    
+                    const letter = key.getAttribute('data-letter');
+                    currentLetter = letter;
+                    
+                    // Highlight the clicked key
+                    keyboardKeys.forEach(k => k.classList.remove('key-highlight'));
+                    key.classList.add('key-highlight');
+                    
+                    // Fetch and display the sign image
+                    fetchSignImage(letter);
+                });
+            });
+            
+            // Clear button functionality
+            clearBtn.addEventListener('click', () => {
+                // If play all is active, stop it
+                if (isPlayAllActive) {
+                    stopPlayAll();
+                }
+                
+                signImage.classList.add('hidden');
+                placeholderText.classList.remove('hidden');
+                placeholderText.innerHTML = '<i class="fas fa-hand-point-up text-4xl mb-3"></i><p>اختر حرفاً من لوحة المفاتيح أدناه</p>';
+                selectedLetter.textContent = '-';
+                currentLetter = '';
+                
+                // Remove highlights from keys
+                keyboardKeys.forEach(k => k.classList.remove('key-highlight'));
+            });
+            
+            // Function to stop the play all feature
+            function stopPlayAll() {
+                if (playAllInterval) {
+                    clearInterval(playAllInterval);
+                    playAllInterval = null;
+                }
+                isPlayAllActive = false;
+                playAllBtn.disabled = false;
+                pauseBtn.disabled = true;
+                playAllBtn.classList.remove('play-all-active');
+                showNotification('تم الإيقاف', 'تم إيقاف تشغيل جميع الحروف', 'info');
+            }
+            
+            // Play All button functionality - cycle through all letters
+            playAllBtn.addEventListener('click', () => {
+                if (isPlayAllActive) return;
+                
+                isPlayAllActive = true;
+                playAllBtn.disabled = true;
+                pauseBtn.disabled = false;
+                playAllBtn.classList.add('play-all-active');
+                
+                currentLetterIndex = 0;
+                
+                // Start showing letters with interval
+                playAllInterval = setInterval(() => {
+                    if (currentLetterIndex >= letters.length) {
+                        // Reached the end, stop
+                        stopPlayAll();
+                        return;
+                    }
+                    
+                    const letter = letters[currentLetterIndex];
+                    currentLetter = letter;
+                    
+                    // Highlight the current key
+                    keyboardKeys.forEach(k => {
+                        k.classList.remove('key-highlight');
+                        if (k.getAttribute('data-letter') === letter) {
+                            k.classList.add('key-highlight');
+                        }
+                    });
+                    
+                    // Fetch and display the sign image
+                    fetchSignImage(letter);
+                    
+                    currentLetterIndex++;
+                }, 2000); // Show each letter for 2 seconds
+                
+                showNotification('جاري التشغيل', 'جاري عرض جميع الحروف تلقائياً', 'info');
+            });
+            
+            // Pause button functionality
+            pauseBtn.addEventListener('click', () => {
+                if (playAllInterval) {
+                    clearInterval(playAllInterval);
+                    playAllInterval = null;
+                    pauseBtn.innerHTML = '<i class="fas fa-play ml-2"></i>متابعة';
+                    pauseBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    pauseBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                    showNotification('متوقف مؤقتاً', 'تم إيقاف التشغيل مؤقتاً', 'info');
+                } else {
+                    // Resume the playback
+                    playAllInterval = setInterval(() => {
+                        if (currentLetterIndex >= letters.length) {
+                            // Reached the end, stop
+                            stopPlayAll();
+                            return;
+                        }
+                        
+                        const letter = letters[currentLetterIndex];
+                        currentLetter = letter;
+                        
+                        // Highlight the current key
+                        keyboardKeys.forEach(k => {
+                            k.classList.remove('key-highlight');
+                            if (k.getAttribute('data-letter') === letter) {
+                                k.classList.add('key-highlight');
+                            }
+                        });
+                        
+                        // Fetch and display the sign image
+                        fetchSignImage(letter);
+                        
+                        currentLetterIndex++;
+                    }, 2000);
+                    
+                    pauseBtn.innerHTML = '<i class="fas fa-pause ml-2"></i>إيقاف مؤقت';
+                    pauseBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    pauseBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                    showNotification('جاري الاستئناف', 'جاري متابعة عرض الحروف', 'info');
+                }
+            });
+            
+            // Show initial instruction
+            showNotification('مرحباً', 'انقر على أي حرف لرؤية إشارته بلغة الإشارة', 'info');
+        });
+    </script>
+</body>
+</html>
