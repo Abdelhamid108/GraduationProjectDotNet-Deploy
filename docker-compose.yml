@@ -35,13 +35,13 @@ services:
   frontend:
     build:
       # Specifies the build context (directory) for the frontend image.
-      context: ./frontend
+      context: ./nginx-proxy
       # Specifies the Dockerfile to use within the build context.
       dockerfile: Dockerfile
     volumes:
       # Binds the host directory './frontend/public' to the NGINX web root '/usr/share/nginx/html'.
       # This allows for serving static frontend files and potentially live-updating them on the host.
-      - ./frontend/public:/usr/share/nginx/html
+      - ./nginx-proxy/public:/usr/share/nginx/html
 
       # Read-only bind mounts for SSL/TLS certificates from Let's Encrypt.
       # These volumes provide the frontend (NGINX) with the necessary SSL certificates to enable HTTPS.
