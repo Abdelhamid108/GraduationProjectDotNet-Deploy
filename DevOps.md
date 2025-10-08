@@ -38,17 +38,19 @@ Two isolated networks manage communication between services:
 This section details the journey of a user request through the system.
 
 ### User Request Flow (Sequence Diagram)
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant Nginx as Nginx (Reverse Proxy)
+    participant Backend as Backend API (.NET)
+    participant DB as Database (MS SQL)
 
-
-User                Nginx            Backend API          Database
-  |                   |                    |                    |
-  |---HTTPS Request-->|                    |                    |
-  |                   |---HTTP Request---->|                    |
-  |                   |                    |---DB Query-------->|
-  |                   |                    |<--DB Result--------|
-  |                   |<--HTTP Response----|                    |
-  |<--HTTPS Response--|                    |                    |
-  |                   |                    |                    |
+    User->>Nginx: HTTPS Request
+    Nginx->>Backend: HTTP Request
+    Backend->>DB: DB Query
+    DB-->>Backend: DB Result
+    Backend-->>Nginx: HTTP Response
+    Nginx-->>User: HTTPS Response
 
 
 
