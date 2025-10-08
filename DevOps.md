@@ -53,6 +53,7 @@ sequenceDiagram
     Backend-->>Nginx: HTTP Response
     Nginx-->>User: HTTPS Response
 
+
 ### Flow Explanation:
 1. **Client Request:** The user's browser sends an HTTPS request to an API endpoint (e.g., `/api/login-user`).  
 2. **SSL Termination & Proxy:** The nginx service receives the request, handles SSL, and inspects the URL path.  
