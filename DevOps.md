@@ -13,7 +13,6 @@ The application uses a containerized, multi-service architecture to separate con
 ### Architecture Diagram
 This diagram shows the high-level interaction between the system's components.
 ---
-
                   +----------------+
                   | User's Browser |
                   +----------------+
@@ -29,16 +28,16 @@ This diagram shows the high-level interaction between the system's components.
                          v
   +-------------------------------------------------------------+
   | Docker Networks (api_network & local)                       |
-  |                    +------------------+                     |
-  |                    | Backend .NET API |<-----(Reads)------- +
-  |                    +------------------+                     |
-  |                         | TCP                               |
-  |                         v                                   |
-  |              +-------------------+   +----------------+     |
-  |              | MS SQL Database   |   | AI Models      |     |
-  |              +-------------------+   | (Volume Mount) |     |
+  |                                                             |
+  |     +------------------+                                    |
+  |     | Backend .NET API |<-----(Reads)------------------+    |
+  |     +------------------+                                    |
+  |             | TCP                                           |
+  |             v                                               |
+  |     +-------------------+     +--------------------+        |
+  |     | MS SQL Database   |     | AI Models (Volume) |        |
+  |     +-------------------+     +--------------------+        |
   +-------------------------------------------------------------+
-
 
 
 ---
