@@ -37,7 +37,7 @@ Two isolated networks manage communication between services:
 ## 3. Request & Data Flow
 This section details the journey of a user request through the system.
 
-## Request & Data Flow Diagram
+### Request & Data Flow Diagram
 
 ```mermaid
 sequenceDiagram
@@ -53,7 +53,6 @@ sequenceDiagram
     Backend-->>Nginx: HTTP Response
     Nginx-->>User: HTTPS Response
 
----
 ### Flow Explanation:
 1. **Client Request:** The user's browser sends an HTTPS request to an API endpoint (e.g., `/api/login-user`).  
 2. **SSL Termination & Proxy:** The nginx service receives the request, handles SSL, and inspects the URL path.  
