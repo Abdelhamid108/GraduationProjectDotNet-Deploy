@@ -13,8 +13,7 @@ The application uses a containerized, multi-service architecture to separate con
 ### Architecture Diagram
 This diagram shows the high-level interaction between the system's components.
 ---
-![System Architecture](https://drive.google.com/file/d/1i9VWWZD-4O8nzSUBWEwMkehu8Q5qoks_/view?usp=sharing)
-
+![System Architecture](https://drive.google.com/uc?id=1i9VWWZD-4O8nzSUBWEwMkehu8Q5qoks)
 ---
 
 ## 2. Infrastructure & Containerization
