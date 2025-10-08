@@ -1,7 +1,7 @@
-
 using DotNetEnv;
 using GraduationProjectWebApplication.Configuration;
 using GraduationProjectWebApplication.Data;
+using GraduationProjectWebApplication.Hubs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -25,21 +25,18 @@ namespace GraduationProjectWebApplication
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            Env.TraversePath().Load(); // looks up folders until it finds .env
+            Env.TraversePath().Load();
 
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
             {
-                builder.Configuration[env.Key.ToString()] = env.Value.ToString();
+                builder.Configuration[env.Key.ToString()] = env.Value?.ToString();
             }
-
 
             string? Key = builder.Configuration["SECRET_KEY"];
             string? Issuer = builder.Configuration["ISSUER"];
             string? ConnectionString = builder.Configuration["DEFAULT_CONNECTION"];
             string? GoogleClientId = builder.Configuration["GOOGLE_CLIENT_ID"];
             string? GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"];
-
-
 
             builder.Services.Configure<MailSettings>(options =>
             {
@@ -58,18 +55,15 @@ namespace GraduationProjectWebApplication
                     throw new InvalidOperationException("MailSettings are not configured properly.");
             });
 
-
-
-
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
 
-             builder.Services.AddDbContext<ApplicationDbContext>
-                (options => options.UseSqlServer(ConnectionString));
+            builder.Services.AddDbContext<ApplicationDbContext>(
+                options => options.UseSqlServer(ConnectionString));
 
-            // Add services to the container
             builder.Services.AddControllers();
+            builder.Services.AddSignalR();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
@@ -106,7 +100,6 @@ namespace GraduationProjectWebApplication
                 options.CallbackPath = "/signin-google";
             });
 
-
             builder.Services.AddSwaggerGen(options =>
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -141,18 +134,16 @@ namespace GraduationProjectWebApplication
                 });
             });
 
-
-
-            // Add CORS service
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAllOrigins",
-                    builder => builder.AllowAnyOrigin() // WARNING: Not for production!
-                                      .AllowAnyHeader()
-                                      .AllowAnyMethod());
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                });
             });
-
-            //builder.WebHost.UseUrls("http://+:5001");
 
             var app = builder.Build();
 
@@ -172,7 +163,6 @@ namespace GraduationProjectWebApplication
                 }
             }
 
-            // Configure the HTTP request pipeline
             if (app.Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -180,23 +170,18 @@ namespace GraduationProjectWebApplication
                 app.UseSwaggerUI();
             }
 
-            //app.UseHttpsRedirection();
-
-            app.UseRouting();
-
             app.UseStaticFiles();
 
-            app.UseCors("AllowAllOrigins");
-
+            app.UseRouting();
+            app.UseCors("AllowFrontend");
+            app.UseAuthentication();
             app.UseAuthorization();
 
-            //app.MapGet("/", context =>
-            //{
-            //    context.Response.Redirect("/index.html");
-            //    return Task.CompletedTask;
-            //});
-
-            app.MapControllers();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                endpoints.MapHub<SignHub>("/signHub");
+            });
 
             app.Run();
         }
