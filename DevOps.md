@@ -37,9 +37,10 @@ Two isolated networks manage communication between services:
 ## 3. Request & Data Flow
 This section details the journey of a user request through the system.
 
-### User Request Flow (Sequence Diagram)
+##  Request & Data Flow Diagram
 
 ```mermaid
+sequenceDiagram
     participant User as User (Browser)
     participant Nginx as Nginx (Reverse Proxy)
     participant Backend as Backend API (.NET)
@@ -51,7 +52,6 @@ This section details the journey of a user request through the system.
     DB-->>Backend: DB Result
     Backend-->>Nginx: HTTP Response
     Nginx-->>User: HTTPS Response
-
 
 
 ### Flow Explanation:
