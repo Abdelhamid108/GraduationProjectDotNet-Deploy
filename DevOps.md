@@ -38,21 +38,9 @@ Two isolated networks manage communication between services:
 This section details the journey of a user request through the system.
 
 ### Request & Data Flow Diagram
+![System Architecture](https://drive.google.com/uc?id=10Nc3dgP9LYaUgN-DTb4j85_B2quofbRV)
 
-```mermaid
-sequenceDiagram
-    participant User as User (Browser)
-    participant Nginx as Nginx (Reverse Proxy)
-    participant Backend as Backend API (.NET)
-    participant DB as Database (MS SQL)
-
-    User->>Nginx: HTTPS Request
-    Nginx->>Backend: HTTP Request
-    Backend->>DB: DB Query
-    DB-->>Backend: DB Result
-    Backend-->>Nginx: HTTP Response
-    Nginx-->>User: HTTPS Response
-
+---
 
 ### Flow Explanation:
 1. **Client Request:** The user's browser sends an HTTPS request to an API endpoint (e.g., `/api/login-user`).  
