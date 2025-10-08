@@ -38,8 +38,8 @@ Two isolated networks manage communication between services:
 This section details the journey of a user request through the system.
 
 ### User Request Flow (Sequence Diagram)
+
 ```mermaid
-sequenceDiagram
     participant User as User (Browser)
     participant Nginx as Nginx (Reverse Proxy)
     participant Backend as Backend API (.NET)
