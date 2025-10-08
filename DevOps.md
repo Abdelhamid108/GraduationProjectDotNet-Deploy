@@ -12,7 +12,7 @@ The application uses a containerized, multi-service architecture to separate con
 
 ### Architecture Diagram
 This diagram shows the high-level interaction between the system's components.
-
+---
 
                   +----------------+
                   | User's Browser |
