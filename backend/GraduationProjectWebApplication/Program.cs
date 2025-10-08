@@ -25,7 +25,7 @@ namespace GraduationProjectWebApplication
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            Env.TraversePath().Load(); // looks up folders until it finds .env
+            Env.TraversePath().Load();
 
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
             {
