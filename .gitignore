@@ -1,0 +1,125 @@
+# ============================
+# 🧠 GENERAL
+# ============================
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.old
+.DS_Store
+Thumbs.db
+
+# Environment files
+
+.env
+.env.* 
+!.env.example
+
+# ============================
+# ⚙️ DOTNET / C# BACKEND
+# ============================
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.dbmdl
+*.jfm
+*.ncrunchsolution
+*.ncrunchproject
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+*.nuspec
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Publish output
+wwwroot/
+app.publish/
+**/Properties/launchSettings.json
+
+# ============================
+# 🌐 FRONTEND / NGINX
+# ============================
+node_modules/
+dist/
+build/
+*.cache/
+*.next/
+.cache/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================
+# 🐳 DOCKER
+# ============================
+# Docker local files
+**/docker-compose.override.yml
+**/docker-compose.local.yml
+**/docker-compose.dev.yml
+
+# Volumes and data
+data/
+volumes/
+db_data/
+*/_data/
+
+# Ignore generated certs
+/etc/letsencrypt/
+certs/
+nginx-proxy/certs/
+*.pem
+*.crt
+*.key
+
+# ============================
+# 🧪 TEST / TEMP FILES
+# ============================
+TestResults/
+*.coverage
+*.coveragexml
+*.testsettings
+*.runsettings
+*.trx
+
+# ============================
+# 🧰 IDE / TOOLING
+# ============================
+.idea/
+.vscode/
+*.code-workspace
+
+# ============================
+# 📦 BACKUP / SYSTEM FILES
+# ============================
+*.zip
+*.tar
+*.gz
+*.7z
+*.bak
+*.tmp
+*.orig
+
+# ============================
+# 🔒 SECURITY
+# ============================
+# Never commit secrets
+secrets.json
+secret.json
+config/secrets/
+
