@@ -13,33 +13,8 @@ The application uses a containerized, multi-service architecture to separate con
 ### Architecture Diagram
 This diagram shows the high-level interaction between the system's components.
 ---
-                  ```mermaid
-flowchart TD
-    %% User
-    A[User's Browser] -->|HTTPS| B[Nginx Reverse Proxy]
+![System Architecture](https://drive.google.com/file/d/1i9VWWZD-4O8nzSUBWEwMkehu8Q5qoks_/view?usp=sharing)
 
-    %% Nginx to Backend
-    B -->|HTTP| C[Backend .NET 8 API]
-
-    %% Backend connections
-    C -->|TCP Connection| D[(MS SQL Database)]
-    C -->|Reads AI Models| E[(ONNX Models - Volume Mount)]
-
-    %% Response Flow
-    D -->|DB Result| C
-    C -->|HTTP Response| B
-    B -->|HTTPS Response| A
-
-    %% Grouping (for visual clarity)
-    subgraph Public_Network [Public Network]
-        B
-    end
-
-    subgraph Docker_Networks [Docker Networks (api_network & local)]
-        C
-        D
-        E
-    end
 ---
 
 ## 2. Infrastructure & Containerization
