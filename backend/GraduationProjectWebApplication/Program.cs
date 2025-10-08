@@ -1,4 +1,5 @@
 
+using DotNetEnv;
 using GraduationProjectWebApplication.Configuration;
 using GraduationProjectWebApplication.Data;
 using GraduationProjectWebApplication.Models.Entities;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Collections;
 using System.Text;
 
 namespace GraduationProjectWebApplication
@@ -23,9 +25,33 @@ namespace GraduationProjectWebApplication
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            string? Key = builder.Configuration.GetValue<string>("AppSettings:SecretKey");
+            Env.TraversePath().Load(); // looks up folders until it finds .env
 
-            builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
+            foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
+            {
+                builder.Configuration[env.Key.ToString()] = env.Value.ToString();
+            }
+
+
+            string? Key = builder.Configuration["SECRET_KEY"];
+            string? Issuer = builder.Configuration["ISSUER"];
+            string? ConnectionString = builder.Configuration["DEFAULT_CONNECTION"];
+            string? GoogleClientId = builder.Configuration["GOOGLE_CLIENT_ID"];
+            string? GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"];
+
+
+
+            builder.Services.Configure<MailSettings>(options =>
+            {
+                options.Host = builder.Configuration["MAIL_HOST"];
+                options.Port = int.Parse(builder.Configuration["MAIL_PORT"] ?? "587");
+                options.UseSSL = bool.Parse(builder.Configuration["MAIL_USE_SSL"] ?? "false");
+                options.Name = builder.Configuration["MAIL_NAME"];
+                options.EmailId = builder.Configuration["MAIL_EMAIL_ID"];
+                options.UserName = builder.Configuration["MAIL_USERNAME"];
+                options.Password = builder.Configuration["MAIL_PASSWORD"];
+            });
+
             builder.Services.PostConfigure<MailSettings>(settings =>
             {
                 if (string.IsNullOrWhiteSpace(settings.EmailId))
@@ -34,12 +60,13 @@ namespace GraduationProjectWebApplication
 
 
 
+
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
              builder.Services.AddDbContext<ApplicationDbContext>
-                (options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                (options => options.UseSqlServer(ConnectionString));
 
             // Add services to the container
             builder.Services.AddControllers();
@@ -67,15 +94,15 @@ namespace GraduationProjectWebApplication
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Key)),
                     ValidateIssuer = true,
-                    ValidIssuer = builder.Configuration["AppSettings:Issuer"],
+                    ValidIssuer = Issuer,
                     ValidateAudience = false,
                     ValidateLifetime = true,
                 };
             })
             .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
             {
-                options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-                options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+                options.ClientId = GoogleClientId;
+                options.ClientSecret = GoogleClientSecret;
                 options.CallbackPath = "/signin-google";
             });
 

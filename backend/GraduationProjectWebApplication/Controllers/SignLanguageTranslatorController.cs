@@ -31,8 +31,8 @@ namespace GraduationProjectWebApplication.Controllers
 
             _httpClient = httpClient;
 
-            correctSentenceAPIKey = configuration.GetSection("APIKeys:CorrectSentenceKey").Value;
-            generateAudioAPIKey = configuration.GetSection("APIKeys:GenerateAudioKey").Value;
+            correctSentenceAPIKey = configuration["CORRECT_SENTENCE_KEY"];
+            generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
             _modelService = modelService;
             _context = context;
         }

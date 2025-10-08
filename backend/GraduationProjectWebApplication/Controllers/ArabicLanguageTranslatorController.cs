@@ -17,7 +17,7 @@ namespace GraduationProjectWebApplication.Controllers
         public ArabicLanguageTranslatorController(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            generateTextFromAudioAPIKey = configuration.GetSection("APIKeys:generateTextFromAudioAPIKey").Value;
+            generateTextFromAudioAPIKey = configuration["GENERATE_TEXT_FROM_AUDIO_KEY"];
         }
 
         [HttpPost("text-to-sign")]
