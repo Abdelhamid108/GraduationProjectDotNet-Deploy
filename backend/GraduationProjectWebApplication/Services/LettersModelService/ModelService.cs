@@ -13,38 +13,28 @@ using System.Threading.Tasks;
 namespace GraduationProjectWebApplication.Services.LettersModelService
 {
     
-    public class ModelService : IModelService
+public class ModelService : IModelService, IDisposable
+{
+    private readonly InferenceSession _onnxSession;
+    private readonly DenseTensor<float> _inputTensor;
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Thread safety
+    private bool _disposed = false;
+
+    public ModelService()
     {
-        private readonly InferenceSession _onnxSession;
-        private readonly DenseTensor<float> _inputTensor;
-        private readonly int _modelInputSize = 256;
-        private readonly string[] _arabicLabels = GraduationProject.StaticDetails.Labels._arabicLabels;
-        private readonly string[] _englishLabels = GraduationProject.StaticDetails.Labels._englishLabels;
+        var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "best.onnx");
+        if (!File.Exists(modelPath))
+            throw new FileNotFoundException($"ONNX model file not found at: {modelPath}.");
+        
+        _onnxSession = new InferenceSession(modelPath);
+        _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
+    }
 
-        private const int BBOX_ATTRIBUTES = 4;
-        private const float CONF_THRESHOLD = 0.05f;
-        private const float IOU_THRESHOLD = 0.45f;
-
-        public ModelService()
+    public async Task<ModelDetection> ModelRunner(byte[] imageBytes)
+    {
+        await _semaphore.WaitAsync(); // Prevent concurrent access to shared tensor
+        try
         {
-            var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "best.onnx");
-
-            if (!File.Exists(modelPath))
-            {
-                throw new FileNotFoundException($"ONNX model file not found at: {modelPath}.");
-            }
-
-            // For production environments, consider using SessionOptions for performance tuning
-            // e.g., sessionOptions.ExecutionMode = ExecutionMode.ORT_SEQUENTIAL;
-            // sessionOptions.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
-            _onnxSession = new InferenceSession(modelPath);
-            _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
-        }
-
-        public async Task<ModelDetection> ModelRunner(byte[] imageBytes)
-        {
-            try
-            {
                 using var image = Image.Load<Rgb24>(imageBytes);
                 if (image.Width != _modelInputSize || image.Height != _modelInputSize)
                 {
@@ -122,8 +112,22 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
                 
                 return new ModelDetection { IsSuccess = false, ErrorMessage = ex.Message };
             }
-        }
+            finally
+            {
+            _semaphore.Release();
+            }
+            
 
+        }
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _onnxSession?.Dispose();
+                _semaphore?.Dispose();
+                _disposed = true;
+            }
+        }
         
 
         private List<Detection> ApplyNMS(List<Detection> detections, float iouThreshold)
