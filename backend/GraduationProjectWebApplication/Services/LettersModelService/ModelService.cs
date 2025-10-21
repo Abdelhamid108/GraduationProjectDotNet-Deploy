@@ -12,29 +12,40 @@ using System.Threading.Tasks;
 
 namespace GraduationProjectWebApplication.Services.LettersModelService
 {
-    
-public class ModelService : IModelService, IDisposable
-{
-    private readonly InferenceSession _onnxSession;
-    private readonly DenseTensor<float> _inputTensor;
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Thread safety
-    private bool _disposed = false;
 
-    public ModelService()
+    public class ModelService : IModelService, IDisposable
     {
-        var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "best.onnx");
-        if (!File.Exists(modelPath))
-            throw new FileNotFoundException($"ONNX model file not found at: {modelPath}.");
-        
-        _onnxSession = new InferenceSession(modelPath);
-        _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
-    }
 
-    public async Task<ModelDetection> ModelRunner(byte[] imageBytes)
-    {
-        await _semaphore.WaitAsync(); // Prevent concurrent access to shared tensor
-        try
+        private readonly InferenceSession _onnxSession;
+        private readonly DenseTensor<float> _inputTensor;
+        private readonly int _modelInputSize = 256;
+        private readonly string[] _arabicLabels = GraduationProject.StaticDetails.Labels._arabicLabels;
+        private readonly string[] _englishLabels = GraduationProject.StaticDetails.Labels._englishLabels;
+
+        private const int BBOX_ATTRIBUTES = 4;
+        private const float CONF_THRESHOLD = 0.05f;
+        private const float IOU_THRESHOLD = 0.45f;
+
+
+
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // Thread safety
+        private bool _disposed = false;
+
+        public ModelService()
         {
+            var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "best.onnx");
+            if (!File.Exists(modelPath))
+                throw new FileNotFoundException($"ONNX model file not found at: {modelPath}.");
+
+            _onnxSession = new InferenceSession(modelPath);
+            _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
+        }
+
+        public async Task<ModelDetection> ModelRunner(byte[] imageBytes)
+        {
+            await _semaphore.WaitAsync(); // Prevent concurrent access to shared tensor
+            try
+            {
                 using var image = Image.Load<Rgb24>(imageBytes);
                 if (image.Width != _modelInputSize || image.Height != _modelInputSize)
                 {
@@ -109,14 +120,14 @@ public class ModelService : IModelService, IDisposable
             }
             catch (Exception ex)
             {
-                
+
                 return new ModelDetection { IsSuccess = false, ErrorMessage = ex.Message };
             }
             finally
             {
-            _semaphore.Release();
+                _semaphore.Release();
             }
-            
+
 
         }
         public void Dispose()
@@ -128,7 +139,7 @@ public class ModelService : IModelService, IDisposable
                 _disposed = true;
             }
         }
-        
+
 
         private List<Detection> ApplyNMS(List<Detection> detections, float iouThreshold)
         {
@@ -145,7 +156,7 @@ public class ModelService : IModelService, IDisposable
                 detections.RemoveAt(0);
 
                 detections.RemoveAll(other =>
-                    other.ClassId == bestDetection.ClassId && 
+                    other.ClassId == bestDetection.ClassId &&
                     CalculateIoU(bestDetection, other) > iouThreshold
                 );
             }
