@@ -34,7 +34,7 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
             }
 
             // Initialize ONNX session with optimizations
-            var sessionOptions = new SessionOptions
+            var sessionOptions = new Microsoft.ML.OnnxRuntime.SessionOptions
             {
                 ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
                 GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
