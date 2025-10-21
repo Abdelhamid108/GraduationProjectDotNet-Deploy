@@ -1,24 +1,21 @@
 # Stage 1: Build the application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
 WORKDIR /src
 
-# Copy solution and project files
-COPY backend/GraduationProjectDotNet.sln ./
-COPY backend/GraduationProjectWebApplication/GraduationProjectWebApplication.csproj ./GraduationProjectWebApplication/
-COPY backend/StaticDetails/GraduationProject.StaticDetails.csproj ./StaticDetails/
+# Copy the rest of the source code
+COPY . ./
 
 # Restore dependencies
 RUN dotnet restore GraduationProjectWebApplication/GraduationProjectWebApplication.csproj
 
-# Copy the rest of the source code
-COPY backend/ ./
 
 # Build and publish the application
-WORKDIR /src/GraduationProjectWebApplication
 RUN dotnet publish -c Release -o /app/publish
 
 # Stage 2: Create the final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
 WORKDIR /app
 
 # Copy published files from build stage
