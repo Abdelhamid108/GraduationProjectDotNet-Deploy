@@ -70,7 +70,7 @@ pnpm-debug.log*
 # ============================
 # Docker local files
 **/docker-compose.override.yml
-**/docker-compose.local.yml
+# **/docker-compose.local.yml
 **/docker-compose.dev.yml
 
 # Volumes and data
@@ -122,4 +122,3 @@ TestResults/
 secrets.json
 secret.json
 config/secrets/
-

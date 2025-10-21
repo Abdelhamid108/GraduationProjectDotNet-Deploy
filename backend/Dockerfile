@@ -7,6 +7,9 @@ WORKDIR /src
 # Copy the entire project source code into the container
 COPY . .
 
+# Clean the project (to remove previous build artifacts)
+RUN dotnet clean
+
 # Restore the project dependencies and NuGet packages
 RUN dotnet restore
 
@@ -24,6 +27,12 @@ COPY --from=build /app/publish .
 
 # Document that the container listens on port 5001 at runtime
 EXPOSE 5001
+# CORRECTED GC SETTINGS FOR WEB API
+ENV DOTNET_gcServer=1
+ENV DOTNET_GCHeapCount=2
+ENV DOTNET_GCConserveMemory=0
 
+# Add memory limits
+ENV DOTNET_GCHeapHardLimit=800000000
 # Define the command to run the application
 ENTRYPOINT ["dotnet", "GraduationProjectWebApplication.dll"]

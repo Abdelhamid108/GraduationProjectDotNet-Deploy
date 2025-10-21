@@ -69,7 +69,7 @@ namespace GraduationProjectWebApplication
             builder.Services.AddHttpClient();
 
             builder.Services.AddTransient<IEmailService, EmailService>();
-            builder.Services.AddScoped<IModelService, ModelService>();
+            builder.Services.AddSingleton<IModelService, ModelService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IFileService, FileService>();
 
