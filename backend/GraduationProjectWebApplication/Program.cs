@@ -69,7 +69,10 @@ namespace GraduationProjectWebApplication
             builder.Services.AddHttpClient();
 
             builder.Services.AddTransient<IEmailService, EmailService>();
-            builder.Services.AddScoped<IModelService, ModelService>();
+            // CRITICAL FIX: Changed from AddScoped to AddSingleton to prevent memory leak
+            // This ensures a single, long-lived InferenceSession is shared across all requests
+            // instead of creating a new session (and leaking memory) for each HTTP request
+            builder.Services.AddSingleton<IModelService, ModelService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IFileService, FileService>();
 

@@ -13,10 +13,9 @@ using System.Threading.Tasks;
 namespace GraduationProjectWebApplication.Services.LettersModelService
 {
     
-    public class ModelService : IModelService
+    public class ModelService : IModelService, IDisposable
     {
         private readonly InferenceSession _onnxSession;
-        private readonly DenseTensor<float> _inputTensor;
         private readonly int _modelInputSize = 256;
         private readonly string[] _arabicLabels = GraduationProject.StaticDetails.Labels._arabicLabels;
         private readonly string[] _englishLabels = GraduationProject.StaticDetails.Labels._englishLabels;
@@ -24,6 +23,8 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
         private const int BBOX_ATTRIBUTES = 4;
         private const float CONF_THRESHOLD = 0.05f;
         private const float IOU_THRESHOLD = 0.45f;
+        
+        private bool _disposed = false;
 
         public ModelService()
         {
@@ -34,17 +35,33 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
                 throw new FileNotFoundException($"ONNX model file not found at: {modelPath}.");
             }
 
-            // For production environments, consider using SessionOptions for performance tuning
-            // e.g., sessionOptions.ExecutionMode = ExecutionMode.ORT_SEQUENTIAL;
-            // sessionOptions.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
-            _onnxSession = new InferenceSession(modelPath);
-            _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
+            // Configure session options for optimal performance and thread-safety
+            var sessionOptions = new SessionOptions
+            {
+                ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+                InterOpNumThreads = 1,
+                IntraOpNumThreads = Environment.ProcessorCount
+            };
+
+            _onnxSession = new InferenceSession(modelPath, sessionOptions);
+            
+            Console.WriteLine($"[ModelService] ONNX InferenceSession initialized as SINGLETON at {DateTime.Now}");
         }
 
         public async Task<ModelDetection> ModelRunner(byte[] imageBytes)
         {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(ModelService));
+            }
+
             try
             {
+                // Create a new tensor for each request to ensure thread safety
+                // This is lightweight compared to creating a new InferenceSession
+                var inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
+
                 using var image = Image.Load<Rgb24>(imageBytes);
                 if (image.Width != _modelInputSize || image.Height != _modelInputSize)
                 {
@@ -58,16 +75,16 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
                         Span<Rgb24> pixelRow = accessor.GetRowSpan(y);
                         for (int x = 0; x < accessor.Width; x++)
                         {
-                            _inputTensor[0, 0, y, x] = pixelRow[x].R / 255f;
-                            _inputTensor[0, 1, y, x] = pixelRow[x].G / 255f;
-                            _inputTensor[0, 2, y, x] = pixelRow[x].B / 255f;
+                            inputTensor[0, 0, y, x] = pixelRow[x].R / 255f;
+                            inputTensor[0, 1, y, x] = pixelRow[x].G / 255f;
+                            inputTensor[0, 2, y, x] = pixelRow[x].B / 255f;
                         }
                     }
                 });
 
                 var inputs = new List<NamedOnnxValue>
                 {
-                    NamedOnnxValue.CreateFromTensor("images", _inputTensor)
+                    NamedOnnxValue.CreateFromTensor("images", inputTensor)
                 };
 
                 using var results = await Task.Run(() => _onnxSession.Run(inputs));
@@ -160,6 +177,33 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
             float unionArea = box1.Area + box2.Area - interArea;
 
             return unionArea > 0 ? interArea / unionArea : 0;
+        }
+
+        // IDisposable implementation for proper resource cleanup
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    _onnxSession?.Dispose();
+                    Console.WriteLine($"[ModelService] ONNX InferenceSession disposed at {DateTime.Now}");
+                }
+
+                _disposed = true;
+            }
+        }
+
+        ~ModelService()
+        {
+            Dispose(false);
         }
     }
 }
