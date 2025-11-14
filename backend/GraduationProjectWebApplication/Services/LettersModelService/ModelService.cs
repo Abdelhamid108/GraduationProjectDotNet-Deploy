@@ -1,10 +1,11 @@
-﻿using Microsoft.ML.OnnxRuntime;
+﻿using GraduationProjectWebApplication.Models.DTOs;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using GraduationProjectWebApplication.Models.DTOs;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -23,6 +24,7 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
         private const int BBOX_ATTRIBUTES = 4;
         private const float CONF_THRESHOLD = 0.05f;
         private const float IOU_THRESHOLD = 0.45f;
+
         private bool _disposed = false;
 
         public ModelService()
@@ -42,6 +44,8 @@ namespace GraduationProjectWebApplication.Services.LettersModelService
 
             _onnxSession = new InferenceSession(modelPath, sessionOptions);
             _inputTensor = new DenseTensor<float>(new[] { 1, 3, _modelInputSize, _modelInputSize });
+
+
             _semaphore = new SemaphoreSlim(1, 1); // Ensure thread-safe access to shared tensor
         }
 
