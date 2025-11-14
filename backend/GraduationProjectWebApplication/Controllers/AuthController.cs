@@ -1,4 +1,5 @@
-﻿using GraduationProjectWebApplication.Models.DTOs;
+﻿using Azure;
+using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -422,12 +423,60 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
+        [Authorize]
+        [HttpGet("user-profile")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile()
+        {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                AuthResponse<UserProfileDTO>? response = await _authService.GetUserProfile(userId);
+
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
+
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
 
         [Authorize]
-        [HttpPost("user-profile")]
-        public async Task<IActionResult> UserPorfile()
+        [HttpPost("update-user-profile")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
         {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+                AuthResponse<UserProfileDTO>? response = await _authService.UpdateUserProfile(userId, UpdateuserProfileDTO);
+
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
+
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
+
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
         }
 
         // For testing 

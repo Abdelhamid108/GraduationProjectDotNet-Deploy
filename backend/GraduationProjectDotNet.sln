@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProjectWebApplica
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProject.StaticDetails", "StaticDetails\GraduationProject.StaticDetails.csproj", "{70DAF223-D700-4710-9636-34A883015F0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiLoadTester", "ApiLoadTester\ApiLoadTester.csproj", "{0C15D003-D6C0-417F-96AB-2714B4230382}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{70DAF223-D700-4710-9636-34A883015F0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0C15D003-D6C0-417F-96AB-2714B4230382}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0C15D003-D6C0-417F-96AB-2714B4230382}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0C15D003-D6C0-417F-96AB-2714B4230382}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0C15D003-D6C0-417F-96AB-2714B4230382}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
