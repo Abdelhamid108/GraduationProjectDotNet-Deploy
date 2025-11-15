@@ -1,4 +1,5 @@
-﻿using GraduationProject.StaticDetails;
+﻿using Azure;
+using GraduationProject.StaticDetails;
 using GraduationProjectWebApplication.Data;
 using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
@@ -24,6 +25,10 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IFileService _fileService;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly string _key;
+        private readonly string _issuer;
+
+
         public AuthService(ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IConfiguration config,
@@ -37,6 +42,10 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             _httpContextAccessor = httpContextAccessor;
             _fileService = fileService;
             _webHostEnvironment = webHostEnvironment;
+
+            _key = config["SECRET_KEY"];
+            _issuer = config["ISSUER"];
+
         }
         public async Task<AuthResponse<TokenResponseDTO>?> LoginAsync(LoginDTO loginDTO)
         {
@@ -515,81 +524,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 TokenResponseDTO = tokenResponseDTO,
             };
         }
-        private bool UserNameUnique(string userName)
-        {
-            bool result = false;
-            ApplicationUser? applicationUser = _context.ApplicationUsers.FirstOrDefault(u => u.UserName.ToLower() == userName.ToLower());
-
-            if (applicationUser == null)
-            {
-                result = true;
-            }
-            return result;
-        }
-        private async Task<string> GenerateAccessToken(ApplicationUser applicationUser)
-        {
-            var userRoles = await _userManager.GetRolesAsync(applicationUser);
-
-            List<Claim> claims = new List<Claim>()
-            {
-                new Claim(ClaimTypes.Name, applicationUser.FullName),
-                new Claim(ClaimTypes.NameIdentifier, applicationUser.Id,ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id)
-            };
-
-            foreach (var role in userRoles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.GetValue<string>("AppSettings:SecretKey")));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
-
-            var tokenDescriptor = new JwtSecurityToken
-                (
-                    issuer: _config.GetValue<string>("AppSettings:Issuer"),
-                    audience: _config.GetValue<string>("AppSettings:Audience"),
-                    claims: claims,
-                    signingCredentials: creds,
-                    expires: DateTime.Now.AddMinutes(30)
-                );
-
-            string finalToken = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
-
-            return finalToken;
-
-        }
-        private async Task<string> SaveRefreshTokenAsync(ApplicationUser user)
-        {
-            RefreshToken refreshToken = new RefreshToken()
-            {
-                Token = await GenerateRefreshToken(),
-                UserId = user.Id,
-                CreatedAt = DateTime.Now,
-                ExpiresAt = DateTime.Now.AddDays(7),
-            };
-
-            await _context.AddAsync(refreshToken);
-            await _context.SaveChangesAsync();
-
-            return refreshToken.Token;
-        }
-        private async Task<string> GenerateRefreshToken()
-        {
-            var randomNumber = new byte[64];
-            using var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(randomNumber);
-            return Convert.ToBase64String(randomNumber);
-        }
-        private async Task<bool> ValidateRefreshToken(RefreshToken refreshToken)
-        {
-            if (refreshToken == null || !refreshToken.IsActive || refreshToken.IsExpired) return false;
-
-            return true;
-        }
-
         public async Task<AuthResponse<string>> UpdateUserImage(string userId, IFormFile newImage)
         {
             ApplicationUser? applicationUser = await _context.ApplicationUsers
@@ -629,6 +563,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 };
 
             applicationUser.ImagePath = updateFileResponse.Path;
+            applicationUser.HasImage = true;
 
             _context.ApplicationUsers.Update(applicationUser);
             await _context.SaveChangesAsync();
@@ -647,5 +582,211 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 Result = Base64Image
             };
         }
+        public async Task<AuthResponse<UserProfileDTO>> GetUserProfile(string userId)
+        {
+            ApplicationUser? applicationUser = await _context.ApplicationUsers
+                           .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (applicationUser == null)
+            {
+                return new AuthResponse<UserProfileDTO>()
+                {
+                    ErrorMessage = "No Such User",
+                    Result = null,
+                    IsSuccess = false
+                };
+            }
+
+            string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                               relative);
+            string base64Image = string.Empty;
+
+            if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+            {
+                base64Image = await _fileService.ConvertToBase64(imageFullPath);
+            }
+
+            UserProfileDTO userProfileDTO = new UserProfileDTO()
+            {
+                UserName = applicationUser.UserName,
+                Email = applicationUser.Email,
+                PhoneNumber = applicationUser.PhoneNumber,
+                ImagePath = base64Image,
+                FullName = applicationUser.FullName,
+            };
+
+            return new AuthResponse<UserProfileDTO>()
+            {
+                IsSuccess = true,
+                Result = userProfileDTO
+            };
+        }
+        public async Task<AuthResponse<UserProfileDTO>?> UpdateUserProfile(string userId, UpdateUserProfileDTO updateUserProfileDTO)
+        {
+            ApplicationUser? applicationUser = await _context.ApplicationUsers
+                           .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (applicationUser == null)
+            {
+                return new AuthResponse<UserProfileDTO>()
+                {
+                    ErrorMessage = "No Such User",
+                    Result = null,
+                    IsSuccess = false
+                };
+            }
+
+            if (applicationUser.FullName != updateUserProfileDTO.FullName && !string.IsNullOrEmpty(updateUserProfileDTO.FullName))
+            {
+                applicationUser.FullName = updateUserProfileDTO.FullName;
+            }
+
+            if (applicationUser.UserName != updateUserProfileDTO.UserName && !string.IsNullOrEmpty(updateUserProfileDTO.UserName))
+            {
+                if (UserNameUnique(updateUserProfileDTO.UserName))
+                {
+                    applicationUser.UserName = updateUserProfileDTO.UserName;
+                }
+                else
+                {
+                    return new AuthResponse<UserProfileDTO>()
+                    {
+                        ErrorMessage = "This user name is already taken",
+                        Result = null,
+                        IsSuccess = false
+                    };
+                }
+            }
+
+            if (applicationUser.Email != updateUserProfileDTO.Email && !string.IsNullOrEmpty(updateUserProfileDTO.Email))
+            {
+                var user = await _userManager.FindByEmailAsync(updateUserProfileDTO.Email);    
+
+                if (user == null)
+                {
+                    applicationUser.Email = updateUserProfileDTO.Email;
+                }
+                else
+                {
+                    return new AuthResponse<UserProfileDTO>()
+                    {
+                        ErrorMessage = "A user with this email already exists",
+                        Result = null,
+                        IsSuccess = false
+                    };
+                }
+            }
+
+            if (applicationUser.PhoneNumber != updateUserProfileDTO.PhoneNumber && !string.IsNullOrEmpty(updateUserProfileDTO.PhoneNumber))
+            {
+                applicationUser.PhoneNumber = updateUserProfileDTO.PhoneNumber;
+            }
+
+            _context.ApplicationUsers.Update(applicationUser);
+            await _context.SaveChangesAsync();
+
+
+            string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                               relative);
+            string base64Image = string.Empty;
+
+            if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+            {
+                base64Image = await _fileService.ConvertToBase64(imageFullPath);
+            }
+
+            return new AuthResponse<UserProfileDTO>()
+            {
+                IsSuccess = true,
+                Result = new UserProfileDTO()
+                {
+                    ImagePath = base64Image,
+                    Email = applicationUser.Email,
+                    UserName = applicationUser.UserName,
+                    FullName = applicationUser.FullName,
+                    PhoneNumber = applicationUser.PhoneNumber,
+                }
+            };
+        }
+
+        private bool UserNameUnique(string userName)
+        {
+            bool result = false;
+            ApplicationUser? applicationUser = _context.ApplicationUsers.FirstOrDefault(u => u.UserName.ToLower() == userName.ToLower());
+
+            if (applicationUser == null)
+            {
+                result = true;
+            }
+            return result;
+        }
+        private async Task<string> GenerateAccessToken(ApplicationUser applicationUser)
+        {
+            var userRoles = await _userManager.GetRolesAsync(applicationUser);
+
+            List<Claim> claims = new List<Claim>()
+            {
+                new Claim(ClaimTypes.Name, applicationUser.FullName),
+                new Claim(ClaimTypes.NameIdentifier, applicationUser.Id,ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id)
+            };
+
+            foreach (var role in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+
+            var tokenDescriptor = new JwtSecurityToken
+                (
+                    issuer: _issuer,
+                    claims: claims,
+                    signingCredentials: creds,
+                    expires: DateTime.Now.AddMinutes(30)
+                );
+
+            string finalToken = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+
+            return finalToken;
+
+        }
+        private async Task<string> SaveRefreshTokenAsync(ApplicationUser user)
+        {
+            RefreshToken refreshToken = new RefreshToken()
+            {
+                Token = await GenerateRefreshToken(),
+                UserId = user.Id,
+                CreatedAt = DateTime.Now,
+                ExpiresAt = DateTime.Now.AddDays(7),
+            };
+
+            await _context.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return refreshToken.Token;
+        }
+        private async Task<string> GenerateRefreshToken()
+        {
+            var randomNumber = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+        private async Task<bool> ValidateRefreshToken(RefreshToken refreshToken)
+        {
+            if (refreshToken == null || !refreshToken.IsActive || refreshToken.IsExpired) return false;
+
+            return true;
+        }
+
+        
     }
 }

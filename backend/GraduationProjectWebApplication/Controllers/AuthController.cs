@@ -1,4 +1,5 @@
-﻿using GraduationProjectWebApplication.Models.DTOs;
+﻿using Azure;
+using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -422,70 +423,61 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        //[Authorize]
-        //[HttpPost("Get-Remove-Account-Token")]
-        //public async Task<IActionResult> GetRemoveAccountToken(string Email)
-        //{
-        //    if (string.IsNullOrEmpty(Email)) return BadRequest();
+        [Authorize]
+        [HttpGet("user-profile")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile()
+        {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        //    ApiResponse = await _authService.GenerateRemoveAccountTokenAsync(Email);
+                AuthResponse<UserProfileDTO>? response = await _authService.GetUserProfile(userId);
 
-        //    if (!ApiResponse.IsSuccess) return BadRequest(ApiResponse.ErrorMessage);
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
 
-        //    RemoveAccountToken removeAccountToken = (RemoveAccountToken)ApiResponse.Result;
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
 
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
 
-        //    MailData mailData = new MailData()
-        //    {
-        //        EmailToId = Email,
-        //        EmailToName = removeAccountToken.ApplicationUser.UserName,
-        //        EmailSubject = "Remove Your Account",
-        //        EmailBody = $@"
-        //        Hello {removeAccountToken.ApplicationUser.UserName},
+        [Authorize]
+        [HttpPost("update-user-profile")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
+        {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        //        You recently requested to delete your account.
+                AuthResponse<UserProfileDTO>? response = await _authService.UpdateUserProfile(userId, UpdateuserProfileDTO);
 
-        //        Here is your account deletion token:
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
 
-        //        {removeAccountToken.Id}
-
-        //        This token will expire on {removeAccountToken.ExpiresAt:u} and can only be used once.
-
-        //        To complete the account deletion, copy this token and paste it into the reset form in the app or website.
-
-        //        If you did not request this, please ignore this message.
-
-        //        Blease Not That Your Account Will Be Deleted Permanently !!!!
-
-        //        Thanks,  
-        //        JWT Authentication .NET Identity"
-        //    };
-
-        //    bool result = _mailService.SendMail(mailData);
-
-        //    if (!result) return BadRequest();
-
-        //    return Ok("An email is sent to you with the required token, please check your inbox");
-
-        //}
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
 
 
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
 
-        //[Authorize]
-        //[HttpPost("Remove-Account")]
-        //public async Task<IActionResult> RemoveAccount(RemoveAccountDTO removeAccountDTO)
-        //{
-        //    if (removeAccountDTO.TokenId == null) return BadRequest();
-
-        //    string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        //    ApiResponse = await _authService.RemoveAccountAsync(removeAccountDTO, userId);
-
-        //    if (!ApiResponse.IsSuccess)
-        //        return BadRequest(ApiResponse.ErrorMessage);
-
-        //    return Ok(ApiResponse);
-        //}
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
 
         // For testing 
 

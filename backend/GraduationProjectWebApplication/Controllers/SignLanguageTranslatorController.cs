@@ -9,32 +9,37 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace GraduationProjectWebApplication.Controllers
 {
-
     [ApiController]
     [Route("api/[controller]")]
     public class SignLanguageTranslatorController : BaseApiController
     {
-
-
         private readonly HttpClient _httpClient;
         private readonly string? correctSentenceAPIKey;
         private readonly string? generateAudioAPIKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
-        public SignLanguageTranslatorController(HttpClient httpClient, IConfiguration configuration,
-            IModelService modelService, ApplicationDbContext context)
+        private readonly ILogger<SignLanguageTranslatorController> _logger;
+
+        public SignLanguageTranslatorController(
+            HttpClient httpClient, 
+            IConfiguration configuration,
+            IModelService modelService, 
+            ApplicationDbContext context,
+            ILogger<SignLanguageTranslatorController> logger)
         {
-
             _httpClient = httpClient;
-
+            
+            // Configure HttpClient timeouts
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
+            
             correctSentenceAPIKey = configuration["CORRECT_SENTENCE_KEY"];
             generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
             _modelService = modelService;
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -42,19 +47,24 @@ namespace GraduationProjectWebApplication.Controllers
         {
             if (string.IsNullOrEmpty(frameData?.ImageData))
             {
+                _logger.LogWarning("TranslateSign: No image data provided");
                 return BadRequest(ErrorResponse<string>("No image data provided."));
             }
 
+            byte[]? imageBytes = null;
+            
             try
             {
                 var base64Image = frameData.ImageData.Replace("data:image/jpeg;base64,", "");
-                byte[] imageBytes = Convert.FromBase64String(base64Image);
+                imageBytes = Convert.FromBase64String(base64Image);
 
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
+                    _logger.LogWarning("TranslateSign: Decoded image bytes are null or empty");
                     return BadRequest(ErrorResponse<string>("Decoded image bytes are null or empty."));
                 }
 
+                _logger.LogDebug("TranslateSign: Processing image of size {Size} bytes", imageBytes.Length);
 
                 ModelDetection modelDetection = await _modelService.ModelRunner(imageBytes);
 
@@ -62,46 +72,58 @@ namespace GraduationProjectWebApplication.Controllers
                 {
                     if (modelDetection.FinalDetections.Any())
                     {
-                        var bestDetection = modelDetection.FinalDetections.OrderByDescending(d => d.Confidence).First();
+                        var bestDetection = modelDetection.FinalDetections
+                            .OrderByDescending(d => d.Confidence)
+                            .First();
 
-                        //Console.WriteLine($"Debug: Best detection: Arabic='{bestDetection.ClassLabelArabic}', Confidence={bestDetection.Confidence:F4}, At: {DateTime.Now}");
-                        //Console.WriteLine($"Debug: Best detection: English='{bestDetection.ClassLabelEnglish}', Confidence={bestDetection.Confidence:F4}, At: {DateTime.Now}");
-                        //Console.WriteLine("\n===============================\n");
                         if (bestDetection.Confidence > 0.71)
                         {
-                            Console.WriteLine($"Debug: Best detection: Arabic='{bestDetection.ClassLabelArabic}', Confidence={bestDetection.Confidence:F4}, At: {DateTime.Now}");
-                            Console.WriteLine($"Debug: Best detection: English='{bestDetection.ClassLabelEnglish}', Confidence={bestDetection.Confidence:F4}, At: {DateTime.Now}");
+                            _logger.LogInformation(
+                                "TranslateSign: Detected '{Arabic}' (English: '{English}') with confidence {Confidence:F4}",
+                                bestDetection.ClassLabelArabic,
+                                bestDetection.ClassLabelEnglish,
+                                bestDetection.Confidence);
 
                             return Ok(SuccessResponse(new { translation = bestDetection.ClassLabelArabic }));
-
                         }
 
+                        _logger.LogDebug(
+                            "TranslateSign: Best detection confidence {Confidence:F4} below threshold 0.71",
+                            bestDetection.Confidence);
+                        
                         return Ok(SuccessResponse(new { translation = "No sign detected (try adjusting your gesture)." }));
-
-
-
                     }
                     else
                     {
+                        _logger.LogDebug("TranslateSign: No detections found");
                         return Ok(SuccessResponse(new { translation = "No sign detected." }));
-
                     }
                 }
                 else
                 {
+                    _logger.LogError("TranslateSign: Model detection failed - {Error}", modelDetection.ErrorMessage);
                     return BadRequest(ErrorResponse<string>(modelDetection.ErrorMessage));
-
                 }
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "TranslateSign: Invalid base64 image format");
+                return BadRequest(ErrorResponse<string>("Invalid image format. Please provide a valid base64-encoded image."));
             }
             catch (Exception ex)
             {
-
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
-
+                _logger.LogError(ex, "TranslateSign: Unexpected error occurred");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
-
+            }
+            finally
+            {
+                // Help GC by clearing byte array
+                if (imageBytes != null && imageBytes.Length > 0)
+                {
+                    Array.Clear(imageBytes, 0, imageBytes.Length);
+                }
             }
         }
 
@@ -110,23 +132,22 @@ namespace GraduationProjectWebApplication.Controllers
         {
             if (string.IsNullOrEmpty(data?.Sentence))
             {
+                _logger.LogWarning("FinalizeSentence: No sentence data provided");
                 return BadRequest(ErrorResponse<string>("No sentence data provided."));
             }
 
             try
             {
-                
+                _logger.LogInformation("FinalizeSentence: Processing sentence - {Sentence}", data.Sentence);
+
                 var concatenatedText = data.Sentence;
                 var prompt = $"""
                 You are an expert in Arabic linguistics. Your task is to take a string of concatenated Arabic letters, 
                 which comes from a real-time sign language translator, and insert spaces to form a coherent sentence. 
                 You should also correct minor spelling mistakes based on the most likely context.
-
                 Return ONLY the corrected sentence as a plain string.
-
                 Input Text: "{concatenatedText}"
                 """;
-
 
                 var payload = new
                 {
@@ -143,10 +164,8 @@ namespace GraduationProjectWebApplication.Controllers
                     }
                 };
 
-
                 string jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
 
                 string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={correctSentenceAPIKey}";
 
@@ -154,8 +173,7 @@ namespace GraduationProjectWebApplication.Controllers
                 response.EnsureSuccessStatusCode();
 
                 string responseBody = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Debug: Gemini API Raw Response for adding spaces and Correction: {responseBody}");
-
+                _logger.LogDebug("FinalizeSentence: Gemini API response received");
 
                 try
                 {
@@ -163,66 +181,54 @@ namespace GraduationProjectWebApplication.Controllers
                     if (geminiResponse?.candidates?.FirstOrDefault()?.content?.parts?.FirstOrDefault()?.text != null)
                     {
                         string jsonText = geminiResponse.candidates.First().content.parts.First().text;
-
+                        
                         // Clean the response by removing markdown code blocks
                         jsonText = jsonText.Trim()
                                           .Replace("```json", "")
                                           .Replace("```", "")
                                           .Trim();
 
-                        Console.WriteLine($"Debug: Cleaned JSON response: {jsonText}");
+                        _logger.LogInformation("FinalizeSentence: Finalized sentence - {Result}", jsonText);
 
-                        //CorrectedResponse correctedResponse = new CorrectedResponse();
-
-                        //correctedResponse.suggestion.correctedSentence = jsonText;
-
-                        if (jsonText != null)
+                        if (!string.IsNullOrEmpty(jsonText))
                         {
-                            //var claimsidentity = (ClaimsIdentity)User.Identity;
-                            //string? userId = claimsidentity.FindFirst(ClaimTypes.NameIdentifier).Value;
-
-                            //UserRecord userRecord = new UserRecord()
-                            //{
-                            //    UserId = userId,
-                            //    FormedSentence = correctedResponse.suggestion.correctedSentence,
-                            //};
-
-                            //_context.UserRecords.Add(userRecord);
-                            //await _context.SaveChangesAsync();
-
                             return Ok(SuccessResponse(jsonText));
-
                         }
                     }
                 }
                 catch (JsonException jsonEx)
                 {
-                    Console.Error.WriteLine($"Failed to parse Gemini's JSON response: {jsonEx}");
-                    Console.Error.WriteLine($"Response content: {responseBody}");
+                    _logger.LogError(jsonEx, "FinalizeSentence: Failed to parse Gemini's JSON response. Response: {Response}", responseBody);
                 }
 
                 return Ok(SuccessResponse("None"));
             }
-            catch (System.Exception ex)
+            catch (HttpRequestException httpEx)
             {
-                // Log the exception ex
-                return StatusCode(500, ErrorResponse<string>("An unexpected error occurred while finalizing the sentence."));
+                _logger.LogError(httpEx, "FinalizeSentence: HTTP request to Gemini API failed");
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>("Failed to communicate with sentence correction service."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FinalizeSentence: Unexpected error occurred");
+                return StatusCode(
+                    500, 
+                    ErrorResponse<string>("An unexpected error occurred while finalizing the sentence."));
             }
         }
 
-
-        //[Authorize]
         [HttpPost("CorrectSentence")]
         public async Task<ActionResult<APIResponseDTO<CorrectedResponse>>> CorrectSentence([FromBody] SentenceData sentenceData)
         {
             if (string.IsNullOrEmpty(sentenceData?.Sentence))
             {
+                _logger.LogWarning("CorrectSentence: No sentence provided");
                 return BadRequest(ErrorResponse<CorrectedResponse>("No sentence provided for correction."));
-
-                //return BadRequest(new { suggestion = new { correctedSentence = "[None]" }, error = "No sentence provided for correction." });
             }
 
-            Console.WriteLine($"Debug: Received sentence for correction: {sentenceData.Sentence}");
+            _logger.LogInformation("CorrectSentence: Correcting sentence - {Sentence}", sentenceData.Sentence);
 
             try
             {
@@ -255,96 +261,74 @@ namespace GraduationProjectWebApplication.Controllers
                 string jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-
                 string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={correctSentenceAPIKey}";
 
                 HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
                 response.EnsureSuccessStatusCode();
 
                 string responseBody = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Debug: Gemini API Raw Response for Correction: {responseBody}");
+                _logger.LogDebug("CorrectSentence: Gemini API response received");
 
-                // Try to parse Gemini's response directly
                 try
                 {
                     var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseBody);
                     if (geminiResponse?.candidates?.FirstOrDefault()?.content?.parts?.FirstOrDefault()?.text != null)
                     {
                         string jsonText = geminiResponse.candidates.First().content.parts.First().text;
-
+                        
                         // Clean the response by removing markdown code blocks
                         jsonText = jsonText.Trim()
                                           .Replace("```json", "")
                                           .Replace("```", "")
                                           .Trim();
 
-                        Console.WriteLine($"Debug: Cleaned JSON response: {jsonText}");
+                        _logger.LogDebug("CorrectSentence: Cleaned JSON response - {CleanedJson}", jsonText);
 
                         var correctedResponse = JsonSerializer.Deserialize<CorrectedResponse>(jsonText);
 
                         if (correctedResponse?.suggestion?.correctedSentence != null)
                         {
-                            //var claimsidentity = (ClaimsIdentity)User.Identity;
-                            //string? userId = claimsidentity.FindFirst(ClaimTypes.NameIdentifier).Value;
-
-                            //UserRecord userRecord = new UserRecord()
-                            //{
-                            //    UserId = userId,
-                            //    FormedSentence = correctedResponse.suggestion.correctedSentence,
-                            //};
-
-                            //_context.UserRecords.Add(userRecord);
-                            //await _context.SaveChangesAsync();
-
+                            _logger.LogInformation("CorrectSentence: Corrected to - {Corrected}", correctedResponse.suggestion.correctedSentence);
                             return Ok(SuccessResponse(correctedResponse));
-
                         }
                     }
                 }
                 catch (JsonException jsonEx)
                 {
-                    Console.Error.WriteLine($"Failed to parse Gemini's JSON response: {jsonEx}");
-                    Console.Error.WriteLine($"Response content: {responseBody}");
+                    _logger.LogError(jsonEx, "CorrectSentence: Failed to parse Gemini's JSON response. Response: {Response}", responseBody);
                 }
 
                 return Ok(SuccessResponse(new { suggestion = new { correctedSentence = "[None]" } }));
-
             }
             catch (HttpRequestException httpEx)
             {
-                Console.Error.WriteLine($"HTTP Request Error to Gemini API: {httpEx}");
-
+                _logger.LogError(httpEx, "CorrectSentence: HTTP request to Gemini API failed");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"HTTP Request Error to Gemini API: {httpEx.Message}"));
-
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error during correction: {ex}");
-
-
+                _logger.LogError(ex, "CorrectSentence: Unexpected error occurred");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>($"\"Error during correction: {ex.Message}"));
-
+                    ErrorResponse<string>($"Error during correction: {ex.Message}"));
             }
         }
 
-        //[Authorize]
         [HttpPost("GenerateAudio")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {
-
-
-            if (string.IsNullOrEmpty(request.Text))
+            if (string.IsNullOrEmpty(request?.Text))
             {
+                _logger.LogWarning("GenerateAudio: Missing 'text' field");
                 return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field in request body."));
             }
 
+            _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
+
             const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
-            // The payload remains the same, but we'll use the class-level consts
             var payload = new
             {
                 contents = new[]
@@ -370,17 +354,16 @@ namespace GraduationProjectWebApplication.Controllers
                 }
             };
 
-            var client = new HttpClient();
             var jsonPayload = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             try
             {
-                // Correctly append the API key to the URL
-                var response = await client.PostAsync($"{ApiUrl}?key={generateAudioAPIKey}", content);
+                var response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioAPIKey}", content);
                 response.EnsureSuccessStatusCode();
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
+
                 var geminiResult = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
 
                 var audioPart = geminiResult
@@ -399,7 +382,7 @@ namespace GraduationProjectWebApplication.Controllers
                     .GetString();
 
                 var sampleRate = 24000;
-                var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType, @"rate=(\d+)");
+                var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
                 if (rateMatch.Success)
                 {
                     sampleRate = int.Parse(rateMatch.Groups[1].Value);
@@ -411,30 +394,24 @@ namespace GraduationProjectWebApplication.Controllers
                     SampleRate = sampleRate
                 };
 
-                return Ok(SuccessResponse(ttsResponse));
+                _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
 
+                return Ok(SuccessResponse(ttsResponse));
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine($"--------------------\n\nError calling Gemini API\n\n----------------------");
-                // Handle specific HTTP errors from the Gemini API
-
+                _logger.LogError(ex, "GenerateAudio: Error calling Gemini API");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"Error calling Gemini API: {ex.Message}"));
-
             }
             catch (Exception ex)
             {
-                // Handle other parsing or general errors
-                Console.WriteLine($"--------------------\n\nAn unexpected error occurred\n\n----------------------");
-
+                _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
                 return StatusCode(
                    (int)HttpStatusCode.InternalServerError,
                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
             }
         }
-
-
     }
 }
