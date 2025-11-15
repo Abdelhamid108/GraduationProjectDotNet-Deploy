@@ -129,6 +129,27 @@ Used for google login.
     
 - `Base64Image` (string)
 
+### **UpdateUserProfileDTO**
+
+Used for updating user profile information.  
+All fields are optional — only the fields that need to be updated should be sent.
+
+- `FullName` (string?)
+- `Email` (string?)
+- `PhoneNumber` (string?)
+- `UserName` (string?)
+
+### **UserProfileDTO**
+
+Represents a user's profile information.
+
+- `FullName` (string)
+- `Email` (string)
+- `ImagePath` (string) — Base64-encoded image
+- `PhoneNumber` (string)
+- `UserName` (string)
+
+
 ### **2. Sign Language Translator Controller**
 
 
@@ -586,7 +607,99 @@ This controller handles all user authentication, registration, and account manag
     
     ```
     
+#### 10. Change User Image (Authorized)
 
+- **Endpoint:** `/update-user-image`
+    
+- **Route:** `https://34.18.112.76/api/Auth/update-user-image`
+
+- **Method:** `POST`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** updates user's profile photo.
+    
+- **Request Body (`IFormFile`):**
+    
+- **Success Response (200 OK):** `APIResponseDTO<string>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data": string, base64 encoded image,
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
+
+#### 11. Get User Profile (Authorized)
+
+- **Endpoint:** `/user-profile`
+    
+- **Route:** `https://34.18.112.76/api/Auth/user-profile`
+
+- **Method:** `GET`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** Displays user's data.
+        
+- **Success Response (200 OK):** `APIResponseDTO<UserProfileDTO>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data":  {
+        "FullName": ,
+        "Email": ,
+        "ImagePath": string, base64 encoded image,
+        "PhoneNumber": ,
+        "UserName": ,
+      },
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
+
+    #### 11. Update User Profile (Authorized)
+
+- **Endpoint:** `/update-user-profile`
+    
+- **Route:** `https://34.18.112.76/api/Auth/update-user-profile`
+
+- **Method:** `Post`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** Updates user's data.
+        
+- **Request Body (`UpdateUserProfileDTO`):**
+
+- **Success Response (200 OK):** `APIResponseDTO<UserProfileDTO>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data":  {
+        "FullName": ,
+        "Email": ,
+        "ImagePath": string, base64 encoded image,
+        "PhoneNumber": ,
+        "UserName": ,
+      },
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
 
 
 #### Sign Hub 
