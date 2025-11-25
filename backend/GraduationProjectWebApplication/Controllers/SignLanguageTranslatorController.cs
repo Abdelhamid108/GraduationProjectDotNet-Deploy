@@ -8,6 +8,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace GraduationProjectWebApplication.Controllers
@@ -24,17 +25,17 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly ILogger<SignLanguageTranslatorController> _logger;
 
         public SignLanguageTranslatorController(
-            HttpClient httpClient, 
+            HttpClient httpClient,
             IConfiguration configuration,
-            IModelService modelService, 
+            IModelService modelService,
             ApplicationDbContext context,
             ILogger<SignLanguageTranslatorController> logger)
         {
             _httpClient = httpClient;
-            
+
             // Configure HttpClient timeouts
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
-            
+
             correctSentenceAPIKey = configuration["CORRECT_SENTENCE_KEY"];
             generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
             _modelService = modelService;
@@ -52,7 +53,7 @@ namespace GraduationProjectWebApplication.Controllers
             }
 
             byte[]? imageBytes = null;
-            
+
             try
             {
                 var base64Image = frameData.ImageData.Replace("data:image/jpeg;base64,", "");
@@ -90,7 +91,7 @@ namespace GraduationProjectWebApplication.Controllers
                         _logger.LogDebug(
                             "TranslateSign: Best detection confidence {Confidence:F4} below threshold 0.71",
                             bestDetection.Confidence);
-                        
+
                         return Ok(SuccessResponse(new { translation = "No sign detected (try adjusting your gesture)." }));
                     }
                     else
@@ -181,7 +182,7 @@ namespace GraduationProjectWebApplication.Controllers
                     if (geminiResponse?.candidates?.FirstOrDefault()?.content?.parts?.FirstOrDefault()?.text != null)
                     {
                         string jsonText = geminiResponse.candidates.First().content.parts.First().text;
-                        
+
                         // Clean the response by removing markdown code blocks
                         jsonText = jsonText.Trim()
                                           .Replace("```json", "")
@@ -214,7 +215,7 @@ namespace GraduationProjectWebApplication.Controllers
             {
                 _logger.LogError(ex, "FinalizeSentence: Unexpected error occurred");
                 return StatusCode(
-                    500, 
+                    500,
                     ErrorResponse<string>("An unexpected error occurred while finalizing the sentence."));
             }
         }
@@ -275,7 +276,7 @@ namespace GraduationProjectWebApplication.Controllers
                     if (geminiResponse?.candidates?.FirstOrDefault()?.content?.parts?.FirstOrDefault()?.text != null)
                     {
                         string jsonText = geminiResponse.candidates.First().content.parts.First().text;
-                        
+
                         // Clean the response by removing markdown code blocks
                         jsonText = jsonText.Trim()
                                           .Replace("```json", "")
@@ -413,5 +414,166 @@ namespace GraduationProjectWebApplication.Controllers
                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
             }
         }
+
+        [HttpPost("text-to-audio")]
+        public async Task<ActionResult<APIResponseDTO<TTSResponse>>> TextToAudio([FromBody] SentenceData data)
+        {
+            if (string.IsNullOrEmpty(data?.Sentence))
+            {
+                _logger.LogWarning("TextToAudio: Missing 'Sentence' field");
+                return BadRequest(ErrorResponse<TTSResponse>("Missing 'Sentence' field in request body."));
+            }
+
+            try
+            {
+                // -------------------------------------------------------------
+                // 1) FIRST GEMINI CALL → Finalize the Arabic sentence
+                // -------------------------------------------------------------
+                _logger.LogInformation("TextToAudio: Finalizing sentence - {Sentence}", data.Sentence);
+
+                var prompt = $"""
+                You are an expert in Arabic linguistics. Your task is to take a string of concatenated 
+                Arabic letters (from a real-time sign language translator) and insert spaces to form 
+                a coherent sentence. You should also correct minor spelling mistakes based on context.
+                Return ONLY the corrected Arabic sentence as plain text.
+                Input Text: "{data.Sentence}"
+                """;
+
+                var finalizePayload = new
+                {
+                    contents = new[]
+                    {
+                new
+                {
+                    role = "user",
+                    parts = new[]
+                    {
+                        new { text = prompt }
+                    }
+                }
+            }
+                };
+
+                string jsonFinalize = JsonSerializer.Serialize(finalizePayload);
+                var finalizeContent = new StringContent(jsonFinalize, Encoding.UTF8, "application/json");
+
+                string finalizeUrl =
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={correctSentenceAPIKey}";
+
+                var finalizeResponse = await _httpClient.PostAsync(finalizeUrl, finalizeContent);
+                finalizeResponse.EnsureSuccessStatusCode();
+
+                string finalizeResponseBody = await finalizeResponse.Content.ReadAsStringAsync();
+
+                var finalizeModel = JsonSerializer.Deserialize<GeminiResponse>(finalizeResponseBody);
+                string finalSentence = finalizeModel?.candidates?.FirstOrDefault()
+                                                       ?.content?.parts?.FirstOrDefault()?.text;
+
+                if (string.IsNullOrWhiteSpace(finalSentence))
+                {
+                    _logger.LogWarning("TextToAudio: Sentence finalization returned empty text");
+                    return Ok(ErrorResponse<TTSResponse>("Failed to finalize sentence"));
+                }
+
+                // Clean markdown if any
+                finalSentence = finalSentence.Trim()
+                                             .Replace("```json", "")
+                                             .Replace("```", "")
+                                             .Trim();
+
+                _logger.LogInformation("TextToAudio: Final sentence → {Sentence}", finalSentence);
+
+
+
+                // -------------------------------------------------------------
+                // 2) SECOND GEMINI CALL → Generate Audio
+                // -------------------------------------------------------------
+                _logger.LogInformation("TextToAudio: Generating audio...");
+
+                const string audioApiUrl =
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+
+                var audioPayload = new
+                {
+                    contents = new[]
+                    {
+                new
+                {
+                    parts = new[]
+                    {
+                        new { text = $"Say this in a clear, friendly voice: {finalSentence}" }
+                    }
+                }
+            },
+                    generationConfig = new
+                    {
+                        responseModalities = new[] { "AUDIO" },
+                        speechConfig = new
+                        {
+                            voiceConfig = new
+                            {
+                                prebuiltVoiceConfig = new { voiceName = "Kore" }
+                            }
+                        }
+                    }
+                };
+
+                var jsonAudio = JsonSerializer.Serialize(audioPayload);
+                var audioContent = new StringContent(jsonAudio, Encoding.UTF8, "application/json");
+
+                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={generateAudioAPIKey}", audioContent);
+                audioResponse.EnsureSuccessStatusCode();
+
+                var audioJson = await audioResponse.Content.ReadAsStringAsync();
+                var audioModel = JsonSerializer.Deserialize<JsonElement>(audioJson);
+
+                var audioPart = audioModel
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0];
+
+                string audioBase64 = audioPart
+                    .GetProperty("inlineData").GetProperty("data").GetString();
+
+                string mimeType = audioPart
+                    .GetProperty("inlineData").GetProperty("mimeType").GetString();
+
+
+                // Extract sample rate if included
+                int sampleRate = 24000;
+                var match = Regex.Match(mimeType ?? "", @"rate=(\d+)");
+                if (match.Success)
+                    sampleRate = int.Parse(match.Groups[1].Value);
+
+
+                // Create response object
+                var ttsResponse = new TTSResponse
+                {
+                    AudioData = audioBase64,
+                    SampleRate = sampleRate
+                };
+
+                _logger.LogInformation("TextToAudio: Audio generation successful");
+
+                return Ok(SuccessResponse(ttsResponse));
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "TextToAudio: API request failure");
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>("Failed communicating with Gemini API.")
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TextToAudio: Unexpected error");
+                return StatusCode(
+                    500,
+                    ErrorResponse<string>("Unexpected error occurred while processing the request.")
+                );
+            }
+        }
+
     }
 }
