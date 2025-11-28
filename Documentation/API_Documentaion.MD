@@ -708,6 +708,18 @@ for realtime processing using web sockets
 
 - **Route:** `https://34.18.112.76/api/signHub`
 
+- **Request Body (`FrameData`):**
+
+   ```
+    {
+      "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJ..."
+    }
+     
+  ```
+
+  - **Success Response (200 OK):** string ClassLabelArabic (the arabic letter)
+
+
 
 #### Sign Language Translator Controller
 
@@ -873,6 +885,66 @@ This controller handles the sign language translation, sentence correction, and 
     
     
     ```
+
+#### 5.Text to Audio (Finalize Sentence → Generate Speech)
+
+- **Endpoint**: `/text-to-audio`
+
+- **Route**: `https://YOUR_DOMAIN/api/SignLanguageTranslator/text-to-audio`
+
+- **Method**: `POST`
+
+- **Description:**
+
+This endpoint performs a two–step processing pipeline:
+
+Arabic Sentence Finalization
+
+Takes a string of concatenated Arabic letters (from Sign Language recognition).
+
+Uses Gemini to insert spaces, correct grammar, and form a readable sentence.
+
+Text-to-Speech Generation
+
+Converts the finalized Arabic sentence into a spoken audio file.
+
+Returns audio as base64-encoded PCM/WAV data and sample rate.
+
+- **Request Body (`SentenceData`):**
+
+{
+  "sentence": "مرحبابكفيك"
+}
+
+
+- **Success Response (200 OK):** `APIResponseDTO<TTSResponse>`
+
+{
+  "errorMessage": "",
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "success": true,
+  "statusCode": 200
+}
+
+- **Possible Error Responses:**
+
+{
+  "errorMessage": "Missing 'Sentence' field in request body.",
+  "data": null,
+  "success": false,
+  "statusCode": 400
+}
+
+
+{
+  "errorMessage": "Unexpected error occurred while processing the request.",
+  "data": null,
+  "success": false,
+  "statusCode": 500
+}
 
 
 #### Arabic Language Translator Controller
