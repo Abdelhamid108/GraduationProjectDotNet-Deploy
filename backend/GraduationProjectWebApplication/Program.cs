@@ -11,11 +11,14 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Collections;
 using System.Text;
+using System.Threading.RateLimiting;
+
 
 namespace GraduationProjectWebApplication
 {
@@ -24,6 +27,9 @@ namespace GraduationProjectWebApplication
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+
+            /*=================== Environment Variables ===================*/
 
             Env.TraversePath().Load();
 
@@ -49,11 +55,16 @@ namespace GraduationProjectWebApplication
                 options.Password = builder.Configuration["MAIL_PASSWORD"];
             });
 
+            /*=================== Mail Settings ===================*/
+
             builder.Services.PostConfigure<MailSettings>(settings =>
             {
                 if (string.IsNullOrWhiteSpace(settings.EmailId))
                     throw new InvalidOperationException("MailSettings are not configured properly.");
             });
+
+
+            /*=================== .NET Identity + Sql server configurations ===================*/
 
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -67,6 +78,8 @@ namespace GraduationProjectWebApplication
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
+
+            /*=================== Services Injection ===================*/
 
             builder.Services.AddTransient<IEmailService, EmailService>();
             builder.Services.AddSingleton<IModelService, ModelService>();
@@ -134,6 +147,114 @@ namespace GraduationProjectWebApplication
                 });
             });
 
+            /*=================== Rate Limiting ===================*/
+
+            builder.Services.AddRateLimiter(options =>
+            {
+
+                // Authentication Endpoints
+
+                // 1. User Registration
+                options.AddFixedWindowLimiter("RegisterLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 5; // Max 5 requests
+                    limiterOptions.Window = TimeSpan.FromMinutes(10); // per 10 minutes
+                    limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiterOptions.QueueLimit = 2;
+                });
+
+                // 2. Login
+                options.AddFixedWindowLimiter("LoginLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 requests
+                    limiterOptions.Window = TimeSpan.FromMinutes(1); // per 1 minute
+                    limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    limiterOptions.QueueLimit = 2;
+                });
+
+                // 3. Refresh Tokens
+                options.AddFixedWindowLimiter("RefreshTokenLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 requests
+                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                });
+
+                // 4. Get Reset Password Token
+                options.AddFixedWindowLimiter("GetResetPasswordLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 3; // Max 3 requests
+                    limiterOptions.Window = TimeSpan.FromHours(1);
+                });
+
+                // 5. Reset Password
+                options.AddFixedWindowLimiter("ResetPasswordLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 3;
+                    limiterOptions.Window = TimeSpan.FromHours(1);
+                });
+
+                // 6. Change Password (Authenticated)
+                options.AddFixedWindowLimiter("ChangePasswordLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 per hour
+                    limiterOptions.Window = TimeSpan.FromHours(1);
+                });
+
+                // 7. Social Login / Google
+                options.AddFixedWindowLimiter("GoogleLoginLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 requests per minute
+                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                });
+
+                options.AddFixedWindowLimiter("GoogleCallbackLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10;
+                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                });
+
+                // 8. Update User Image
+                options.AddFixedWindowLimiter("UpdateImageLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 requests per 10 min
+                    limiterOptions.Window = TimeSpan.FromMinutes(10);
+                });
+
+                // 9. Logout
+                options.AddFixedWindowLimiter("LogoutLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 20; // Max 20 requests per minute
+                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                });
+
+                // 10. User Profile Read
+                options.AddFixedWindowLimiter("UserProfileReadLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 100; // Max 100 requests per 10 min
+                    limiterOptions.Window = TimeSpan.FromMinutes(10);
+                });
+
+                // 11. User Profile Update
+                options.AddFixedWindowLimiter("UserProfileUpdateLimiter", limiterOptions =>
+                {
+                    limiterOptions.PermitLimit = 10; // Max 10 requests per 10 min
+                    limiterOptions.Window = TimeSpan.FromMinutes(10);
+                });
+            });
+
+            // Optional: customize 429 response
+            builder.Services.AddSingleton<RateLimiterOptions>(new RateLimiterOptions
+            {
+                OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.StatusCode = 429;
+                    await context.HttpContext.Response.WriteAsync(
+                        "Too many requests. Please try again later.", cancellationToken);
+                }
+            });
+
+            /*=================== CORS Policy ===================*/
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -182,6 +303,9 @@ namespace GraduationProjectWebApplication
                 endpoints.MapControllers();
                 endpoints.MapHub<SignHub>("/signHub");
             });
+
+
+
 
             app.Run();
         }

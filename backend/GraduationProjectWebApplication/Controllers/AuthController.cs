@@ -1,5 +1,4 @@
-﻿using Azure;
-using GraduationProjectWebApplication.Models.DTOs;
+﻿using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -8,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using System.Security.Claims;
 
@@ -25,7 +25,9 @@ namespace GraduationProjectWebApplication.Controllers
             _authService = authService;
             _emailService = emailService;
         }
+
         [HttpPost("register-user")]
+        [EnableRateLimiting("RegisterLimiter")]
         public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync(RegisterDTO registerDTO)
         {
             AuthResponse<ApplicationUserDTO>? authResponse = new AuthResponse<ApplicationUserDTO>();
@@ -75,6 +77,7 @@ namespace GraduationProjectWebApplication.Controllers
 
 
         [HttpPost("login-user")]
+        [EnableRateLimiting("LoginLimiter")]
         public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync(LoginDTO loginDTO)
         {
             AuthResponse<TokenResponseDTO>? authResponse = new AuthResponse<TokenResponseDTO>();
@@ -123,6 +126,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("refresh-tokens")]
+        [EnableRateLimiting("RefreshTokenLimiter")]
         public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens(TokenRequestDTO tokenRequestDTO)
         {
             try
@@ -145,6 +149,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("get-reset-password-token")]
+        [EnableRateLimiting("GetResetPasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken(string Email)
         {
 
@@ -224,6 +229,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("reset-password")]
+        [EnableRateLimiting("ResetPasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword(ResetPasswordDTO resetPasswordDTO)
         {
             try
@@ -266,6 +272,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("change-password")]
+        [EnableRateLimiting("ChangePasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromForm] ChangePasswordDTO changePasswordDTO)
         {
             try
@@ -306,6 +313,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
     
         [HttpGet("login-google")]
+        [EnableRateLimiting("GoogleLoginLimiter")]
         public IActionResult LoginWithGoogle()
         {
             var redirectUrl = Url.Action("GoogleCallback", "Auth");
@@ -314,6 +322,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpGet("google-callback")]
+        [EnableRateLimiting("GoogleCallbackLimiter")]
         public async Task<ActionResult<APIResponseDTO<ExternalLoginResponseDTO>>> GoogleCallback()
         {
             try
@@ -360,6 +369,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("update-user-image")]
+        [EnableRateLimiting("UpdateImageLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage( IFormFile newImge)
         {
             try
@@ -399,6 +409,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("logout")]
+        [EnableRateLimiting("LogoutLimiter")]
         public async Task<IActionResult> Logout(TokenRequestDTO tokenRequestDTO)
         {
             try
@@ -425,6 +436,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpGet("user-profile")]
+        [EnableRateLimiting("UserProfileReadLimiter")]
         public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile()
         {
             try
@@ -452,6 +464,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("update-user-profile")]
+        [EnableRateLimiting("UserProfileUpdateLimiter")]
         public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
         {
             try
