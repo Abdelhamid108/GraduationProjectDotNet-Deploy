@@ -19,7 +19,6 @@ using System.Collections;
 using System.Text;
 using System.Threading.RateLimiting;
 
-
 namespace GraduationProjectWebApplication
 {
     public class Program
@@ -27,16 +26,12 @@ namespace GraduationProjectWebApplication
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Logging.AddConsole();
 
-
-            /*=================== Environment Variables ===================*/
-
+            /*=================== Env Variables ===================*/
             Env.TraversePath().Load();
-
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
-            {
                 builder.Configuration[env.Key.ToString()] = env.Value?.ToString();
-            }
 
             string? Key = builder.Configuration["SECRET_KEY"];
             string? Issuer = builder.Configuration["ISSUER"];
@@ -44,6 +39,7 @@ namespace GraduationProjectWebApplication
             string? GoogleClientId = builder.Configuration["GOOGLE_CLIENT_ID"];
             string? GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"];
 
+            /*=================== Mail Settings ===================*/
             builder.Services.Configure<MailSettings>(options =>
             {
                 options.Host = builder.Configuration["MAIL_HOST"];
@@ -55,17 +51,13 @@ namespace GraduationProjectWebApplication
                 options.Password = builder.Configuration["MAIL_PASSWORD"];
             });
 
-            /*=================== Mail Settings ===================*/
-
             builder.Services.PostConfigure<MailSettings>(settings =>
             {
                 if (string.IsNullOrWhiteSpace(settings.EmailId))
-                    throw new InvalidOperationException("MailSettings are not configured properly.");
+                    throw new InvalidOperationException("MailSettings not configured.");
             });
 
-
-            /*=================== .NET Identity + Sql server configurations ===================*/
-
+            /*=================== Identity & EF Core ===================*/
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -79,19 +71,19 @@ namespace GraduationProjectWebApplication
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
 
-            /*=================== Services Injection ===================*/
-
+            /*=================== Service Injection ===================*/
             builder.Services.AddTransient<IEmailService, EmailService>();
             builder.Services.AddSingleton<IModelService, ModelService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IFileService, FileService>();
 
+            /*=================== Authentication ===================*/
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie()
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
             {
                 x.RequireHttpsMetadata = false;
@@ -113,6 +105,7 @@ namespace GraduationProjectWebApplication
                 options.CallbackPath = "/signin-google";
             });
 
+            /*=================== Swagger ===================*/
             builder.Services.AddSwaggerGen(options =>
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -131,10 +124,7 @@ namespace GraduationProjectWebApplication
                         new OpenApiSecurityScheme
                         {
                             Reference = new OpenApiReference
-                            {
-                                Id = "Bearer",
-                                Type = ReferenceType.SecurityScheme
-                            }
+                            { Id = "Bearer", Type = ReferenceType.SecurityScheme }
                         },
                         new List<string>()
                     }
@@ -147,114 +137,124 @@ namespace GraduationProjectWebApplication
                 });
             });
 
-            /*=================== Rate Limiting ===================*/
+            /*===========================================================
+             * RATE LIMITING (CORRECT VERSION)
+             ===========================================================*/
 
             builder.Services.AddRateLimiter(options =>
             {
-
-                // Authentication Endpoints
-
-                // 1. User Registration
-                options.AddFixedWindowLimiter("RegisterLimiter", limiterOptions =>
+                /* ---- Global 429 handler ---- */
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, _) =>
                 {
-                    limiterOptions.PermitLimit = 5; // Max 5 requests
-                    limiterOptions.Window = TimeSpan.FromMinutes(10); // per 10 minutes
-                    limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    limiterOptions.QueueLimit = 2;
+                    context.HttpContext.Response.ContentType = "application/json";
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        message = "Rate limit exceeded. Try again later."
+                    });
+                };
+
+                /* ---- Registration ---- */
+                options.AddFixedWindowLimiter("RegisterLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 5;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 2. Login
-                options.AddFixedWindowLimiter("LoginLimiter", limiterOptions =>
+                /* ---- Login ---- */
+                options.AddPolicy("LoginLimiter", context =>
+                    RateLimitPartition.GetTokenBucketLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        key => new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = 5,
+                            TokensPerPeriod = 5,
+                            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                            AutoReplenishment = true,
+                            QueueLimit = 0 // No queuing, immediate 429
+                        }
+                    )
+                );
+
+                /* ---- Refresh tokens ---- */
+                options.AddFixedWindowLimiter("RefreshTokenLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10; // Max 10 requests
-                    limiterOptions.Window = TimeSpan.FromMinutes(1); // per 1 minute
-                    limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    limiterOptions.QueueLimit = 2;
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 3. Refresh Tokens
-                options.AddFixedWindowLimiter("RefreshTokenLimiter", limiterOptions =>
+                /* ---- Reset password ---- */
+                options.AddFixedWindowLimiter("GetResetPasswordLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10; // Max 10 requests
-                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 4. Get Reset Password Token
-                options.AddFixedWindowLimiter("GetResetPasswordLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("ResetPasswordLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 3; // Max 3 requests
-                    limiterOptions.Window = TimeSpan.FromHours(1);
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 5. Reset Password
-                options.AddFixedWindowLimiter("ResetPasswordLimiter", limiterOptions =>
+                /* ---- Other authenticated operations ---- */
+                options.AddFixedWindowLimiter("ChangePasswordLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 3;
-                    limiterOptions.Window = TimeSpan.FromHours(1);
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 6. Change Password (Authenticated)
-                options.AddFixedWindowLimiter("ChangePasswordLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("GoogleLoginLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10; // Max 10 per hour
-                    limiterOptions.Window = TimeSpan.FromHours(1);
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 7. Social Login / Google
-                options.AddFixedWindowLimiter("GoogleLoginLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("GoogleCallbackLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10; // Max 10 requests per minute
-                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                options.AddFixedWindowLimiter("GoogleCallbackLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("UpdateImageLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10;
-                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 8. Update User Image
-                options.AddFixedWindowLimiter("UpdateImageLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("LogoutLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 10; // Max 10 requests per 10 min
-                    limiterOptions.Window = TimeSpan.FromMinutes(10);
+                    limiter.PermitLimit = 20;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 9. Logout
-                options.AddFixedWindowLimiter("LogoutLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("UserProfileReadLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 20; // Max 20 requests per minute
-                    limiterOptions.Window = TimeSpan.FromMinutes(1);
+                    limiter.PermitLimit = 100;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
                 });
 
-                // 10. User Profile Read
-                options.AddFixedWindowLimiter("UserProfileReadLimiter", limiterOptions =>
+                options.AddFixedWindowLimiter("UserProfileUpdateLimiter", limiter =>
                 {
-                    limiterOptions.PermitLimit = 100; // Max 100 requests per 10 min
-                    limiterOptions.Window = TimeSpan.FromMinutes(10);
-                });
-
-                // 11. User Profile Update
-                options.AddFixedWindowLimiter("UserProfileUpdateLimiter", limiterOptions =>
-                {
-                    limiterOptions.PermitLimit = 10; // Max 10 requests per 10 min
-                    limiterOptions.Window = TimeSpan.FromMinutes(10);
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
                 });
             });
 
-            // Optional: customize 429 response
-            builder.Services.AddSingleton<RateLimiterOptions>(new RateLimiterOptions
-            {
-                OnRejected = async (context, cancellationToken) =>
-                {
-                    context.HttpContext.Response.StatusCode = 429;
-                    await context.HttpContext.Response.WriteAsync(
-                        "Too many requests. Please try again later.", cancellationToken);
-                }
-            });
 
-            /*=================== CORS Policy ===================*/
-
+            /*=================== CORS ===================*/
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -268,34 +268,52 @@ namespace GraduationProjectWebApplication
 
             var app = builder.Build();
 
+            /*=================== DB Migrations + Roles ===================*/
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 db.Database.Migrate();
 
                 var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-                string[] roles = new[] { "Admin", "User" };
-                foreach (var role in roles)
+                foreach (var role in new[] { "Admin", "User" })
                 {
                     if (!roleManager.RoleExistsAsync(role).Result)
-                    {
                         roleManager.CreateAsync(new IdentityRole(role)).Wait();
-                    }
                 }
             }
 
+            /*=================== Swagger ===================*/
             if (app.Environment.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
+            /*=================== Middleware Pipeline ===================*/
             app.UseStaticFiles();
-
             app.UseRouting();
             app.UseCors("AllowFrontend");
             app.UseAuthentication();
+
+            /* ---- Rate Limiter (MUST come here) ---- */
+            app.UseRateLimiter();
+
+            /* ---- Custom 429 JSON ---- */
+            app.Use(async (context, next) =>
+            {
+                await next();
+
+                if (context.Response.StatusCode == 429)
+                {
+                    context.Response.ContentType = "application/json";
+                    context.Response.Body.SetLength(0);
+
+                    await context.Response.WriteAsync(
+                        "{\"message\": \"Rate limit exceeded. Try again later.\"}"
+                    );
+                }
+            });
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
@@ -303,9 +321,6 @@ namespace GraduationProjectWebApplication
                 endpoints.MapControllers();
                 endpoints.MapHub<SignHub>("/signHub");
             });
-
-
-
 
             app.Run();
         }

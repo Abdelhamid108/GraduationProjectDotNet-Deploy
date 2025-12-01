@@ -76,12 +76,21 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
 
+        // In AuthController (temporary for testing)
+        [HttpPost("login-user-test")]
+        [EnableRateLimiting("LoginLimiter")]
+        public async Task<ActionResult<TokenResponseDTO>> LoginTest(LoginDTO loginDTO)
+        {
+            // Always succeed
+            return Ok(new TokenResponseDTO { AccessToken = "dummy-token", RefreshToken = "sadsa", AccessTokenExpires = DateTime.Now, RefreshTokenExpires = DateTime.Now });
+        }
+
+
         [HttpPost("login-user")]
         [EnableRateLimiting("LoginLimiter")]
         public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync(LoginDTO loginDTO)
         {
             AuthResponse<TokenResponseDTO>? authResponse = new AuthResponse<TokenResponseDTO>();
-
             try
             {
                 if (loginDTO == null)
@@ -96,6 +105,9 @@ namespace GraduationProjectWebApplication.Controllers
                     {
                         if (authResponse.IsSuccess == false)
                         {
+
+                            Console.WriteLine($"\n\n\n ==============================Login Hit {loginDTO.UserName} , {loginDTO.Password}===================== \n\n\n");
+
                             return BadRequest(ErrorResponse<TokenResponseDTO>(authResponse.ErrorMessage));
                         }
                         else
