@@ -17,12 +17,12 @@ services:
       # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
       # This ensures the backend service remains available after a reboot or crash.
     deploy:
-    resources:
-      limits:
-        cpus: '2'
-        memory: 512M      # Hard limit
-      reservations:
-        memory: 1G       # Soft limit
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M      # Hard limit
+        reservations:
+          memory: 1G       # Soft limit
     networks:
       - local
       - api_network
