@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProjectWebApplica
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProject.StaticDetails", "StaticDetails\GraduationProject.StaticDetails.csproj", "{70DAF223-D700-4710-9636-34A883015F0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DOSAttacker", "DOSAttacker\DOSAttacker.csproj", "{92E360BE-DE59-4CCC-ADBE-B41E123C60E6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{70DAF223-D700-4710-9636-34A883015F0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{92E360BE-DE59-4CCC-ADBE-B41E123C60E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{92E360BE-DE59-4CCC-ADBE-B41E123C60E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{92E360BE-DE59-4CCC-ADBE-B41E123C60E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{92E360BE-DE59-4CCC-ADBE-B41E123C60E6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
