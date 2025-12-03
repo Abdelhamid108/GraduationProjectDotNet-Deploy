@@ -11,11 +11,13 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Collections;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace GraduationProjectWebApplication
 {
@@ -24,13 +26,12 @@ namespace GraduationProjectWebApplication
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Logging.AddConsole();
 
+            /*=================== Env Variables ===================*/
             Env.TraversePath().Load();
-
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
-            {
                 builder.Configuration[env.Key.ToString()] = env.Value?.ToString();
-            }
 
             string? Key = builder.Configuration["SECRET_KEY"];
             string? Issuer = builder.Configuration["ISSUER"];
@@ -38,6 +39,7 @@ namespace GraduationProjectWebApplication
             string? GoogleClientId = builder.Configuration["GOOGLE_CLIENT_ID"];
             string? GoogleClientSecret = builder.Configuration["GOOGLE_CLIENT_SECRET"];
 
+            /*=================== Mail Settings ===================*/
             builder.Services.Configure<MailSettings>(options =>
             {
                 options.Host = builder.Configuration["MAIL_HOST"];
@@ -52,9 +54,10 @@ namespace GraduationProjectWebApplication
             builder.Services.PostConfigure<MailSettings>(settings =>
             {
                 if (string.IsNullOrWhiteSpace(settings.EmailId))
-                    throw new InvalidOperationException("MailSettings are not configured properly.");
+                    throw new InvalidOperationException("MailSettings not configured.");
             });
 
+            /*=================== Identity & EF Core ===================*/
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -68,17 +71,19 @@ namespace GraduationProjectWebApplication
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
 
+            /*=================== Service Injection ===================*/
             builder.Services.AddTransient<IEmailService, EmailService>();
             builder.Services.AddSingleton<IModelService, ModelService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IFileService, FileService>();
 
+            /*=================== Authentication ===================*/
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie()
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
             {
                 x.RequireHttpsMetadata = false;
@@ -100,6 +105,7 @@ namespace GraduationProjectWebApplication
                 options.CallbackPath = "/signin-google";
             });
 
+            /*=================== Swagger ===================*/
             builder.Services.AddSwaggerGen(options =>
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -118,10 +124,7 @@ namespace GraduationProjectWebApplication
                         new OpenApiSecurityScheme
                         {
                             Reference = new OpenApiReference
-                            {
-                                Id = "Bearer",
-                                Type = ReferenceType.SecurityScheme
-                            }
+                            { Id = "Bearer", Type = ReferenceType.SecurityScheme }
                         },
                         new List<string>()
                     }
@@ -134,6 +137,139 @@ namespace GraduationProjectWebApplication
                 });
             });
 
+            /*===========================================================
+             * RATE LIMITING (CORRECT VERSION)
+             ===========================================================*/
+
+            builder.Services.AddRateLimiter(options =>
+            {
+                /* ---- Global 429 handler ---- */
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, _) =>
+                {
+                    context.HttpContext.Response.ContentType = "application/json";
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        message = "Rate limit exceeded. Try again later."
+                    });
+                };
+
+                /* ---- Registration ---- */
+                options.AddFixedWindowLimiter("RegisterLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 5;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
+                });
+
+                /* ---- Login ---- */
+                options.AddPolicy("LoginLimiter", context =>
+                    RateLimitPartition.GetTokenBucketLimiter(
+                        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        key => new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = 5,
+                            TokensPerPeriod = 5,
+                            ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                            AutoReplenishment = true,
+                            QueueLimit = 0 // No queuing, immediate 429
+                        }
+                    )
+                );
+
+                /* ---- Refresh tokens ---- */
+                options.AddFixedWindowLimiter("RefreshTokenLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                /* ---- Reset password ---- */
+                options.AddFixedWindowLimiter("GetResetPasswordLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("ResetPasswordLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 3;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                /* ---- Other authenticated operations ---- */
+                options.AddFixedWindowLimiter("ChangePasswordLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromHours(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("GoogleLoginLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("GoogleCallbackLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("UpdateImageLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("LogoutLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 20;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("UserProfileReadLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 100;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("UserProfileUpdateLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(10);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("GeminiLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("ArabicLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 30;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+            });
+
+
+            /*=================== CORS ===================*/
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
@@ -147,34 +283,52 @@ namespace GraduationProjectWebApplication
 
             var app = builder.Build();
 
+            /*=================== DB Migrations + Roles ===================*/
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 db.Database.Migrate();
 
                 var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-                string[] roles = new[] { "Admin", "User" };
-                foreach (var role in roles)
+                foreach (var role in new[] { "Admin", "User" })
                 {
                     if (!roleManager.RoleExistsAsync(role).Result)
-                    {
                         roleManager.CreateAsync(new IdentityRole(role)).Wait();
-                    }
                 }
             }
 
+            /*=================== Swagger ===================*/
             if (app.Environment.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
+            /*=================== Middleware Pipeline ===================*/
             app.UseStaticFiles();
-
             app.UseRouting();
             app.UseCors("AllowFrontend");
             app.UseAuthentication();
+
+            /* ---- Rate Limiter (MUST come here) ---- */
+            app.UseRateLimiter();
+
+            /* ---- Custom 429 JSON ---- */
+            app.Use(async (context, next) =>
+            {
+                await next();
+
+                if (context.Response.StatusCode == 429)
+                {
+                    context.Response.ContentType = "application/json";
+                    context.Response.Body.SetLength(0);
+
+                    await context.Response.WriteAsync(
+                        "{\"message\": \"Rate limit exceeded. Try again later.\"}"
+                    );
+                }
+            });
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
