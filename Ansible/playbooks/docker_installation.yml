@@ -1,0 +1,9 @@
+---
+# This playbook's job is to install Docker.
+ - name: install docker in all nodes 
+   # It targets 'all' hosts defined in the inventory (masters and workers).
+   hosts: all
+   gather_facts: no # Saves time by not re-gathering facts
+   roles:
+     # It executes the tasks defined in the 'Docker_installation' role.
+     - Docker_installation
