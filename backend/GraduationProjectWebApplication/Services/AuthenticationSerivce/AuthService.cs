@@ -136,13 +136,16 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
                         string relativePath = Path.Combine("Images", "UserImages", registerDTO.UserName);
 
-                        string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, relativePath);
+                        string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                        string folderPath = Path.Combine(webRootPath, relativePath);
 
                         Directory.CreateDirectory(folderPath);
 
+                        string fileRootPath = Path.Combine("Images", "UserImages", registerDTO.UserName) + Path.DirectorySeparatorChar;
+
                         FileResponse response = await _fileService
                             .SaveFile(registerDTO.UserImage, relativePath,
-                            @"\Images\UserImages\" + registerDTO.UserName + "\\", AllowedExtensions.AllowedImageExtesnions);
+                            fileRootPath, AllowedExtensions.AllowedImageExtesnions);
 
                         if (!response.IsSuccess)
                             return new AuthResponse<ApplicationUserDTO>()
@@ -542,16 +545,19 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 };
 
             string relativePath = Path.Combine("Images", "UserImages", applicationUser.UserName);
-            string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, relativePath);
+            string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            string folderPath = Path.Combine(webRootPath, relativePath);
 
             if (!applicationUser.HasImage)
             {
                 Directory.CreateDirectory(folderPath);
             }
 
+            string fileRootPath = Path.Combine("Images", "UserImages", applicationUser.UserName) + Path.DirectorySeparatorChar;
+
             var updateFileResponse = await _fileService
                     .UpdateFile(newImage, applicationUser.ImagePath, relativePath,
-                    @"\Images\UserImages\" + applicationUser.UserName + "\\",
+                    fileRootPath,
                     AllowedExtensions.AllowedImageExtesnions);
 
             if (!updateFileResponse.IsSuccess)
