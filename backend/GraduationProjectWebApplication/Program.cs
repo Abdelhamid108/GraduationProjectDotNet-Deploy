@@ -251,6 +251,21 @@ namespace GraduationProjectWebApplication
                     limiter.Window = TimeSpan.FromMinutes(10);
                     limiter.QueueLimit = 0;
                 });
+
+                options.AddFixedWindowLimiter("GeminiLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 10;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
+                options.AddFixedWindowLimiter("ArabicLimiter", limiter =>
+                {
+                    limiter.PermitLimit = 30;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                });
+
             });
 
 

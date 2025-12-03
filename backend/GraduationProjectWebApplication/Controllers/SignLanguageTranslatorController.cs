@@ -4,6 +4,7 @@ using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
@@ -129,6 +130,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("finalize-sentence")]
+        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> FinalizeSentence([FromBody] SentenceData data)
         {
             if (string.IsNullOrEmpty(data?.Sentence))
@@ -221,6 +223,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("CorrectSentence")]
+        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<CorrectedResponse>>> CorrectSentence([FromBody] SentenceData sentenceData)
         {
             if (string.IsNullOrEmpty(sentenceData?.Sentence))
@@ -318,6 +321,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("GenerateAudio")]
+        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {
             if (string.IsNullOrEmpty(request?.Text))
@@ -416,6 +420,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("text-to-audio")]
+        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> TextToAudio([FromBody] SentenceData data)
         {
             if (string.IsNullOrEmpty(data?.Sentence))
