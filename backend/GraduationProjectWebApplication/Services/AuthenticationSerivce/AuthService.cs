@@ -133,11 +133,15 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
                     if (registerDTO.UserImage != null)
                     {
-                        string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", registerDTO.UserName);
+
+                        string relativePath = Path.Combine("Images", "UserImages", registerDTO.UserName);
+
+                        string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, relativePath);
+
                         Directory.CreateDirectory(folderPath);
 
                         FileResponse response = await _fileService
-                            .SaveFile(registerDTO.UserImage, folderPath,
+                            .SaveFile(registerDTO.UserImage, relativePath,
                             @"\Images\UserImages\" + registerDTO.UserName + "\\", AllowedExtensions.AllowedImageExtesnions);
 
                         if (!response.IsSuccess)
@@ -537,20 +541,16 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     Result = string.Empty
                 };
 
-            string folderPath = string.Empty;
+            string relativePath = Path.Combine("Images", "UserImages", applicationUser.UserName);
+            string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, relativePath);
 
-            if (applicationUser.HasImage)
+            if (!applicationUser.HasImage)
             {
-                folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", applicationUser.UserName);
-            }
-            else
-            {
-                folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", applicationUser.UserName);
                 Directory.CreateDirectory(folderPath);
             }
 
             var updateFileResponse = await _fileService
-                    .UpdateFile(newImage, applicationUser.ImagePath, folderPath,
+                    .UpdateFile(newImage, applicationUser.ImagePath, relativePath,
                     @"\Images\UserImages\" + applicationUser.UserName + "\\",
                     AllowedExtensions.AllowedImageExtesnions);
 
