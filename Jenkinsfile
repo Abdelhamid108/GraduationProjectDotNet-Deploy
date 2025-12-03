@@ -166,8 +166,8 @@ pipeline {
                         sh "cp ${SECURE_ENV_FILE} ./.env"
 
                         // Pull new images and restart services
-                        sh "docker-compose pull"
-                        sh "docker-compose up -d"
+                        sh "docker compose pull"
+                        sh "docker compose up --build -d"
                      
                         echo "The app Deployed Successfully"
                     }
