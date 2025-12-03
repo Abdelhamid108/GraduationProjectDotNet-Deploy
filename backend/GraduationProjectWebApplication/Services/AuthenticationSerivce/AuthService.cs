@@ -211,7 +211,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     else
                     {
 
-                        string baseImagePath = @"\Images\UserImages\BaseImage.jpg";
+                        string baseImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
 
                         string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
