@@ -163,6 +163,7 @@ pipeline {
                     echo "Starting Deployment..."
                     withCredentials([file(credentialsId: env.ENV_FILE, variable: 'SECURE_ENV_FILE')]) {
                         // Ensure we have the latest code (docker-compose.yml)
+                        sh "rm -f ./.env || true"
                         sh "cp ${SECURE_ENV_FILE} ./.env"
 
                         // Pull new images and restart services
