@@ -22,7 +22,7 @@ services:
           cpus: '2'
           memory: 512M      # Hard limit
         reservations:
-          memory: 1G       # Soft limit
+          memory: 512M       # Soft limit
     networks:
       - local
       - api_network
