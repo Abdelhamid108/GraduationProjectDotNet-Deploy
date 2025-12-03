@@ -13,7 +13,7 @@ pipeline {
         REGISTRY              = 'abdelhameed208'
         BACKEND_IMAGE         = 'graduationproject-backend'
         WEB_SERVER_IMAGE      = 'graduationproject-nginx'
-        DOCKER_CREDENTIALS_ID = credentials('docker-hub-cred')
+        DOCKER_CREDENTIALS_ID = 'docker-hub-cred'
     }
 
     stages {

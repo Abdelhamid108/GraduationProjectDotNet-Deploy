@@ -40,5 +40,5 @@ ENV DOTNET_GCHeapHardLimit=0x60000000
 # Enable concurrent GC for better responsiveness
 ENV DOTNET_gcConcurrent=1
 
-# SET entry point
+# Set entry point
 ENTRYPOINT ["dotnet", "GraduationProjectWebApplication.dll"]

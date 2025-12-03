@@ -2,7 +2,7 @@
 FROM nginx:alpine
 
 # Copy a custom Nginx configuration file from the host into the container
-# This file will be placed in the /etc/nginx/conf.d/ directory, where Nginx automatically includes it
+# this file will be placed in the /etc/nginx/conf.d/ directory, where Nginx automatically includes it
 COPY ./nginx-proxy.conf /etc/nginx/conf.d/
 
 # Inform Docker that the container listens on the specified network ports at runtime
