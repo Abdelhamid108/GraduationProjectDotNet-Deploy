@@ -269,10 +269,10 @@ namespace GraduationProjectWebApplication
             });
 
 
-            /*=================== CORS ===================*/
+            /*=================== Private-CORS ===================*/
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowFrontend", policy =>
+                options.AddPolicy("AllowPrivateCORS", policy =>
                 {
                     policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500")
                           .AllowAnyHeader()
@@ -280,6 +280,21 @@ namespace GraduationProjectWebApplication
                           .AllowCredentials();
                 });
             });
+
+            /*=================== Public-CORS ===================*/
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowPublicCORS", policy =>
+                {
+                    policy
+                        .AllowAnyOrigin()      
+                        .AllowAnyHeader()      
+                        .AllowAnyMethod();     
+                                                
+                });
+            });
+
+
 
             var app = builder.Build();
 
@@ -307,7 +322,7 @@ namespace GraduationProjectWebApplication
             /*=================== Middleware Pipeline ===================*/
             app.UseStaticFiles();
             app.UseRouting();
-            app.UseCors("AllowFrontend");
+            app.UseCors("AllowPublicCORS");
             app.UseAuthentication();
 
             /* ---- Rate Limiter (MUST come here) ---- */
