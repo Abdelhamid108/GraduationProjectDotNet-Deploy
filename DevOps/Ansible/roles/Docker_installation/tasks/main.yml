@@ -1,0 +1,95 @@
+---
+# Checks if Docker is already installed by seeing if the 'docker' command exists
+- name: check docker is installed
+  command : which docker
+  register: docker_check
+  ignore_errors: true # Don't fail if the command doesn't exist
+
+# Installs dependencies needed to add a new apt repository
+- name: install docker dependincies
+  apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+    state: present
+    update_cache: yes
+  when:
+    - docker_check.failed # Only run if docker is not installed
+    - ansible_os_family == "Debian" # Only run on Debian/Ubuntu
+
+# Creates the standard directory for apt GPG keys
+- name: Create directory for Docker GPG keyrings (Debian/Ubuntu)
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when:
+    - docker_check.rc != 0
+    - ansible_os_family == "Debian"
+
+# Downloads Docker's official GPG key
+- name:  Download the Docker GPG key
+  ansible.builtin.get_url:
+      url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+      dest: /etc/apt/keyrings/docker.asc
+      mode: 'a+r' # Make the key readable
+  when:
+    - docker_check.rc != 0
+    - ansible_os_family == "Debian"
+
+# Adds the official Docker repository to apt sources
+- name: Add the repository to Apt sources
+  apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+    filename: docker
+    state: present
+    update_cache: yes
+  when :
+    - docker_check.rc != 0
+    - ansible_os_family == "Debian"
+
+# (Task 4 is a duplicate/redundant cache update, but harmless)
+
+# Adds the Docker yum repository for RedHat-based systems
+- name: add Docker repository
+  ansible.builtin.yum_repository:
+    name: docker-ce-stable
+    state: present
+    baseurl: https://download.docker.com/linux/rhel/9/$basearch/stable/
+    gpgkey: https://download.docker.com/linux/rhel/gpg
+    enabled: yes
+    gpgcheck: yes
+    description: Docker CE repo stable
+  when:
+    - ansible_os_family == "RedHat"
+    - docker_check.rc != 0
+
+# Refreshes the package cache for RedHat
+- name: Clean and rebuild DNF/YUM metadata cache
+  ansible.builtin.dnf:
+    name: '*' 
+    state: latest 
+    update_cache: yes
+  when: ansible_os_family == "RedHat"
+  become: yes
+
+# Installs the Docker packages
+- name: install docker engine
+  ansible.builtin.package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  notify: start_enable_docker # Notifies the handler to start/enable Docker
+
+# Adds the ansible_user (defined in all.yml) to the 'docker' group
+# This allows the user to run 'docker' commands without 'sudo'
+- name: add ansible user for Docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
