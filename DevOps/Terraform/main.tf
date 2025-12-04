@@ -15,8 +15,14 @@ resource "aws_instance" "ema2a_server" {
   instance_type = "c7i-flex.large"
   key_name      = aws_key_pair.devops_ema2a.key_name
   
+  root_block_device {
+    volume_size = 20
+  }
   # Attach the Security Group
   vpc_security_group_ids = [aws_security_group.ema2a_sg.id]
+  tags = {
+       Name = "Ema2a-Server"
+  }
 }
 
 # Create an Elastic IP (EIP) and associate it with the instance

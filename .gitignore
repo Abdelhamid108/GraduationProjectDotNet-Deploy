@@ -11,7 +11,7 @@
 Thumbs.db
 
 # Environment files
-
+DevOps/Ansible/roles/jenkins_master_setup/files/env_file
 .env
 .env.* 
 !.env.example
