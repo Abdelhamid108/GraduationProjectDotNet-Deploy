@@ -1,60 +1,57 @@
-# System Architecture & Flow Overview
-This document provides a technical overview of the project's architecture, container setup, and data flow, intended to help the development team understand how the components interact.
+# DevOps & Infrastructure Guide
 
-## 1. System Architecture
-The application uses a containerized, multi-service architecture to separate concerns and improve scalability.
+This document serves as the central hub for the project's DevOps processes, including infrastructure provisioning and configuration management.
 
-### Core Components:
-- **Frontend (Nginx Reverse Proxy):** Serves static UI files and acts as a secure gateway, routing API requests to the backend.  
-- **Backend (.NET 8 API):** The core application server handling business logic, user authentication, data processing, AI model interaction, and database communication.  
-- **Database (MS SQL Server):** The system's persistent data store for user information, history, etc.  
-- **AI Models:** ONNX models used for sign language translation, loaded directly by the backend service.
+## Overview
 
-### Architecture Diagram
-This diagram shows the high-level interaction between the system's components.
+The project utilizes an automated pipeline for infrastructure and deployment:
+
+1.  **Infrastructure as Code (IaC)**: **Terraform** is used to provision AWS resources (EC2, Networking, Security Groups).
+2.  **Configuration Management**: **Ansible** is used to configure the servers, install dependencies (Docker, Jenkins), and deploy the application.
+
+## Workflow Summary
+
+The general workflow for setting up the environment is as follows:
+
+1.  **Provision Infrastructure**: Use Terraform to create the servers.
+2.  **Generate Inventory**: Terraform automatically creates the Ansible inventory file.
+3.  **Configure Servers**: Use Ansible to set up the software stack on the provisioned servers.
+
+## Detailed Documentation
+
+Please refer to the following detailed guides for specific instructions:
+
+*   **[Terraform Guide](Terraform.md)**: Instructions for provisioning AWS infrastructure.
+    *   Prerequisites & Setup
+    *   Provisioning (Init, Plan, Apply)
+    *   Destruction
+*   **[Ansible Guide](Ansible.md)**: Instructions for server configuration and deployment.
+    *   Inventory & Playbooks
+    *   Running the Deployment
+    *   Troubleshooting & Optimization
+*   **[Pipeline Guide](Pipeline.md)**: Instructions for the Jenkins CI/CD pipeline.
+    *   Configuration & Parameters
+    *   Stages & Logic
+    *   Troubleshooting
+*   **[Docker Guide](Docker.md)**: Details on container configuration and Dockerfiles.
+    *   Compose Services & Networks
+    *   Dockerfile Optimization
+    *   Operational Commands
+
+## Quick Start
+
+### 1. Provision with Terraform
+```bash
+cd DevOps/Terraform
+terraform init
+terraform apply -auto-approve
+```
+
+### 2. Configure with Ansible
+```bash
+cd ../Ansible
+ansible-playbook -i inventory/hosts.ini site.yml
+```
+
 ---
-![System Architecture](https://drive.google.com/uc?id=1i9VWWZD-4O8nzSUBWEwMkehu8Q5qoks_)
----
-
-## 2. Infrastructure & Containerization
-The application is orchestrated using Docker Compose, with the configuration defined in `docker-compose.yml`.
-
-### Service Overview
-
-| Service   | Image/Dockerfile              | Exposed Ports  | Networks             | Key Responsibilities |
-|-----------|-------------------------------|--------------- |----------------------|-----------------------|
-| nginx     | ./nginx-proxy/Dockerfile      | 80, 443        | api_network          | Serves frontend, SSL termination, reverse proxy. |
-| backend   | ./backend/Dockerfile          | 5001           | api_network, local   | Core application logic, API endpoints. |
-| database  | mcr.microsoft.com/mssql/server| -              | local                | Data persistence. |
-
-### Networking
-Two isolated networks manage communication between services:
-- **api_network:** An external-facing network connecting the nginx proxy to the backend.  
-- **local:** A private, internal network allowing the backend to communicate securely with the database, which is not exposed externally.
-
----
-
-## 3. Request & Data Flow
-This section details the journey of a user request through the system.
-
-### Request & Data Flow Diagram
-![System Architecture](https://drive.google.com/uc?id=10Nc3dgP9LYaUgN-DTb4j85_B2quofbRV)
-
----
-
-### Flow Explanation:
-1. **Client Request:** The user's browser sends an HTTPS request to an API endpoint (e.g., `/api/login-user`).  
-2. **SSL Termination & Proxy:** The nginx service receives the request, handles SSL, and inspects the URL path.  
-3. **Routing:** As the path starts with `/api/`, Nginx's configuration forwards the request internally to the backend service at `http://backend:5001`.  
-4. **Business Logic:** The .NET backend processes the request, executing the relevant business logic.  
-5. **Database Interaction:** If necessary, the backend connects to the database over the secure local network to read or write data.  
-6. **Response Generation:** The backend creates a JSON response.  
-7. **Return Journey:** The response is sent back through nginx to the user's browser via HTTPS.
-
----
-
-## 4. API Documentation
-For a detailed guide on all available API endpoints, request bodies, and response schemas, please refer to the **API Documentation**.
-
-
 
