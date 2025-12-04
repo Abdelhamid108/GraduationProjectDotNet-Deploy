@@ -11,7 +11,7 @@
 Thumbs.db
 
 # Environment files
-
+DevOps/Ansible/roles/jenkins_master_setup/files/env_file
 .env
 .env.* 
 !.env.example
@@ -122,3 +122,26 @@ TestResults/
 secrets.json
 secret.json
 config/secrets/
+
+
+
+# ============================
+# 🔒 TERRAFORM
+# ============================
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.tfplan.json
+*backup
+*backup.*
+*.log
+*.bak
+*.swp
+*.swo
+*hosts.ini
+.terraform
+*.terraform.lock*
+
+

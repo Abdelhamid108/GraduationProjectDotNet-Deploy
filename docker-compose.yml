@@ -17,12 +17,12 @@ services:
       # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
       # This ensures the backend service remains available after a reboot or crash.
     deploy:
-    resources:
-      limits:
-        cpus: '2'
-        memory: 2G       # Hard limit
-      reservations:
-        memory: 1G       # Soft limit
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M      # Hard limit
+        reservations:
+          memory: 512M       # Soft limit
     networks:
       - local
       - api_network
@@ -34,7 +34,9 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:5001
       - DEFAULT_CONNECTION=Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
- 
+      - ASPNETCORE_ENVIRONMENT=Development
+  
+
   # Frontend Web Server Service (Nginx)
   nginx:
     image: abdelhameed208/graduationproject-nginx:latest

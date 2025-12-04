@@ -1,0 +1,8 @@
+---
+# This playbook prepares all nodes to be potential Jenkins agents.
+- name: setup a jenkins agent on instance
+  # It targets 'all' hosts, installing Java and creating the 'jenkins' user.
+  hosts: all
+  gather_facts: no
+  roles:
+    - jenkins_agents_setup
