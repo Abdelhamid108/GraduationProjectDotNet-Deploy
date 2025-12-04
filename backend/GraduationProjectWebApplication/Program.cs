@@ -31,7 +31,7 @@ namespace GraduationProjectWebApplication
             var builder = WebApplication.CreateBuilder(args);
             builder.Logging.AddConsole();
 
-            /*================== Env Variables ===================*/
+            /*==================== Env Variables ===================*/
             Env.TraversePath().Load();
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
                 builder.Configuration[env.Key.ToString()] = env.Value?.ToString();
