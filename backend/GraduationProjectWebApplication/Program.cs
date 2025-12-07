@@ -290,10 +290,11 @@ namespace GraduationProjectWebApplication
                 options.AddPolicy("AllowPublicCORS", policy =>
                 {
                     policy
-                        .AllowAnyOrigin()      
-                        .AllowAnyHeader()      
-                        .AllowAnyMethod();     
-                                                
+                        .SetIsOriginAllowed(origin => true)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+
                 });
             });
 
