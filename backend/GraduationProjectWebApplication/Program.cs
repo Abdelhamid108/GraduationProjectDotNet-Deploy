@@ -23,9 +23,6 @@ namespace GraduationProjectWebApplication
 {
     public class Program
     {
-
-        //mabdoon
-
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -67,6 +64,13 @@ namespace GraduationProjectWebApplication
 
             builder.Services.AddDbContext<ApplicationDbContext>(
                 options => options.UseSqlServer(ConnectionString));
+
+            /*=================== Routing Configuration ===================*/
+            builder.Services.AddRouting(options =>
+            {
+                options.LowercaseUrls = true;
+                options.LowercaseQueryStrings = false;
+            });
 
             builder.Services.AddControllers();
             builder.Services.AddSignalR();
@@ -140,13 +144,9 @@ namespace GraduationProjectWebApplication
                 });
             });
 
-            /*===========================================================
-             * RATE LIMITING (CORRECT VERSION)
-             ===========================================================*/
-
+            /*=================== Rate Limiting ===================*/
             builder.Services.AddRateLimiter(options =>
             {
-                /* ---- Global 429 handler ---- */
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 options.OnRejected = async (context, _) =>
                 {
@@ -159,7 +159,6 @@ namespace GraduationProjectWebApplication
                     });
                 };
 
-                /* ---- Registration ---- */
                 options.AddFixedWindowLimiter("RegisterLimiter", limiter =>
                 {
                     limiter.PermitLimit = 5;
@@ -167,7 +166,6 @@ namespace GraduationProjectWebApplication
                     limiter.QueueLimit = 0;
                 });
 
-                /* ---- Login ---- */
                 options.AddPolicy("LoginLimiter", context =>
                     RateLimitPartition.GetTokenBucketLimiter(
                         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -177,12 +175,11 @@ namespace GraduationProjectWebApplication
                             TokensPerPeriod = 5,
                             ReplenishmentPeriod = TimeSpan.FromSeconds(10),
                             AutoReplenishment = true,
-                            QueueLimit = 0 // No queuing, immediate 429
+                            QueueLimit = 0
                         }
                     )
                 );
 
-                /* ---- Refresh tokens ---- */
                 options.AddFixedWindowLimiter("RefreshTokenLimiter", limiter =>
                 {
                     limiter.PermitLimit = 10;
@@ -190,7 +187,6 @@ namespace GraduationProjectWebApplication
                     limiter.QueueLimit = 0;
                 });
 
-                /* ---- Reset password ---- */
                 options.AddFixedWindowLimiter("GetResetPasswordLimiter", limiter =>
                 {
                     limiter.PermitLimit = 3;
@@ -205,7 +201,6 @@ namespace GraduationProjectWebApplication
                     limiter.QueueLimit = 0;
                 });
 
-                /* ---- Other authenticated operations ---- */
                 options.AddFixedWindowLimiter("ChangePasswordLimiter", limiter =>
                 {
                     limiter.PermitLimit = 10;
@@ -268,37 +263,27 @@ namespace GraduationProjectWebApplication
                     limiter.Window = TimeSpan.FromMinutes(1);
                     limiter.QueueLimit = 0;
                 });
-
             });
 
-
-            /*=================== Private-CORS ===================*/
+            /*=================== CORS ===================*/
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowPrivateCORS", policy =>
                 {
                     policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
-                });
-            });
-
-            /*=================== Public-CORS ===================*/
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowPublicCORS", policy =>
-                {
-                    policy
-                        .SetIsOriginAllowed(origin => true)
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();
-
+                });
+                
+                options.AddPolicy("AllowPublicCORS", policy =>
+                {
+                    policy.SetIsOriginAllowed(origin => true)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
-
-
 
             var app = builder.Build();
 
@@ -326,28 +311,17 @@ namespace GraduationProjectWebApplication
             /*=================== Middleware Pipeline ===================*/
             app.UseStaticFiles();
             app.UseRouting();
-            app.UseCors("AllowPublicCORS");
-            app.UseAuthentication();
 
-            /* ---- Rate Limiter (MUST come here) ---- */
-            app.UseRateLimiter();
-
-            /* ---- Custom 429 JSON ---- */
+            // Debug logging (REMOVE IN PRODUCTION)
             app.Use(async (context, next) =>
             {
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {context.Request.Method} {context.Request.Path}");
                 await next();
-
-                if (context.Response.StatusCode == 429)
-                {
-                    context.Response.ContentType = "application/json";
-                    context.Response.Body.SetLength(0);
-
-                    await context.Response.WriteAsync(
-                        "{\"message\": \"Rate limit exceeded. Try again later.\"}"
-                    );
-                }
             });
 
+            app.UseCors("AllowPublicCORS");
+            app.UseRateLimiter();
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
