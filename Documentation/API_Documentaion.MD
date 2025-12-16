@@ -94,7 +94,7 @@ Represents user data.
     
 - `PhoneNumber` (string)
 
-- `ImagePath` (string)
+- `ImagePath` (string) (Nullable)
     
 
 #### `ChangePasswordDTO`
@@ -110,7 +110,9 @@ Used for changing a user's password.
 
 Used for resetting a password with a token.
 
-- `TokenId` (Guid)
+- `OTP` (string)
+
+- `Email` (string)
     
 - `NewPassword` (string)
     
@@ -421,7 +423,7 @@ This controller handles all user authentication, registration, and account manag
 
 - **Method:** `POST`
     
-- **Description:** Sends a password reset token to the user's email address.
+- **Description:** Sends a password reset OTP to the user's email address.
     
 - **Query Parameter:** `email` (string)
     
@@ -463,7 +465,8 @@ This controller handles all user authentication, registration, and account manag
     
     ```
     {
-      "tokenId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "OTP": "123456",
+      "Email": "test@test.com"
       "newPassword": "MyNewSecurePassword123!"
     }
     
