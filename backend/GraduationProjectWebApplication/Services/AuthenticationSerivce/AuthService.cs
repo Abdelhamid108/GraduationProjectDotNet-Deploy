@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OpenCvSharp;
 using Org.BouncyCastle.Utilities.Net;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -214,12 +215,12 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     else
                     {
 
-                        string baseImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
+                        //string baseImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
 
-                        string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                        string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
-                                                           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                                           relative);
+                        //string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                        //string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                        //                                   Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                        //                                   relative);
 
                         ApplicationUser applicationUser = new ApplicationUser()
                         {
@@ -227,7 +228,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                             UserName = registerDTO.UserName,
                             Email = registerDTO.Email,
                             PhoneNumber = registerDTO.PhoneNumber,
-                            ImagePath = baseImagePath,
+                            ImagePath = null,
                             HasImage = false
                         };
 
@@ -245,7 +246,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 await _userManager.AddToRoleAsync(applicationUser, "User");
                             }
 
-                            string Base64Image = await _fileService.ConvertToBase64(baseImageFullPath);
 
                             ApplicationUserDTO applicationUserDTO = new ApplicationUserDTO()
                             {
@@ -253,7 +253,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 UserName = applicationUser.UserName,
                                 Email = applicationUser.Email,
                                 PhoneNumber = applicationUser.PhoneNumber,
-                                ImagePath = Base64Image
+                                ImagePath = null
                             };
 
 
@@ -319,30 +319,38 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
         public async Task<AuthResponse<bool>?> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
         {
+            AuthResponse<bool> authResponse;
+
+            var user = await _userManager.FindByEmailAsync(resetPasswordDTO.Email);
+            if (user == null)
+                return authResponse = new AuthResponse<bool>()
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Invalid user",
+                    Result = false
+                };
+
+
+
             ResetPasswordToken? resetPasswordToken =
-                await _context.ResetPasswordTokens.FirstOrDefaultAsync(t => t.Id == resetPasswordDTO.TokenId);
+                await _context.ResetPasswordTokens
+                .Where(t => t.UserId == user.Id &&
+                            !t.IsUsed &&
+                            t.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(t => t.ExpiresAt)
+                .FirstOrDefaultAsync();
 
-            if (resetPasswordToken == null || resetPasswordToken.IsUsed == true)
+
+            if (resetPasswordToken == null || resetPasswordToken.OtpHash != HashOtp(resetPasswordDTO.OTP))
                 return new AuthResponse<bool>()
                 {
                     IsSuccess = false,
-                    ErrorMessage = "Invaild Token !",
+                    ErrorMessage = "Invaild or expired OTP !",
                     Result = false,
                 };
-
-            if (resetPasswordToken.ExpiresAt <= DateTime.Now)
-                return new AuthResponse<bool>()
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Expired Token !",
-                    Result = false,
-                };
-
-            ApplicationUser? applicationUser = await _context.ApplicationUsers
-                .FirstOrDefaultAsync(a => a.Id == resetPasswordToken.UserId);
 
             var result = await _userManager
-                .ResetPasswordAsync(applicationUser, resetPasswordToken.Token, resetPasswordDTO.NewPassword);
+                .ResetPasswordAsync(user, resetPasswordToken.IdentityToken, resetPasswordDTO.NewPassword);
 
             if (!result.Succeeded)
             {
@@ -369,13 +377,13 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             };
         }
 
-        public async Task<AuthResponse<ResetPasswordToken>?> GenerateResetPasswordTokenAsync(string Email)
+        public async Task<AuthResponse<ResetPasswordTokenDTO>?> GenerateResetPasswordTokenAsync(string Email)
         {
             ApplicationUser? applicationUser = await _userManager.FindByEmailAsync(Email);
 
             if (applicationUser == null)
             {
-                return new AuthResponse<ResetPasswordToken>()
+                return new AuthResponse<ResetPasswordTokenDTO>()
                 {
                     IsSuccess = false,
                     ErrorMessage = "No user with this email found",
@@ -383,21 +391,33 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 };
             }
 
+
+            string identityToken = await _userManager.GeneratePasswordResetTokenAsync(applicationUser);
+            string otp = GenerateOtp();
+
             ResetPasswordToken resetPasswordToken = new ResetPasswordToken()
             {
                 UserId = applicationUser.Id,
-                ExpiresAt = DateTime.Now.AddMinutes(15),
-                Token = await _userManager.GeneratePasswordResetTokenAsync(applicationUser),
-                User = applicationUser
+                ExpiresAt = DateTime.Now.AddMinutes(10),
+                IdentityToken = identityToken,
+                User = applicationUser,
+                OtpHash = HashOtp(otp),
             };
+
 
             _context.ResetPasswordTokens.Add(resetPasswordToken);
             await _context.SaveChangesAsync();
 
-            return new AuthResponse<ResetPasswordToken>()
+            return new AuthResponse<ResetPasswordTokenDTO>()
             {
                 IsSuccess = true,
-                Result = resetPasswordToken,
+                Result = new ResetPasswordTokenDTO()
+                {
+                    Otp = otp,
+                    ExpiresAt = resetPasswordToken.ExpiresAt,
+                    UserEmail = applicationUser.Email,
+                    UserName = applicationUser.UserName,
+                }
             };
         }
 
@@ -668,7 +688,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
             if (applicationUser.Email != updateUserProfileDTO.Email && !string.IsNullOrEmpty(updateUserProfileDTO.Email))
             {
-                var user = await _userManager.FindByEmailAsync(updateUserProfileDTO.Email);    
+                var user = await _userManager.FindByEmailAsync(updateUserProfileDTO.Email);
 
                 if (user == null)
                 {
@@ -792,7 +812,25 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
             return true;
         }
+        private static string GenerateOtp()
+        {
+            using var rng = RandomNumberGenerator.Create();
+            var bytes = new byte[4];
+            rng.GetBytes(bytes);
 
-        
+            int otp = BitConverter.ToInt32(bytes, 0) % 1_000_000;
+            return Math.Abs(otp).ToString("D6");
+        }
+
+
+        private static string HashOtp(string otp)
+        {
+            using var sha = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(otp);
+            return Convert.ToBase64String(sha.ComputeHash(bytes));
+        }
+
+
+
     }
 }
