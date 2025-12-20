@@ -9,7 +9,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
         Task<AuthResponse<TokenResponseDTO>?> LoginAsync(LoginDTO loginDTO);
         Task<AuthResponse<bool>?> ChangePasswordAsync(string userId, ChangePasswordDTO changePasswordDTO);
         Task<AuthResponse<bool>?> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO);
-        Task<AuthResponse<ResetPasswordToken>?> GenerateResetPasswordTokenAsync(string Email);
+        Task<AuthResponse<ResetPasswordTokenDTO>?> GenerateResetPasswordTokenAsync(string Email);
         Task<TokenResponseDTO?> RefreshTokensAsync(TokenRequestDTO tokenRequestDTO);
         Task<bool> RevokeRefreshTokenAsync(string refreshToken);
         Task<bool> RevokeAllUserRefreshTokensAsync(string userId);

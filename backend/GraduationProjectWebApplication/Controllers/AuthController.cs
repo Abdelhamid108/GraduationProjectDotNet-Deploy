@@ -36,7 +36,7 @@ namespace GraduationProjectWebApplication.Controllers
             {
                 if (registerDTO == null)
                 {
-                    return BadRequest(ErrorResponse<ApplicationUserDTO>(authResponse.ErrorMessage));
+                    return BadRequest(ErrorResponse<ApplicationUserDTO>("Null DTO"));
                 }
                 else
                 {
@@ -73,16 +73,6 @@ namespace GraduationProjectWebApplication.Controllers
                     ErrorResponse<ApplicationUserDTO>($"An unexpected error occurred: {ex.Message}"));
             }
 
-        }
-
-
-        // In AuthController (temporary for testing)
-        [HttpPost("login-user-test")]
-        [EnableRateLimiting("LoginLimiter")]
-        public async Task<ActionResult<TokenResponseDTO>> LoginTest(LoginDTO loginDTO)
-        {
-            // Always succeed
-            return Ok(new TokenResponseDTO { AccessToken = "dummy-token", RefreshToken = "sadsa", AccessTokenExpires = DateTime.Now, RefreshTokenExpires = DateTime.Now });
         }
 
 
@@ -170,7 +160,7 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
-                AuthResponse<ResetPasswordToken>? authResponse = new AuthResponse<ResetPasswordToken>();
+                AuthResponse<ResetPasswordTokenDTO>? authResponse = new AuthResponse<ResetPasswordTokenDTO>();
 
                 authResponse = await _authService.GenerateResetPasswordTokenAsync(Email);
 
@@ -178,24 +168,24 @@ namespace GraduationProjectWebApplication.Controllers
                 {
                     if (!authResponse.IsSuccess) return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
 
-                    ResetPasswordToken? resetPasswordToken = authResponse.Result;
+                    ResetPasswordTokenDTO? resetPasswordToken = authResponse.Result;
 
 
                     MailData mailData = new MailData()
                     {
                         EmailToId = Email,
-                        EmailToName = resetPasswordToken.User.UserName,
+                        EmailToName = resetPasswordToken.UserName,
                         EmailSubject = "Reset Your Password",
                         EmailBody = $@"
-                        Hello {resetPasswordToken.User.UserName},
+                        Hello {resetPasswordToken.UserName},
 
                         You recently requested to reset your password.
 
-                        Here is your password reset token:
+                        Here is your password reset OTP:
 
-                        {resetPasswordToken.Id}
+                        {resetPasswordToken.Otp}
 
-                        This token will expire in 15 minutes and can only be used once.
+                        This token will expire in 10 minutes and can only be used once.
 
                         To complete the password reset, copy this token and paste it into the reset form in the app or website.
 
@@ -246,7 +236,7 @@ namespace GraduationProjectWebApplication.Controllers
         {
             try
             {
-                if ( String.IsNullOrEmpty(resetPasswordDTO.NewPassword) || resetPasswordDTO.TokenId == null)
+                if ( String.IsNullOrEmpty(resetPasswordDTO.NewPassword) || resetPasswordDTO.OTP == null)
                     return BadRequest(ErrorResponse<bool>("Invaild token or password"));
 
                 AuthResponse<bool>? authResponse = new AuthResponse<bool>();
