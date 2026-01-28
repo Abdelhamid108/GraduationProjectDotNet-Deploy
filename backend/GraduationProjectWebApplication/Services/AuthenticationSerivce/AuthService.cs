@@ -1,4 +1,5 @@
-﻿using GraduationProject.StaticDetails;
+﻿using Azure;
+using GraduationProject.StaticDetails;
 using GraduationProjectWebApplication.Data;
 using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OpenCvSharp;
 using Org.BouncyCastle.Utilities.Net;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -24,6 +26,10 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IFileService _fileService;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly string _key;
+        private readonly string _issuer;
+
+
         public AuthService(ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IConfiguration config,
@@ -37,6 +43,10 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             _httpContextAccessor = httpContextAccessor;
             _fileService = fileService;
             _webHostEnvironment = webHostEnvironment;
+
+            _key = config["SECRET_KEY"];
+            _issuer = config["ISSUER"];
+
         }
         public async Task<AuthResponse<TokenResponseDTO>?> LoginAsync(LoginDTO loginDTO)
         {
@@ -124,12 +134,19 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
                     if (registerDTO.UserImage != null)
                     {
-                        string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", registerDTO.UserName);
+
+                        string relativePath = Path.Combine("Images", "UserImages", registerDTO.UserName);
+
+                        string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                        string folderPath = Path.Combine(webRootPath, relativePath);
+
                         Directory.CreateDirectory(folderPath);
 
+                        string fileRootPath = Path.Combine("Images", "UserImages", registerDTO.UserName) + Path.DirectorySeparatorChar;
+
                         FileResponse response = await _fileService
-                            .SaveFile(registerDTO.UserImage, folderPath,
-                            @"\Images\UserImages\" + registerDTO.UserName + "\\", AllowedExtensions.AllowedImageExtesnions);
+                            .SaveFile(registerDTO.UserImage, relativePath,
+                            fileRootPath, AllowedExtensions.AllowedImageExtesnions);
 
                         if (!response.IsSuccess)
                             return new AuthResponse<ApplicationUserDTO>()
@@ -198,12 +215,12 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     else
                     {
 
-                        string baseImagePath = @"\Images\UserImages\BaseImage.jpg";
+                        //string baseImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
 
-                        string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                        string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
-                                                           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                                           relative);
+                        //string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                        //string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                        //                                   Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                        //                                   relative);
 
                         ApplicationUser applicationUser = new ApplicationUser()
                         {
@@ -211,7 +228,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                             UserName = registerDTO.UserName,
                             Email = registerDTO.Email,
                             PhoneNumber = registerDTO.PhoneNumber,
-                            ImagePath = baseImagePath,
+                            ImagePath = null,
                             HasImage = false
                         };
 
@@ -229,7 +246,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 await _userManager.AddToRoleAsync(applicationUser, "User");
                             }
 
-                            string Base64Image = await _fileService.ConvertToBase64(baseImageFullPath);
 
                             ApplicationUserDTO applicationUserDTO = new ApplicationUserDTO()
                             {
@@ -237,7 +253,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 UserName = applicationUser.UserName,
                                 Email = applicationUser.Email,
                                 PhoneNumber = applicationUser.PhoneNumber,
-                                ImagePath = Base64Image
+                                ImagePath = null
                             };
 
 
@@ -303,30 +319,38 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
         public async Task<AuthResponse<bool>?> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
         {
+            AuthResponse<bool> authResponse;
+
+            var user = await _userManager.FindByEmailAsync(resetPasswordDTO.Email);
+            if (user == null)
+                return authResponse = new AuthResponse<bool>()
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Invalid user",
+                    Result = false
+                };
+
+
+
             ResetPasswordToken? resetPasswordToken =
-                await _context.ResetPasswordTokens.FirstOrDefaultAsync(t => t.Id == resetPasswordDTO.TokenId);
+                await _context.ResetPasswordTokens
+                .Where(t => t.UserId == user.Id &&
+                            !t.IsUsed &&
+                            t.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(t => t.ExpiresAt)
+                .FirstOrDefaultAsync();
 
-            if (resetPasswordToken == null || resetPasswordToken.IsUsed == true)
+
+            if (resetPasswordToken == null || resetPasswordToken.OtpHash != HashOtp(resetPasswordDTO.OTP))
                 return new AuthResponse<bool>()
                 {
                     IsSuccess = false,
-                    ErrorMessage = "Invaild Token !",
+                    ErrorMessage = "Invaild or expired OTP !",
                     Result = false,
                 };
-
-            if (resetPasswordToken.ExpiresAt <= DateTime.Now)
-                return new AuthResponse<bool>()
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Expired Token !",
-                    Result = false,
-                };
-
-            ApplicationUser? applicationUser = await _context.ApplicationUsers
-                .FirstOrDefaultAsync(a => a.Id == resetPasswordToken.UserId);
 
             var result = await _userManager
-                .ResetPasswordAsync(applicationUser, resetPasswordToken.Token, resetPasswordDTO.NewPassword);
+                .ResetPasswordAsync(user, resetPasswordToken.IdentityToken, resetPasswordDTO.NewPassword);
 
             if (!result.Succeeded)
             {
@@ -353,13 +377,13 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             };
         }
 
-        public async Task<AuthResponse<ResetPasswordToken>?> GenerateResetPasswordTokenAsync(string Email)
+        public async Task<AuthResponse<ResetPasswordTokenDTO>?> GenerateResetPasswordTokenAsync(string Email)
         {
             ApplicationUser? applicationUser = await _userManager.FindByEmailAsync(Email);
 
             if (applicationUser == null)
             {
-                return new AuthResponse<ResetPasswordToken>()
+                return new AuthResponse<ResetPasswordTokenDTO>()
                 {
                     IsSuccess = false,
                     ErrorMessage = "No user with this email found",
@@ -367,21 +391,33 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 };
             }
 
+
+            string identityToken = await _userManager.GeneratePasswordResetTokenAsync(applicationUser);
+            string otp = GenerateOtp();
+
             ResetPasswordToken resetPasswordToken = new ResetPasswordToken()
             {
                 UserId = applicationUser.Id,
-                ExpiresAt = DateTime.Now.AddMinutes(15),
-                Token = await _userManager.GeneratePasswordResetTokenAsync(applicationUser),
-                User = applicationUser
+                ExpiresAt = DateTime.Now.AddMinutes(10),
+                IdentityToken = identityToken,
+                User = applicationUser,
+                OtpHash = HashOtp(otp),
             };
+
 
             _context.ResetPasswordTokens.Add(resetPasswordToken);
             await _context.SaveChangesAsync();
 
-            return new AuthResponse<ResetPasswordToken>()
+            return new AuthResponse<ResetPasswordTokenDTO>()
             {
                 IsSuccess = true,
-                Result = resetPasswordToken,
+                Result = new ResetPasswordTokenDTO()
+                {
+                    Otp = otp,
+                    ExpiresAt = resetPasswordToken.ExpiresAt,
+                    UserEmail = applicationUser.Email,
+                    UserName = applicationUser.UserName,
+                }
             };
         }
 
@@ -515,6 +551,194 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 TokenResponseDTO = tokenResponseDTO,
             };
         }
+        public async Task<AuthResponse<string>> UpdateUserImage(string userId, IFormFile newImage)
+        {
+            ApplicationUser? applicationUser = await _context.ApplicationUsers
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (applicationUser == null)
+                return new AuthResponse<string>()
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "No Such User",
+                    Result = string.Empty
+                };
+
+            string relativePath = Path.Combine("Images", "UserImages", applicationUser.UserName);
+            string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            string folderPath = Path.Combine(webRootPath, relativePath);
+
+            if (!applicationUser.HasImage)
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            string fileRootPath = Path.Combine("Images", "UserImages", applicationUser.UserName) + Path.DirectorySeparatorChar;
+
+            var updateFileResponse = await _fileService
+                    .UpdateFile(newImage, applicationUser.ImagePath, relativePath,
+                    fileRootPath,
+                    AllowedExtensions.AllowedImageExtesnions);
+
+            if (!updateFileResponse.IsSuccess)
+                return new AuthResponse<string>()
+                {
+                    IsSuccess = false,
+                    ErrorMessage = $"Invalid image type. Only .jpg, .jpeg, and .png files are allowed.",
+                    Result = string.Empty
+                };
+
+            applicationUser.ImagePath = updateFileResponse.Path;
+            applicationUser.HasImage = true;
+
+            _context.ApplicationUsers.Update(applicationUser);
+            await _context.SaveChangesAsync();
+
+
+            string relative = updateFileResponse.Path.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                               relative);
+
+            string Base64Image = await _fileService.ConvertToBase64(imageFullPath);
+
+            return new AuthResponse<string>()
+            {
+                IsSuccess = true,
+                Result = Base64Image
+            };
+        }
+        public async Task<AuthResponse<UserProfileDTO>> GetUserProfile(string userId)
+        {
+            ApplicationUser? applicationUser = await _context.ApplicationUsers
+                           .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (applicationUser == null)
+            {
+                return new AuthResponse<UserProfileDTO>()
+                {
+                    ErrorMessage = "No Such User",
+                    Result = null,
+                    IsSuccess = false
+                };
+            }
+
+            string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                               relative);
+            string base64Image = string.Empty;
+
+            if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+            {
+                base64Image = await _fileService.ConvertToBase64(imageFullPath);
+            }
+
+            UserProfileDTO userProfileDTO = new UserProfileDTO()
+            {
+                UserName = applicationUser.UserName,
+                Email = applicationUser.Email,
+                PhoneNumber = applicationUser.PhoneNumber,
+                ImagePath = base64Image,
+                FullName = applicationUser.FullName,
+            };
+
+            return new AuthResponse<UserProfileDTO>()
+            {
+                IsSuccess = true,
+                Result = userProfileDTO
+            };
+        }
+        public async Task<AuthResponse<UserProfileDTO>?> UpdateUserProfile(string userId, UpdateUserProfileDTO updateUserProfileDTO)
+        {
+            ApplicationUser? applicationUser = await _context.ApplicationUsers
+                           .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (applicationUser == null)
+            {
+                return new AuthResponse<UserProfileDTO>()
+                {
+                    ErrorMessage = "No Such User",
+                    Result = null,
+                    IsSuccess = false
+                };
+            }
+
+            if (applicationUser.FullName != updateUserProfileDTO.FullName && !string.IsNullOrEmpty(updateUserProfileDTO.FullName))
+            {
+                applicationUser.FullName = updateUserProfileDTO.FullName;
+            }
+
+            if (applicationUser.UserName != updateUserProfileDTO.UserName && !string.IsNullOrEmpty(updateUserProfileDTO.UserName))
+            {
+                if (UserNameUnique(updateUserProfileDTO.UserName))
+                {
+                    applicationUser.UserName = updateUserProfileDTO.UserName;
+                }
+                else
+                {
+                    return new AuthResponse<UserProfileDTO>()
+                    {
+                        ErrorMessage = "This user name is already taken",
+                        Result = null,
+                        IsSuccess = false
+                    };
+                }
+            }
+
+            if (applicationUser.Email != updateUserProfileDTO.Email && !string.IsNullOrEmpty(updateUserProfileDTO.Email))
+            {
+                var user = await _userManager.FindByEmailAsync(updateUserProfileDTO.Email);
+
+                if (user == null)
+                {
+                    applicationUser.Email = updateUserProfileDTO.Email;
+                }
+                else
+                {
+                    return new AuthResponse<UserProfileDTO>()
+                    {
+                        ErrorMessage = "A user with this email already exists",
+                        Result = null,
+                        IsSuccess = false
+                    };
+                }
+            }
+
+            if (applicationUser.PhoneNumber != updateUserProfileDTO.PhoneNumber && !string.IsNullOrEmpty(updateUserProfileDTO.PhoneNumber))
+            {
+                applicationUser.PhoneNumber = updateUserProfileDTO.PhoneNumber;
+            }
+
+            _context.ApplicationUsers.Update(applicationUser);
+            await _context.SaveChangesAsync();
+
+
+            string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                               relative);
+            string base64Image = string.Empty;
+
+            if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+            {
+                base64Image = await _fileService.ConvertToBase64(imageFullPath);
+            }
+
+            return new AuthResponse<UserProfileDTO>()
+            {
+                IsSuccess = true,
+                Result = new UserProfileDTO()
+                {
+                    ImagePath = base64Image,
+                    Email = applicationUser.Email,
+                    UserName = applicationUser.UserName,
+                    FullName = applicationUser.FullName,
+                    PhoneNumber = applicationUser.PhoneNumber,
+                }
+            };
+        }
+
         private bool UserNameUnique(string userName)
         {
             bool result = false;
@@ -543,14 +767,13 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.GetValue<string>("AppSettings:SecretKey")));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
 
             var tokenDescriptor = new JwtSecurityToken
                 (
-                    issuer: _config.GetValue<string>("AppSettings:Issuer"),
-                    audience: _config.GetValue<string>("AppSettings:Audience"),
+                    issuer: _issuer,
                     claims: claims,
                     signingCredentials: creds,
                     expires: DateTime.Now.AddMinutes(30)
@@ -589,63 +812,25 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
             return true;
         }
-
-        public async Task<AuthResponse<string>> UpdateUserImage(string userId, IFormFile newImage)
+        private static string GenerateOtp()
         {
-            ApplicationUser? applicationUser = await _context.ApplicationUsers
-                .FirstOrDefaultAsync(u => u.Id == userId);
+            using var rng = RandomNumberGenerator.Create();
+            var bytes = new byte[4];
+            rng.GetBytes(bytes);
 
-            if (applicationUser == null)
-                return new AuthResponse<string>()
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "No Such User",
-                    Result = string.Empty
-                };
-
-            string folderPath = string.Empty;
-
-            if (applicationUser.HasImage)
-            {
-                folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", applicationUser.UserName);
-            }
-            else
-            {
-                folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", applicationUser.UserName);
-                Directory.CreateDirectory(folderPath);
-            }
-
-            var updateFileResponse = await _fileService
-                    .UpdateFile(newImage, applicationUser.ImagePath, folderPath,
-                    @"\Images\UserImages\" + applicationUser.UserName + "\\",
-                    AllowedExtensions.AllowedImageExtesnions);
-
-            if (!updateFileResponse.IsSuccess)
-                return new AuthResponse<string>()
-                {
-                    IsSuccess = false,
-                    ErrorMessage = $"Invalid image type. Only .jpg, .jpeg, and .png files are allowed.",
-                    Result = string.Empty
-                };
-
-            applicationUser.ImagePath = updateFileResponse.Path;
-
-            _context.ApplicationUsers.Update(applicationUser);
-            await _context.SaveChangesAsync();
-
-
-            string relative = updateFileResponse.Path.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
-                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                               relative);
-
-            string Base64Image = await _fileService.ConvertToBase64(imageFullPath);
-
-            return new AuthResponse<string>()
-            {
-                IsSuccess = true,
-                Result = Base64Image
-            };
+            int otp = BitConverter.ToInt32(bytes, 0) % 1_000_000;
+            return Math.Abs(otp).ToString("D6");
         }
+
+
+        private static string HashOtp(string otp)
+        {
+            using var sha = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(otp);
+            return Convert.ToBase64String(sha.ComputeHash(bytes));
+        }
+
+
+
     }
 }

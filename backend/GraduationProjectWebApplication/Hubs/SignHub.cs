@@ -1,5 +1,7 @@
-﻿using GraduationProjectWebApplication.Services.LettersModelService;
+﻿using GraduationProjectWebApplication.Models.DTOs;
+using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.IdentityModel.Tokens;
 
 namespace GraduationProjectWebApplication.Hubs
 {
@@ -13,7 +15,7 @@ namespace GraduationProjectWebApplication.Hubs
         }
 
         // The client sends base64 frames here
-        public async Task ProcessFrame(string base64Image)
+        public async Task ProcessFrame(FrameData frameData)
         {
             try
             {
@@ -21,14 +23,14 @@ namespace GraduationProjectWebApplication.Hubs
 
                 Console.WriteLine("\n================================= HUB CONNECTED =============================\n");
 
-                if (string.IsNullOrEmpty(base64Image))
+                if (string.IsNullOrEmpty(frameData.ImageData))
                 {
                     await Clients.Caller.SendAsync("ReceiveTranslation", "Invalid image");
                     return;
                 }
 
                 byte[] imageBytes = Convert.FromBase64String(
-                    base64Image.Replace("data:image/jpeg;base64,", "")
+                    frameData.ImageData.Replace("data:image/jpeg;base64,", "")
                 );
 
                 var modelDetection = await _modelService.ModelRunner(imageBytes);

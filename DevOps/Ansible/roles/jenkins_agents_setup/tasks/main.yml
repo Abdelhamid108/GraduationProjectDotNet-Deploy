@@ -1,0 +1,49 @@
+---
+# Installs packages required for Jenkins agents (like SSH server)
+- name: Ensure the necessary packages are present
+  ansible.builtin.package:
+    name:
+      - wget
+      - gpg
+      - openssh-server # Needed for Jenkins to SSH into the agent
+      - fontconfig     # Dependency for Java
+    update_cache: yes
+    state: present
+  notify: start_sshd # Notifies handler to start/enable sshd
+
+# -- This block installs Java (JDK 21) --
+
+- name: Download the Eclipse Adoptium GPG key
+  ansible.builtin.get_url:
+    url: https://packages.adoptium.net/artifactory/api/gpg/key/public
+    dest: /etc/apt/keyrings/adoptium.asc
+    mode: 'a+r'
+  when: ansible_distribution in ["Debian", "Ubuntu"]
+
+- name: Add Adoptium repo
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb  {{ ansible_distribution_release }} main"
+    state: present
+    filename: adoptium
+    update_cache: yes
+  when: ansible_distribution in ["Debian", "Ubuntu"]
+
+- name: Add multiple repositories into the same file (
+  ansible.builtin.yum_repository:
+    name: Adoptium
+    description: Adoptium YUM repo
+    baseurl: "https://packages.adoptium.net/artifactory/rpm/rhel/9/$basearch"
+    gpgcheck: yes
+    enabled: yes
+    gpgkey: "https://packages.adoptium.net/artifactory/api/gpg/key/public"
+  when: ansible_os_family == "RedHat"
+
+- name: install java(jdk)
+  ansible.builtin.package:
+    name:
+      - temurin-21-jdk # Installs JDK 21
+    state: present
+  notify: start_sshd
+
+# -- End of Java Install --
+
