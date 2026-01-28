@@ -1,5 +1,4 @@
 
-
 This document provides a comprehensive guide to the API, detailing the available endpoints, required parameters, and response formats to help you integrate our service into your applications.
 
 ### API Response Structure
@@ -26,6 +25,11 @@ All API endpoints return a standardized `APIResponseDTO` object, which provides 
     
 - `statusCode`: The HTTP status code of the response.
     
+
+### Base URL
+
+https://34.18.112.76/
+
 
 ### Authentication
 
@@ -90,7 +94,7 @@ Represents user data.
     
 - `PhoneNumber` (string)
 
-- `ImagePath` (string)
+- `ImagePath` (string) (Nullable)
     
 
 #### `ChangePasswordDTO`
@@ -106,7 +110,9 @@ Used for changing a user's password.
 
 Used for resetting a password with a token.
 
-- `TokenId` (Guid)
+- `OTP` (string)
+
+- `Email` (string)
     
 - `NewPassword` (string)
     
@@ -124,6 +130,27 @@ Used for google login.
 - `TokenResponseDTO` (object)
     
 - `Base64Image` (string)
+
+### **UpdateUserProfileDTO**
+
+Used for updating user profile information.  
+All fields are optional — only the fields that need to be updated should be sent.
+
+- `FullName` (string?)
+- `Email` (string?)
+- `PhoneNumber` (string?)
+- `UserName` (string?)
+
+### **UserProfileDTO**
+
+Represents a user's profile information.
+
+- `FullName` (string)
+- `Email` (string)
+- `ImagePath` (string) — Base64-encoded image
+- `PhoneNumber` (string)
+- `UserName` (string)
+
 
 ### **2. Sign Language Translator Controller**
 
@@ -219,6 +246,8 @@ This controller handles all user authentication, registration, and account manag
 #### 1. Register a New User
 
 - **Endpoint:** `/register-user`
+
+- **Route:** `https://34.18.112.76/api/Auth/register-user`
     
 - **Method:** `POST`
     
@@ -279,6 +308,8 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/login-user`
     
+- **Route:** `https://34.18.112.76/api/Auth/login-user`
+
 - **Method:** `POST`
     
 - **Description:** Authenticates a user and returns a new access and refresh token.
@@ -333,6 +364,8 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/refresh-tokens`
     
+- **Route:** `https://34.18.112.76/api/Auth/refresh-tokens`
+
 - **Method:** `POST`
     
 - **Description:** Renews the access and refresh tokens using an existing refresh token.
@@ -386,9 +419,11 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/get-reset-password-token`
     
+- **Route:** `https://34.18.112.76/api/Auth/get-reset-password-token`
+
 - **Method:** `POST`
     
-- **Description:** Sends a password reset token to the user's email address.
+- **Description:** Sends a password reset OTP to the user's email address.
     
 - **Query Parameter:** `email` (string)
     
@@ -419,6 +454,8 @@ This controller handles all user authentication, registration, and account manag
 #### 5. Reset Password
 
 - **Endpoint:** `/reset-password`
+
+- **Route:** `https://34.18.112.76/api/Auth/reset-password`
     
 - **Method:** `POST`
     
@@ -428,7 +465,8 @@ This controller handles all user authentication, registration, and account manag
     
     ```
     {
-      "tokenId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "OTP": "123456",
+      "Email": "test@test.com"
       "newPassword": "MyNewSecurePassword123!"
     }
     
@@ -455,6 +493,8 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/change-password`
     
+- **Route:** `https://34.18.112.76/api/Auth/change-password`
+
 - **Method:** `POST`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -491,6 +531,8 @@ This controller handles all user authentication, registration, and account manag
 #### 7. Login with Google
 
 - **Endpoint:** `/login-google`
+
+- **Route:** `https://34.18.112.76/api/Auth/login-google`
     
 - **Method:** `GET`
     
@@ -501,6 +543,8 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/google-callback`
     
+- **Route:** `https://34.18.112.76/api/Auth/google-callback`
+
 - **Method:** `GET`
     
 - **Description:** The callback URL that Google redirects to after a successful login. The API verifies Google authentication, extracts user details (email, name, Google ID, phone if available), processes them via the authentication service, and returns a new access and refresh token pair along with optional profile data (Base64 image). This endpoint should not be called directly.
@@ -533,6 +577,8 @@ This controller handles all user authentication, registration, and account manag
 
 - **Endpoint:** `/logout`
     
+- **Route:** `https://34.18.112.76/api/Auth/logout`
+
 - **Method:** `POST`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -564,6 +610,119 @@ This controller handles all user authentication, registration, and account manag
     
     ```
     
+#### 10. Change User Image (Authorized)
+
+- **Endpoint:** `/update-user-image`
+    
+- **Route:** `https://34.18.112.76/api/Auth/update-user-image`
+
+- **Method:** `POST`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** updates user's profile photo.
+    
+- **Request Body (`IFormFile`):**
+    
+- **Success Response (200 OK):** `APIResponseDTO<string>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data": string, base64 encoded image,
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
+
+#### 11. Get User Profile (Authorized)
+
+- **Endpoint:** `/user-profile`
+    
+- **Route:** `https://34.18.112.76/api/Auth/user-profile`
+
+- **Method:** `GET`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** Displays user's data.
+        
+- **Success Response (200 OK):** `APIResponseDTO<UserProfileDTO>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data":  {
+        "FullName": ,
+        "Email": ,
+        "ImagePath": string, base64 encoded image,
+        "PhoneNumber": ,
+        "UserName": ,
+      },
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
+
+    #### 11. Update User Profile (Authorized)
+
+- **Endpoint:** `/update-user-profile`
+    
+- **Route:** `https://34.18.112.76/api/Auth/update-user-profile`
+
+- **Method:** `Post`
+    
+- **Authentication:** Requires a valid access token in the `Authorization` header.
+    
+- **Description:** Updates user's data.
+        
+- **Request Body (`UpdateUserProfileDTO`):**
+
+- **Success Response (200 OK):** `APIResponseDTO<UserProfileDTO>`
+    
+    ```
+    {
+      "errorMessage": "",
+      "data":  {
+        "FullName": ,
+        "Email": ,
+        "ImagePath": string, base64 encoded image,
+        "PhoneNumber": ,
+        "UserName": ,
+      },
+      "success": true,
+      "statusCode": 200
+    }
+    
+    
+    
+    ```
+
+
+#### Sign Hub 
+
+for realtime processing using web sockets
+
+- **Route:** `https://34.18.112.76/api/signHub`
+
+- **Request Body (`FrameData`):**
+
+   ```
+    {
+      "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJ..."
+    }
+     
+  ```
+
+  - **Success Response (200 OK):** string ClassLabelArabic (the arabic letter)
+
+
 
 #### Sign Language Translator Controller
 
@@ -572,6 +731,8 @@ This controller handles the sign language translation, sentence correction, and 
 #### 1. Translate Sign
 
 - **Endpoint:** `/`
+
+- **Route:** `https://34.18.112.76`
     
 - **Method:** `POST`
     
@@ -620,6 +781,8 @@ This controller handles the sign language translation, sentence correction, and 
 
 - **Endpoint:** `/CorrectSentence`
     
+- **Route:** `https://34.18.112.76/api/SignLanguageTranslator/CorrectSentence`
+
 - **Method:** `POST`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -658,6 +821,8 @@ This controller handles the sign language translation, sentence correction, and 
 
 - **Endpoint:** `/GenerateAudio`
     
+- **Route:** `https://34.18.112.76/api/SignLanguageTranslator/GenerateAudio`
+
 - **Method:** `POST`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -695,6 +860,8 @@ This controller handles the sign language translation, sentence correction, and 
 
 **Endpoint:** `/finalize-sentence`
     
+- **Route:** `https://34.18.112.76/api/SignLanguageTranslator/finalize-sentence`
+
 - **Method:** `POST`
         
 - **Description:** but spaces in the correct places.
@@ -722,6 +889,66 @@ This controller handles the sign language translation, sentence correction, and 
     
     ```
 
+#### 5.Text to Audio (Finalize Sentence → Generate Speech)
+
+- **Endpoint**: `/text-to-audio`
+
+- **Route**: `https://YOUR_DOMAIN/api/SignLanguageTranslator/text-to-audio`
+
+- **Method**: `POST`
+
+- **Description:**
+
+This endpoint performs a two–step processing pipeline:
+
+Arabic Sentence Finalization
+
+Takes a string of concatenated Arabic letters (from Sign Language recognition).
+
+Uses Gemini to insert spaces, correct grammar, and form a readable sentence.
+
+Text-to-Speech Generation
+
+Converts the finalized Arabic sentence into a spoken audio file.
+
+Returns audio as base64-encoded PCM/WAV data and sample rate.
+
+- **Request Body (`SentenceData`):**
+
+{
+  "sentence": "مرحبابكفيك"
+}
+
+
+- **Success Response (200 OK):** `APIResponseDTO<TTSResponse>`
+
+{
+  "errorMessage": "",
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "success": true,
+  "statusCode": 200
+}
+
+- **Possible Error Responses:**
+
+{
+  "errorMessage": "Missing 'Sentence' field in request body.",
+  "data": null,
+  "success": false,
+  "statusCode": 400
+}
+
+
+{
+  "errorMessage": "Unexpected error occurred while processing the request.",
+  "data": null,
+  "success": false,
+  "statusCode": 500
+}
+
 
 #### Arabic Language Translator Controller
 
@@ -731,6 +958,8 @@ This controller provides endpoints for text-to-sign translation, audio-to-text t
 
 - **Endpoint:** `/text-to-sign`
     
+- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/text-to-sign`
+
 - **Method:** `POST`
     
 - **Description:** Converts a given Arabic text into a list of base64-encoded sign images, grouped by word.
@@ -784,6 +1013,8 @@ This controller provides endpoints for text-to-sign translation, audio-to-text t
 
 - **Endpoint:** `/audio-to-text`
     
+- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/audio-to-text`
+
 - **Method:** `POST`
     
 - **Description:** Transcribes audio data into Arabic text using a language model.
@@ -827,6 +1058,8 @@ This controller provides endpoints for text-to-sign translation, audio-to-text t
 
 - **Endpoint:** `/letters-keyboard`
     
+- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/letters-keyboard`
+
 - **Method:** `GET`
     
 - **Description:** Retrieves the base64-encoded image for a single Arabic letter.
@@ -868,6 +1101,9 @@ This controller manages user history records, including retrieving, deleting ind
 
 - **Endpoint:** `/get-user-history`
     
+- **Route:** `https://34.18.112.76/api/UserHistory/get-user-history`
+
+
 - **Method:** `GET`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -912,6 +1148,8 @@ This controller manages user history records, including retrieving, deleting ind
 
 - **Endpoint:** `/delete-user-history-record`
     
+- **Route:** `https://34.18.112.76/api/UserHistory/delete-user-history-record`
+
 - **Method:** `DELETE`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.
@@ -953,6 +1191,8 @@ This controller manages user history records, including retrieving, deleting ind
 
 - **Endpoint:** `/delete-all-user-history`
     
+- **Route:** `https://34.18.112.76/api/UserHistory/delete-all-user-history`
+
 - **Method:** `DELETE`
     
 - **Authentication:** Requires a valid access token in the `Authorization` header.

@@ -1,0 +1,17 @@
+---
+# Variables for the 'jenkins_master_setup' role
+
+# This list defines all plugins that will be automatically installed
+# by the 'install plugin' task in the role.
+jenkins_plugins:
+  - git
+  - workflow-aggregator
+  - github
+  - docker-plugin
+  - slack
+  - ssh-agent
+  - credentials-binding
+  - docker-workflow
+  - aws-credentials
+  - multibranch-scan-webhook-trigger
+  - multibranch-build-strategy-extension

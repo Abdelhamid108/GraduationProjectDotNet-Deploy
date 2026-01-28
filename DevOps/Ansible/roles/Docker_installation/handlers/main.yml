@@ -1,0 +1,7 @@
+---
+# This handler is triggered by the 'install docker engine' task.
+- name: start_enable_docker
+  service:
+    name: docker
+    state: started # Ensures the Docker service is running
+    enabled: yes # Ensures Docker starts on boot
