@@ -170,7 +170,7 @@ namespace GraduationProjectWebApplication.Controllers
                 string jsonPayload = JsonSerializer.Serialize(payload);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={correctSentenceAPIKey}";
+                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
 
                 HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
                 response.EnsureSuccessStatusCode();
@@ -463,7 +463,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var finalizeContent = new StringContent(jsonFinalize, Encoding.UTF8, "application/json");
 
                 string finalizeUrl =
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={correctSentenceAPIKey}";
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
 
                 var finalizeResponse = await _httpClient.PostAsync(finalizeUrl, finalizeContent);
                 finalizeResponse.EnsureSuccessStatusCode();
