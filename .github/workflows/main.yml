@@ -1,0 +1,94 @@
+name: Ema2a-Pipeline
+on:
+  push:
+    branches:
+      - "DEV"
+      - "main"
+    paths:
+      - "backend/**" 
+      - "nginx-proxy/**"
+      - "docker-compose.yml"
+env:
+  REGISTRY: 'abdelhameed208'
+  BACKEND_IMAGE: 'graduationproject-backend'
+  WEB_SERVER_IMAGE: 'graduationproject-nginx'
+  # DOCKER_CREDENTIALS_ID is not needed for GitHub Actions (we use secrets directly)
+  
+jobs:
+  build-push-images:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: download-code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Download full history for version counting
+          
+      - name: check what changed
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            web-server:
+              - 'nginx-proxy/**'
+            docker-compose:
+              - 'docker-compose.yml'
+
+      - name: sign to docker hub
+        # Run login if EITHER backend OR web-server changed
+        if: steps.changes.outputs.backend == 'true' || steps.changes.outputs.web-server == 'true' 
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # ----------------------------------------
+      # BUILD BACKEND
+      # ----------------------------------------
+      - name: build and push backend image 
+        if: steps.changes.outputs.backend == 'true'
+        run: | 
+          # 1. Get the commit count
+          BACKEND_COUNT=$(git rev-list --count HEAD backend/ || echo "0")
+          
+          # 2. Get the short commit hash
+          BACKEND_SHORT_SHA=$(git rev-parse --short HEAD)
+          
+          # 3. Create Tag
+          BACKEND_TAG="v1.0-${BACKEND_COUNT}-${BACKEND_SHORT_SHA}"  
+          echo "Calculated tag: $BACKEND_TAG"
+
+          # 4. Build & Push Specific Version
+          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ./backend
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG
+
+          # 5. Build & Push Latest
+          docker tag ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+      
+      # ----------------------------------------
+      # BUILD WEB SERVER (NGINX)
+      # ----------------------------------------
+      - name: build and push WEB_SERVER images 
+        if: steps.changes.outputs.web-server == 'true'
+        run: | 
+          # 1. Get the commit count
+          WEB_SERVER_COUNT=$(git rev-list --count HEAD nginx-proxy/ || echo "0")
+          
+          # 2. Get the short commit hash
+          WEB_SERVER_SHORT_SHA=$(git rev-parse --short HEAD)
+          
+          # 3. Create Tag (Fixed variable name mismatch here)
+          WEB_SERVER_TAG="v1.0-${WEB_SERVER_COUNT}-${WEB_SERVER_SHORT_SHA}"  
+          echo "Calculated tag: $WEB_SERVER_TAG"
+
+          # 4. Build & Push Specific Version
+          docker build -t ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ./nginx-proxy
+          docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG
+
+          
+
+          # 5. Build & Push Latest
+          docker tag ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
