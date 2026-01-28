@@ -1,6 +1,5 @@
 name: Ema2a-Pipeline
 on:
-  # 1. Automatic Trigger
   push:
     branches:
       - "DEV"
@@ -9,8 +8,6 @@ on:
       - "backend/**"
       - "nginx-proxy/**"
       - "docker-compose.yml"
-
-  # 2. Manual Trigger (Must be at the same level as 'push')
   workflow_dispatch:
     inputs:
       FiRST-RUN:
@@ -25,11 +22,14 @@ env:
   WEB_SERVER_IMAGE: 'graduationproject-nginx'
 
 jobs:
+  # ====================================================
+  # JOB 1: BUILD & PUSH
+  # ====================================================
   build-push-images:
     runs-on: ubuntu-24.04
     steps:
       - name: download-code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2  # Use latest stable checkout version
         with:
           fetch-depth: 0 
 
@@ -46,7 +46,6 @@ jobs:
               - 'docker-compose.yml'
 
       - name: sign to docker hub
-        # Logic: Login if (Backend Changed) OR (Web Changed) OR (Manual First Run is True)
         if: |
           steps.changes.outputs.backend == 'true' || 
           steps.changes.outputs.web-server == 'true' || 
@@ -56,51 +55,88 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # ----------------------------------------
-      # BUILD BACKEND
-      # ----------------------------------------
+      # --- BACKEND ---
       - name: build and push backend image 
-        # Logic: Build if (Backend Changed) OR (Manual First Run is True)
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
         run: | 
-          # 1. Get the commit count
           BACKEND_COUNT=$(git rev-list --count HEAD backend/ || echo "0")
-          
-          # 2. Get the short commit hash
           BACKEND_SHORT_SHA=$(git rev-parse --short HEAD)
-          
-          # 3. Create Tag
           BACKEND_TAG="v1.0-${BACKEND_COUNT}-${BACKEND_SHORT_SHA}"  
           echo "Calculated tag: $BACKEND_TAG"
 
-          # 4. Build & Push
           docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ./backend
           docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG
-
-          # 5. Tag Latest
+          
           docker tag ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
       
-      # ----------------------------------------
-      # BUILD WEB SERVER
-      # ----------------------------------------
+      # --- WEB SERVER ---
       - name: build and push WEB_SERVER images 
         if: steps.changes.outputs.web-server == 'true' || inputs.FiRST-RUN == true
         run: | 
-          # 1. Get the commit count
           WEB_SERVER_COUNT=$(git rev-list --count HEAD nginx-proxy/ || echo "0")
-          
-          # 2. Get the short commit hash
           WEB_SERVER_SHORT_SHA=$(git rev-parse --short HEAD)
-          
-          # 3. Create Tag
           WEB_SERVER_TAG="v1.0-${WEB_SERVER_COUNT}-${WEB_SERVER_SHORT_SHA}"  
           echo "Calculated tag: $WEB_SERVER_TAG"
 
-          # 4. Build & Push
           docker build -t ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ./nginx-proxy
           docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG
 
-          # 5. Tag Latest
           docker tag ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
+
+  # ====================================================
+  # JOB 2: DEPLOY
+  # ====================================================
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: build-push-images       # CRITICAL: Wait for build to finish
+    if: success() 
+    steps:
+      - name: checkout_code
+        uses: actions/checkout@v6.0.2
+
+      - name: generate-env-file
+        run: |
+          # Generate .env file from GitHub Secret
+          echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" > .env
+          ls -la
+
+      # 1. Ensure target directory exists
+      - name: ensure app folder created 
+        uses: appleboy/ssh-action@v1.0.3 
+        with:
+          host: ${{ secrets.EMA2A_SSH_HOST }}
+          username: ${{ secrets.EMA2A_SSH_USER }}
+          key: ${{ secrets.EMA2A_PRIVATE_KEY }}
+          script: |
+            mkdir -p /home/${{ secrets.EMA2A_SSH_USER }}/app
+            
+      # 2. Copy files to server
+      - name: copy files using scp
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EMA2A_SSH_HOST }}
+          username: ${{ secrets.EMA2A_SSH_USER }}
+          key: ${{ secrets.EMA2A_PRIVATE_KEY }} 
+          source: "docker-compose.yml,.env"
+          target: "/home/${{ secrets.EMA2A_SSH_USER }}/app/"
+
+      # 3. Execute Deployment
+      - name: deploy 
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EMA2A_SSH_HOST }}
+          username: ${{ secrets.EMA2A_SSH_USER }}
+          key: ${{ secrets.EMA2A_PRIVATE_KEY }}
+          script: |
+            cd /home/${{ secrets.EMA2A_SSH_USER }}/app/
+            
+            # Pull new images
+            docker compose pull
+            
+            # Restart containers (recreate only what changed)
+            docker compose up -d --remove-orphans
+            
+            # Cleanup unused images to save disk space
+            docker image prune -f
