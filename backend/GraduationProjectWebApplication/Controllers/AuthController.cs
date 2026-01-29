@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using System.Security.Claims;
 
@@ -24,7 +25,9 @@ namespace GraduationProjectWebApplication.Controllers
             _authService = authService;
             _emailService = emailService;
         }
+
         [HttpPost("register-user")]
+        [EnableRateLimiting("RegisterLimiter")]
         public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync(RegisterDTO registerDTO)
         {
             AuthResponse<ApplicationUserDTO>? authResponse = new AuthResponse<ApplicationUserDTO>();
@@ -33,7 +36,7 @@ namespace GraduationProjectWebApplication.Controllers
             {
                 if (registerDTO == null)
                 {
-                    return BadRequest(ErrorResponse<ApplicationUserDTO>(authResponse.ErrorMessage));
+                    return BadRequest(ErrorResponse<ApplicationUserDTO>("Null DTO"));
                 }
                 else
                 {
@@ -74,10 +77,10 @@ namespace GraduationProjectWebApplication.Controllers
 
 
         [HttpPost("login-user")]
+        [EnableRateLimiting("LoginLimiter")]
         public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync(LoginDTO loginDTO)
         {
             AuthResponse<TokenResponseDTO>? authResponse = new AuthResponse<TokenResponseDTO>();
-
             try
             {
                 if (loginDTO == null)
@@ -92,6 +95,9 @@ namespace GraduationProjectWebApplication.Controllers
                     {
                         if (authResponse.IsSuccess == false)
                         {
+
+                            Console.WriteLine($"\n\n\n ==============================Login Hit {loginDTO.UserName} , {loginDTO.Password}===================== \n\n\n");
+
                             return BadRequest(ErrorResponse<TokenResponseDTO>(authResponse.ErrorMessage));
                         }
                         else
@@ -122,6 +128,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("refresh-tokens")]
+        [EnableRateLimiting("RefreshTokenLimiter")]
         public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens(TokenRequestDTO tokenRequestDTO)
         {
             try
@@ -144,6 +151,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("get-reset-password-token")]
+        [EnableRateLimiting("GetResetPasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken(string Email)
         {
 
@@ -152,7 +160,7 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
-                AuthResponse<ResetPasswordToken>? authResponse = new AuthResponse<ResetPasswordToken>();
+                AuthResponse<ResetPasswordTokenDTO>? authResponse = new AuthResponse<ResetPasswordTokenDTO>();
 
                 authResponse = await _authService.GenerateResetPasswordTokenAsync(Email);
 
@@ -160,24 +168,24 @@ namespace GraduationProjectWebApplication.Controllers
                 {
                     if (!authResponse.IsSuccess) return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
 
-                    ResetPasswordToken? resetPasswordToken = authResponse.Result;
+                    ResetPasswordTokenDTO? resetPasswordToken = authResponse.Result;
 
 
                     MailData mailData = new MailData()
                     {
                         EmailToId = Email,
-                        EmailToName = resetPasswordToken.User.UserName,
+                        EmailToName = resetPasswordToken.UserName,
                         EmailSubject = "Reset Your Password",
                         EmailBody = $@"
-                        Hello {resetPasswordToken.User.UserName},
+                        Hello {resetPasswordToken.UserName},
 
                         You recently requested to reset your password.
 
-                        Here is your password reset token:
+                        Here is your password reset OTP:
 
-                        {resetPasswordToken.Id}
+                        {resetPasswordToken.Otp}
 
-                        This token will expire in 15 minutes and can only be used once.
+                        This token will expire in 10 minutes and can only be used once.
 
                         To complete the password reset, copy this token and paste it into the reset form in the app or website.
 
@@ -223,11 +231,12 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("reset-password")]
+        [EnableRateLimiting("ResetPasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword(ResetPasswordDTO resetPasswordDTO)
         {
             try
             {
-                if ( String.IsNullOrEmpty(resetPasswordDTO.NewPassword) || resetPasswordDTO.TokenId == null)
+                if ( String.IsNullOrEmpty(resetPasswordDTO.NewPassword) || resetPasswordDTO.OTP == null)
                     return BadRequest(ErrorResponse<bool>("Invaild token or password"));
 
                 AuthResponse<bool>? authResponse = new AuthResponse<bool>();
@@ -265,6 +274,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("change-password")]
+        [EnableRateLimiting("ChangePasswordLimiter")]
         public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromForm] ChangePasswordDTO changePasswordDTO)
         {
             try
@@ -305,6 +315,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
     
         [HttpGet("login-google")]
+        [EnableRateLimiting("GoogleLoginLimiter")]
         public IActionResult LoginWithGoogle()
         {
             var redirectUrl = Url.Action("GoogleCallback", "Auth");
@@ -313,6 +324,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpGet("google-callback")]
+        [EnableRateLimiting("GoogleCallbackLimiter")]
         public async Task<ActionResult<APIResponseDTO<ExternalLoginResponseDTO>>> GoogleCallback()
         {
             try
@@ -359,6 +371,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("update-user-image")]
+        [EnableRateLimiting("UpdateImageLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage( IFormFile newImge)
         {
             try
@@ -398,6 +411,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [Authorize]
         [HttpPost("logout")]
+        [EnableRateLimiting("LogoutLimiter")]
         public async Task<IActionResult> Logout(TokenRequestDTO tokenRequestDTO)
         {
             try
@@ -422,70 +436,63 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        //[Authorize]
-        //[HttpPost("Get-Remove-Account-Token")]
-        //public async Task<IActionResult> GetRemoveAccountToken(string Email)
-        //{
-        //    if (string.IsNullOrEmpty(Email)) return BadRequest();
+        [Authorize]
+        [HttpGet("user-profile")]
+        [EnableRateLimiting("UserProfileReadLimiter")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile()
+        {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        //    ApiResponse = await _authService.GenerateRemoveAccountTokenAsync(Email);
+                AuthResponse<UserProfileDTO>? response = await _authService.GetUserProfile(userId);
 
-        //    if (!ApiResponse.IsSuccess) return BadRequest(ApiResponse.ErrorMessage);
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
 
-        //    RemoveAccountToken removeAccountToken = (RemoveAccountToken)ApiResponse.Result;
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
 
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
 
-        //    MailData mailData = new MailData()
-        //    {
-        //        EmailToId = Email,
-        //        EmailToName = removeAccountToken.ApplicationUser.UserName,
-        //        EmailSubject = "Remove Your Account",
-        //        EmailBody = $@"
-        //        Hello {removeAccountToken.ApplicationUser.UserName},
+        [Authorize]
+        [HttpPost("update-user-profile")]
+        [EnableRateLimiting("UserProfileUpdateLimiter")]
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
+        {
+            try
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        //        You recently requested to delete your account.
+                AuthResponse<UserProfileDTO>? response = await _authService.UpdateUserProfile(userId, UpdateuserProfileDTO);
 
-        //        Here is your account deletion token:
+                if (!response.IsSuccess)
+                {
+                    return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
 
-        //        {removeAccountToken.Id}
-
-        //        This token will expire on {removeAccountToken.ExpiresAt:u} and can only be used once.
-
-        //        To complete the account deletion, copy this token and paste it into the reset form in the app or website.
-
-        //        If you did not request this, please ignore this message.
-
-        //        Blease Not That Your Account Will Be Deleted Permanently !!!!
-
-        //        Thanks,  
-        //        JWT Authentication .NET Identity"
-        //    };
-
-        //    bool result = _mailService.SendMail(mailData);
-
-        //    if (!result) return BadRequest();
-
-        //    return Ok("An email is sent to you with the required token, please check your inbox");
-
-        //}
-
+                return Ok(SuccessResponse<UserProfileDTO>(response.Result));
 
 
-        //[Authorize]
-        //[HttpPost("Remove-Account")]
-        //public async Task<IActionResult> RemoveAccount(RemoveAccountDTO removeAccountDTO)
-        //{
-        //    if (removeAccountDTO.TokenId == null) return BadRequest();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
 
-        //    string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        //    ApiResponse = await _authService.RemoveAccountAsync(removeAccountDTO, userId);
-
-        //    if (!ApiResponse.IsSuccess)
-        //        return BadRequest(ApiResponse.ErrorMessage);
-
-        //    return Ok(ApiResponse);
-        //}
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
 
         // For testing 
 

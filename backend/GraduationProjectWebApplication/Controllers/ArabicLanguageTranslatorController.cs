@@ -1,5 +1,6 @@
 ﻿using GraduationProjectWebApplication.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Newtonsoft.Json;
 using System.Net;
 using System.Text;
@@ -21,6 +22,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("text-to-sign")]
+        [EnableRateLimiting("ArabicLimiter")]
         public async Task<ActionResult<APIResponseDTO<List<List<string>>>>> TextToSign([FromBody] TextToSignDTO textToSignDTO)
         {
 
@@ -79,6 +81,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("audio-to-text")]
+        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> AudioToText([FromBody] TranscriptionRequest request)
         {
             if (string.IsNullOrEmpty(request.AudioData) || string.IsNullOrEmpty(request.MimeType))
@@ -171,6 +174,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpGet("letters-keyboard")]
+        [EnableRateLimiting("ArabicLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> LettersKeyboard([FromQuery] char letter)
         {
             if (letter == default)

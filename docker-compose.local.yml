@@ -1,0 +1,77 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./AIModels:/app/AIModels
+    restart: always
+    networks:
+      - local
+      - api_network
+    depends_on:
+      database:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    environment:
+      - ASPNETCORE_URLS=http://+:5001
+      - DEFAULT_CONNECTION=Server=database,1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
+      - ASPNETCORE_ENVIRONMENT=Development
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          memory: 1G
+
+  nginx:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    volumes:
+      - ./nginx-proxy/public:/usr/share/nginx/html
+      - ./Dev:/etc/letsencrypt/live/emaaha.ddns.net:ro
+      - ./Dev:/etc/letsencrypt/archive/emaaha.ddns.net:ro
+    ports:
+      - "8080:80"   # Changed to avoid conflict with system services
+      - "8443:443"
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - api_network
+
+  database: 
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_ADMIN_PASS}
+      - DB_USER=${DB_USER}
+    volumes:
+      - db_local:/var/opt/mssql
+    networks:
+      - local
+    restart: always
+    ports:
+      - "1433:1433"  # Expose for debugging
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER} -P ${DB_ADMIN_PASS} -C -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+networks:
+  local:
+    driver: bridge
+    internal: true
+  
+  api_network:
+    driver: bridge
+
+volumes:
+  db_local:

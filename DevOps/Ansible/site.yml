@@ -1,0 +1,13 @@
+---
+# This is a "setup" play that runs on all hosts.
+ - name: setup agents
+   hosts: all
+   gather_facts: yes # Gathers facts about all hosts for later use
+
+# This section imports all the other playbooks in the correct order
+# This creates a modular and readable workflow.
+
+ -  import_playbook: ./playbooks/initialization.yml  # Runs first: updates cache, installs git/vim
+ -  import_playbook: ./playbooks/docker_installation.yml # Runs second: installs Docker on all nodes
+ -  import_playbook: ./playbooks/jenkins_agents_setup.yml # Runs third: prepares nodes to be Jenkins agents
+ -  import_playbook: ./playbooks/jenkins_master_setup.yml # Runs forth: installs Jenkins on the master

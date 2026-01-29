@@ -1,0 +1,9 @@
+---
+# This playbook runs initial server setup tasks.
+ - name: install needed packages 
+   # It targets 'all' hosts (masters and workers).
+   hosts: all
+   gather_facts: no
+   roles:
+     # It executes tasks like 'apt update' and installing 'git', 'vim', etc.
+     - initialization
