@@ -22,6 +22,9 @@ WORKDIR /app
 # Copy only the published files from the build stage
 COPY --from=build /app/publish .
 
+# Copy AImodel files into container 
+COPY GraduationProjectWebApplication/AIModels/ ./AIModels
+
 # Document that the container listens on port 5001 at runtime
 EXPOSE 5001
 

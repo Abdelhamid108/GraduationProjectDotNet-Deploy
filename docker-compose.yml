@@ -9,10 +9,10 @@ services:
       # Maps host port 5001 to container port 5001.
       # This exposes the backend service running inside the container on port 5001 to the host machine.
       - "5001:5001"
-    volumes:
+      #    volumes:
       # Binds the host directory './Models' to the container directory '/app/Models'.
       # This allows for persistent storage and live updates of model files without rebuilding the image.
-      - ./AIModels:/app/AIModels
+      #- ./AIModels:/app/AIModels
     restart: always
       # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
       # This ensures the backend service remains available after a reboot or crash.
@@ -34,7 +34,7 @@ services:
     volumes:
       # Binds the host directory './frontend/public' to the NGINX web root '/usr/share/nginx/html'.
       # This allows for serving static frontend files and potentially live-updating them on the host.
-      - ./nginx-proxy/public:/usr/share/nginx/html
+      # - ./nginx-proxy/public:/usr/share/nginx/html
 
       # Read-only bind mounts for SSL/TLS certificates from Let's Encrypt.
       # These volumes provide the frontend (NGINX) with the necessary SSL certificates to enable HTTPS.

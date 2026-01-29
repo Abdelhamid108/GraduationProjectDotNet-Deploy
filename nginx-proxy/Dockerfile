@@ -5,6 +5,9 @@ FROM nginx:alpine
 # This file will be placed in the /etc/nginx/conf.d/ directory, where Nginx automatically includes it
 COPY ./nginx-proxy.conf /etc/nginx/conf.d/
 
+# Copy test html pages into container  
+COPY ./public /usr/share/nginx/html
+
 # Inform Docker that the container listens on the specified network ports at runtime
 # EXPOSE 80: Standard HTTP port
 # EXPOSE 443: Standard HTTPS port
