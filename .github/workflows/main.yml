@@ -119,7 +119,7 @@ jobs:
           host: ${{ secrets.EMA2A_SSH_HOST }}
           username: ${{ secrets.EMA2A_SSH_USER }}
           key: ${{ secrets.EMA2A_PRIVATE_KEY }} 
-          source: "docker-compose.yml,.env"
+          source: "docker-compose.yml,.env,Dev"
           target: "/home/${{ secrets.EMA2A_SSH_USER }}/app/"
 
       # 3. Execute Deployment
