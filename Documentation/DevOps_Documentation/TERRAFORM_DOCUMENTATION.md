@@ -6,7 +6,7 @@ This document provides a comprehensive, deep-dive guide to the project's infrast
 ## 1. Project Overview & Prerequisites
 
 ### Purpose
-The Terraform configuration in `DevOps/Terraform` is responsible for provisioning a single, robust EC2 instance that serves as the host for Jenkins, Docker, and the application backend. It handles networking, security, and static IP assignment.
+The Terraform configuration in `DevOps/Terraform` is responsible for provisioning a single, robust EC2 instance that serves as the host for Docker and the application backend. It handles networking, security, and static IP assignment.
 
 ### Prerequisites
 Before running any commands, ensure your environment meets these requirements:
@@ -37,7 +37,6 @@ The security group defines exactly what traffic is allowed.
 | **Ingress** | 22   | TCP      | `0.0.0.0/0` | SSH Access (Admin)          |
 | **Ingress** | 80   | TCP      | `0.0.0.0/0` | HTTP Web Traffic            |
 | **Ingress** | 443  | TCP      | `0.0.0.0/0` | HTTPS Secure Web Traffic    |
-| **Ingress** | 8080 | TCP      | `0.0.0.0/0` | Jenkins Dashboard           |
 | **Egress**  | All  | All      | `0.0.0.0/0` | Outbound Internet Access    |
 
 ### `ansible_inventory.tf` & `ansible_inventory.tpl`
