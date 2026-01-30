@@ -21,7 +21,10 @@ WORKDIR /app
 # Copy published files from build stage
 COPY --from=build /app/publish .
 
-# Expose port
+# Copy AImodel files into container 
+COPY GraduationProjectWebApplication/AIModels/ ./AIModels
+
+# Document that the container listens on port 5001 at runtime
 EXPOSE 5001
 
 # CORRECTED GARBAGE COLLECTION SETTINGS FOR WEB API WITH ML WORKLOADS
