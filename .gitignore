@@ -85,7 +85,9 @@ certs/
 nginx-proxy/certs/
 *.pem
 *.crt
+*.key*
 *.key
+
 
 # ============================
 # 🧪 TEST / TEMP FILES
