@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://api.example.com/api
+**Base URL:** `https://ema2a.ddnsgeek.com/`
 ```
 
 ## Authentication

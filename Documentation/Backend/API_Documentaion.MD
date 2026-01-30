@@ -19,7 +19,7 @@
 
 This API provides comprehensive sign language translation services, including real-time sign-to-text translation, text-to-sign conversion, and Arabic language processing capabilities. The API is built using ASP.NET Core and follows RESTful conventions.
 
-**Base URL:** `https://your-domain.com/api`
+**Base URL:** `https://ema2a.ddnsgeek.com/`
 
 **API Version:** 1.0
 
