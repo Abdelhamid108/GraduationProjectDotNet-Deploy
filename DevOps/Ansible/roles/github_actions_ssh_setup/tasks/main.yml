@@ -1,0 +1,15 @@
+# Create GitHub Action User To Use on CI/CD process
+- name: Create GitHub Actions user 
+  user:
+    name: github 
+    comment: "Github actions (CI/CD) User"
+    create_home: yes
+    groups: docker
+    state: present
+    append: yes
+
+# Add github action ssh puplic key into authorized keys file 
+- name: Add GitHub Actions SSH key
+  ansible.posix.authorized_key:
+    user: github
+    key: "{{ lookup('file', '../files/ema2a-github-actions-key.pub') }}"      
