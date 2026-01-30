@@ -1,0 +1,13 @@
+---
+# This handler is notified when Jenkins is first installed
+- name: start_enable_jenkins
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+# This handler is notified after plugins are installed
+- name: restart_jenkins
+  service:
+    name: jenkins
+    state: restarted # Restarts Jenkins to load the new plugins

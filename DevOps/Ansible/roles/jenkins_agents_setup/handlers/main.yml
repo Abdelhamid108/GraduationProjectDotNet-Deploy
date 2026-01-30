@@ -1,0 +1,7 @@
+---
+# This handler is notified when openssh-server is installed
+- name: start_sshd
+  service:
+    name: sshd
+    state: started # Ensures the SSH daemon is running
+    enabled: yes   # Ensures SSH starts on boot
