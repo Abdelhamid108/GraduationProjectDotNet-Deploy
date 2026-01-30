@@ -9,5 +9,6 @@
 
  -  import_playbook: ./playbooks/initialization.yml  # Runs first: updates cache, installs git/vim
  -  import_playbook: ./playbooks/docker_installation.yml # Runs second: installs Docker on all nodes
- -  import_playbook: ./playbooks/jenkins_agents_setup.yml # Runs third: prepares nodes to be Jenkins agents
- -  import_playbook: ./playbooks/jenkins_master_setup.yml # Runs forth: installs Jenkins on the master
+ -  import_playbook: ./playbooks/gha-setup.yml # Runs third: Setup Deply user   
+   # -  import_playbook: ./playbooks/jenkins_agents_setup.yml # Runs third: prepares nodes to be Jenkins agents
+   # -  import_playbook: ./playbooks/jenkins_master_setup.yml # Runs forth: installs Jenkins on the master
