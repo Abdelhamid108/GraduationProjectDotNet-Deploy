@@ -87,7 +87,7 @@ app.add_middleware(
 class TTSRequest(BaseModel):
     """Request model for TTS endpoint"""
     text: str = Field(
-        ..., 
+        ...,
         description="Arabic text to convert to speech",
         min_length=1,
         max_length=5000,
@@ -150,7 +150,7 @@ class ErrorResponse(BaseModel):
 async def health_check():
     """
     Health check endpoint.
-    
+
     Returns the service status. Use this endpoint to verify the service is running.
     """
     return {"status": "healthy", "service": "arabic-tts"}
@@ -165,13 +165,14 @@ async def health_check():
 async def list_speakers():
     """
     Get list of available speaker voices.
-    
+
     Returns information about each available speaker ID and their characteristics.
     """
     return {
         "speakers": [
             {"id": 0, "description": "Speaker 0 - Male voice style 1"},
-            {"id": 1, "description": "Speaker 1 - Male voice style 2 (default)"},
+            {"id": 1,
+                "description": "Speaker 1 - Male voice style 2 (default)"},
             {"id": 2, "description": "Speaker 2 - Male voice style 3"},
             {"id": 3, "description": "Speaker 3 - Male voice style 4"},
         ],
@@ -203,14 +204,14 @@ async def list_speakers():
 async def text_to_speech(request: TTSRequest):
     """
     Convert Arabic text to speech.
-    
+
     Returns an MP3 audio file of the spoken text.
     """
     try:
         # Create a temporary file for the WAV output
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
             tmp_path = tmp_file.name
-        
+
         # Generate the audio (WAV format)
         tts(
             request.text,
@@ -228,17 +229,17 @@ async def text_to_speech(request: TTSRequest):
             save_to=tmp_path,
             bits_per_sample=32,
         )
-        
+
         # Convert WAV to MP3 using pydub
         audio = AudioSegment.from_wav(tmp_path)
         mp3_buffer = io.BytesIO()
         audio.export(mp3_buffer, format="mp3", bitrate="192k")
         mp3_buffer.seek(0)
         audio_data = mp3_buffer.read()
-        
+
         # Clean up the temporary WAV file
         os.unlink(tmp_path)
-        
+
         # Return the audio as a streaming response
         return StreamingResponse(
             io.BytesIO(audio_data),
@@ -248,12 +249,13 @@ async def text_to_speech(request: TTSRequest):
                 "Content-Length": str(len(audio_data))
             }
         )
-    
+
     except Exception as e:
         # Clean up temp file if it exists
         if 'tmp_path' in locals() and os.path.exists(tmp_path):
             os.unlink(tmp_path)
-        raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"TTS generation failed: {str(e)}")
 
 
 @app.get(
@@ -306,12 +308,12 @@ async def text_to_speech_get(
 ):
     """
     Convert Arabic text to speech (GET endpoint).
-    
+
     This endpoint is useful for:
     - Simple requests from the browser address bar
     - Audio elements with src attribute
     - Cases where POST is not convenient
-    
+
     Example: `/tts?text=مرحبا&speaker=1&pace=1.0`
     """
     request = TTSRequest(text=text, speaker=speaker, pace=pace, volume=volume)
