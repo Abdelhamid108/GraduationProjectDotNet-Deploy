@@ -9,7 +9,7 @@
 *.old
 .DS_Store
 Thumbs.db
-
+.venv
 # Environment files
 DevOps/Ansible/roles/jenkins_master_setup/files/env_file
 .env
@@ -145,5 +145,3 @@ config/secrets/
 *hosts.ini
 .terraform
 *.terraform.lock*
-
-

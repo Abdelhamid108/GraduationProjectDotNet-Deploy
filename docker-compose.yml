@@ -36,6 +36,29 @@ services:
       - DEFAULT_CONNECTION=Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
       - ASPNETCORE_ENVIRONMENT=Development
   
+  # Arabic TTS Service
+  tts-service:
+    build:
+      context: ./tts-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          memory: 1G
+    networks:
+      - api_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Frontend Web Server Service (Nginx)
   nginx:
