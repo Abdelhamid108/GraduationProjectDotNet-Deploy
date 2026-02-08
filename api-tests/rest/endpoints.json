@@ -1,0 +1,438 @@
+{
+  "version": "1.0",
+  "description": "REST API Endpoint Test Definitions for Ema2a Graduation Project",
+  "endpoints": [
+    {
+      "id": "auth_register",
+      "name": "Register User",
+      "method": "POST",
+      "path": "/api/Auth/register-user",
+      "auth_required": false,
+      "content_type": "multipart/form-data",
+      "payload": {
+        "Email": "testuser_{{timestamp}}@example.com",
+        "FullName": "Test User",
+        "UserName": "testuser_{{timestamp}}",
+        "Password": "TestPassword123!",
+        "PhoneNumber": "+201234567890"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data"
+      ],
+      "skip": true,
+      "skip_reason": "Creates new user each run - enable for specific testing"
+    },
+    {
+      "id": "auth_login",
+      "name": "Login User",
+      "method": "POST",
+      "path": "/api/Auth/login-user",
+      "auth_required": false,
+      "payload": {
+        "userName": "{{TEST_USERNAME}}",
+        "password": "{{TEST_PASSWORD}}"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data.accessToken",
+        "data.refreshToken"
+      ],
+      "store_tokens": true
+    },
+    {
+      "id": "auth_refresh_tokens",
+      "name": "Refresh Tokens",
+      "method": "POST",
+      "path": "/api/Auth/refresh-tokens",
+      "auth_required": false,
+      "payload": {
+        "refreshToken": "{{REFRESH_TOKEN}}"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data.accessToken"
+      ],
+      "depends_on": "auth_login"
+    },
+    {
+      "id": "auth_test_authentication",
+      "name": "Test Authentication",
+      "method": "GET",
+      "path": "/api/Auth/TestAuthentication",
+      "auth_required": true,
+      "expected_status": 200,
+      "depends_on": "auth_login"
+    },
+    {
+      "id": "auth_user_profile",
+      "name": "Get User Profile",
+      "method": "GET",
+      "path": "/api/Auth/user-profile",
+      "auth_required": true,
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data"
+      ],
+      "depends_on": "auth_login"
+    },
+    {
+      "id": "auth_update_profile",
+      "name": "Update User Profile",
+      "method": "POST",
+      "path": "/api/Auth/update-user-profile",
+      "auth_required": true,
+      "payload": {
+        "fullName": "Test User Updated",
+        "phoneNumber": "+201234567890"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success"
+      ],
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Modifies user data - enable for specific testing"
+    },
+    {
+      "id": "auth_change_password",
+      "name": "Change Password",
+      "method": "POST",
+      "path": "/api/Auth/change-password",
+      "auth_required": true,
+      "payload": {
+        "currentPassword": "{{TEST_PASSWORD}}",
+        "newPassword": "{{TEST_PASSWORD}}"
+      },
+      "expected_status": 200,
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Changes password - use same password to avoid breaking tests"
+    },
+    {
+      "id": "auth_get_reset_token",
+      "name": "Get Reset Password Token",
+      "method": "POST",
+      "path": "/api/Auth/get-reset-password-token",
+      "auth_required": false,
+      "payload": {
+        "email": "{{TEST_USERNAME}}"
+      },
+      "expected_status": 200,
+      "skip": true,
+      "skip_reason": "Sends OTP email - rate limited"
+    },
+    {
+      "id": "auth_reset_password",
+      "name": "Reset Password",
+      "method": "POST",
+      "path": "/api/Auth/reset-password",
+      "auth_required": false,
+      "payload": {
+        "email": "{{TEST_USERNAME}}",
+        "otp": "123456",
+        "newPassword": "NewPassword123!"
+      },
+      "expected_status": 400,
+      "expected_error_contains": "Invalid OTP",
+      "skip": true,
+      "skip_reason": "Requires valid OTP from email"
+    },
+    {
+      "id": "auth_google_login",
+      "name": "Google OAuth Login",
+      "method": "GET",
+      "path": "/api/Auth/login-google",
+      "auth_required": false,
+      "expected_status": 302,
+      "description": "Initiates Google OAuth flow - redirects to Google"
+    },
+    {
+      "id": "auth_google_callback",
+      "name": "Google OAuth Callback",
+      "method": "GET",
+      "path": "/api/Auth/google-callback",
+      "auth_required": false,
+      "query_params": {
+        "code": "test_auth_code",
+        "state": "test_state"
+      },
+      "expected_status": 400,
+      "description": "Handles Google OAuth callback - expects 400 with invalid code"
+    },
+    {
+      "id": "auth_update_image",
+      "name": "Update User Image",
+      "method": "POST",
+      "path": "/api/Auth/update-user-image",
+      "auth_required": true,
+      "content_type": "multipart/form-data",
+      "payload": {
+        "image": "{{SAMPLE_IMAGE_BASE64}}"
+      },
+      "expected_status": 200,
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Requires actual image file upload"
+    },
+    {
+      "id": "auth_logout",
+      "name": "Logout User",
+      "method": "POST",
+      "path": "/api/Auth/logout",
+      "auth_required": true,
+      "payload": {
+        "refreshToken": "{{REFRESH_TOKEN}}"
+      },
+      "expected_status": 200,
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Invalidates token - run last if enabled"
+    },
+    {
+      "id": "arabic_text_to_sign",
+      "name": "Text to Sign Language",
+      "method": "POST",
+      "path": "/api/ArabicLanguageTranslator/text-to-sign",
+      "auth_required": false,
+      "payload": {
+        "text": "مرحبا"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data"
+      ]
+    },
+    {
+      "id": "arabic_audio_to_text",
+      "name": "Audio to Text (Gemini)",
+      "method": "POST",
+      "path": "/api/ArabicLanguageTranslator/audio-to-text",
+      "auth_required": false,
+      "payload": {
+        "audioData": "{{SAMPLE_AUDIO_BASE64}}",
+        "mimeType": "audio/wav"
+      },
+      "expected_status": 200,
+      "skip": true,
+      "skip_reason": "Requires Gemini API - rate limited and needs audio sample"
+    },
+    {
+      "id": "arabic_letters_keyboard",
+      "name": "Get Letters Keyboard",
+      "method": "GET",
+      "path": "/api/ArabicLanguageTranslator/letters-keyboard",
+      "auth_required": false,
+      "query_params": {
+        "letter": "أ"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success",
+        "data"
+      ]
+    },
+    {
+      "id": "sign_translate",
+      "name": "Translate Sign Image",
+      "method": "POST",
+      "path": "/api/SignLanguageTranslator",
+      "auth_required": false,
+      "payload": {
+        "imageData": "{{SAMPLE_SIGN_IMAGE_BASE64}}"
+      },
+      "expected_status": 200,
+      "skip": true,
+      "skip_reason": "Requires sign language image sample"
+    },
+    {
+      "id": "sign_finalize_sentence",
+      "name": "Finalize Sentence",
+      "method": "POST",
+      "path": "/api/SignLanguageTranslator/finalize-sentence",
+      "auth_required": false,
+      "payload": {
+        "sentence": "م ر ح ب ا"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success"
+      ]
+    },
+    {
+      "id": "sign_correct_sentence",
+      "name": "Correct Sentence",
+      "method": "POST",
+      "path": "/api/SignLanguageTranslator/CorrectSentence",
+      "auth_required": false,
+      "payload": {
+        "sentence": "مرحبا بكم"
+      },
+      "expected_status": 200,
+      "expected_fields": [
+        "success"
+      ]
+    },
+    {
+      "id": "sign_generate_audio",
+      "name": "Generate Audio from Text",
+      "method": "POST",
+      "path": "/api/SignLanguageTranslator/GenerateAudio",
+      "auth_required": false,
+      "payload": {
+        "text": "مرحبا بكم"
+      },
+      "expected_status": 200
+    },
+    {
+      "id": "sign_text_to_audio",
+      "name": "Text to Audio (Full Flow)",
+      "method": "POST",
+      "path": "/api/SignLanguageTranslator/text-to-audio",
+      "auth_required": false,
+      "payload": {
+        "sentence": "مرحبا بكم"
+      },
+      "expected_status": 200
+    },
+    {
+      "id": "history_get",
+      "name": "Get User History",
+      "method": "GET",
+      "path": "/api/UserHistory/get-user-history",
+      "auth_required": true,
+      "expected_status": 200,
+      "expected_fields": [
+        "success"
+      ],
+      "depends_on": "auth_login"
+    },
+    {
+      "id": "history_delete_record",
+      "name": "Delete History Record",
+      "method": "DELETE",
+      "path": "/api/UserHistory/delete-user-history-record",
+      "auth_required": true,
+      "query_params": {
+        "id": "00000000-0000-0000-0000-000000000000"
+      },
+      "expected_status": 400,
+      "expected_error_contains": "not found",
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Needs valid history record ID"
+    },
+    {
+      "id": "history_delete_all",
+      "name": "Delete All History",
+      "method": "DELETE",
+      "path": "/api/UserHistory/delete-all-user-history",
+      "auth_required": true,
+      "expected_status": 200,
+      "depends_on": "auth_login",
+      "skip": true,
+      "skip_reason": "Destructive - deletes all user history"
+    },
+    {
+      "id": "tts_health",
+      "name": "TTS Service Health",
+      "method": "GET",
+      "path": "/tts/health",
+      "auth_required": false,
+      "expected_status": 200,
+      "is_plain_text": true
+    },
+    {
+      "id": "tts_speakers",
+      "name": "TTS List Speakers",
+      "method": "GET",
+      "path": "/tts/speakers",
+      "auth_required": false,
+      "expected_status": 200,
+      "is_plain_text": true
+    },
+    {
+      "id": "tts_post",
+      "name": "TTS Convert Text to Speech (POST)",
+      "method": "POST",
+      "path": "/tts/tts",
+      "auth_required": false,
+      "payload": {
+        "text": "مرحبا",
+        "speaker": 1,
+        "pace": 1.0,
+        "volume": 0.9
+      },
+      "expected_status": 200,
+      "expected_content_type": "audio/mpeg",
+      "is_binary_response": true,
+      "skip": true,
+      "skip_reason": "POST method not supported - use GET instead"
+    },
+    {
+      "id": "tts_get",
+      "name": "TTS Convert Text to Speech (GET)",
+      "method": "GET",
+      "path": "/tts/tts",
+      "auth_required": false,
+      "query_params": {
+        "text": "مرحبا",
+        "speaker": "1",
+        "pace": "1.0",
+        "volume": "0.9"
+      },
+      "expected_status": 200,
+      "expected_content_type": "audio/mpeg",
+      "is_binary_response": true
+    },
+    {
+      "id": "tts_invalid_text",
+      "name": "TTS Empty Text (Validation)",
+      "method": "GET",
+      "path": "/tts/tts",
+      "auth_required": false,
+      "query_params": {
+        "text": ""
+      },
+      "expected_status": 422,
+      "expected_error_contains": "validation"
+    },
+    {
+      "id": "tts_invalid_speaker",
+      "name": "TTS Invalid Speaker (Validation)",
+      "method": "GET",
+      "path": "/tts/tts",
+      "auth_required": false,
+      "query_params": {
+        "text": "مرحبا",
+        "speaker": "99"
+      },
+      "expected_status": 422
+    }
+  ],
+  "test_order": [
+    "tts_health",
+    "tts_speakers",
+    "tts_get",
+    "tts_invalid_text",
+    "tts_invalid_speaker",
+    "auth_login",
+    "auth_test_authentication",
+    "auth_user_profile",
+    "auth_refresh_tokens",
+    "auth_google_login",
+    "auth_google_callback",
+    "arabic_text_to_sign",
+    "arabic_letters_keyboard",
+    "sign_finalize_sentence",
+    "sign_correct_sentence",
+    "sign_generate_audio",
+    "sign_text_to_audio",
+    "history_get"
+  ]
+}
