@@ -71,6 +71,8 @@ init_report() {
 #   $7 - Actual status code
 #   $8 - Latency (ms)
 #   $9 - Error message (optional)
+#   $10 - Response body (optional)
+#   $11 - Auth used (optional - true/false)
 #------------------------------------------------------------------------------
 add_rest_result() {
     local id="$1"
@@ -82,6 +84,8 @@ add_rest_result() {
     local actual_code="$7"
     local latency="$8"
     local error="${9:-}"
+    local response_body="${10:-}"
+    local auth_used="${11:-false}"
     
     local result=$(cat <<EOF
 {
@@ -91,7 +95,8 @@ add_rest_result() {
     "status": "${status}",
     "expected_status": ${expected_code},
     "actual_status": ${actual_code},
-    "latency_ms": ${latency}
+    "latency_ms": ${latency},
+    "auth_used": ${auth_used}
 EOF
 )
     
@@ -102,14 +107,21 @@ EOF
     \"error\": \"${error}\""
     fi
     
+    if [[ -n "$response_body" ]] && [[ "$status" == "FAILED" ]]; then
+        # Include truncated response body for failed tests
+        response_body=$(json_escape "$response_body")
+        result+=",
+    \"response_body\": \"${response_body}\""
+    fi
+    
     result+="
 }"
     
     REST_TEST_RESULTS+=("$result")
     
-    # Track failures
+    # Track failures with response body
     if [[ "$status" == "FAILED" ]]; then
-        add_failure "$id" "$name" "${method} ${endpoint}" "$error"
+        add_failure "$id" "$name" "${method} ${endpoint}" "$error" "$response_body"
     fi
 }
 
@@ -168,12 +180,14 @@ EOF
 #   $2 - Test Name
 #   $3 - Endpoint/Action
 #   $4 - Error message
+#   $5 - Response body (optional)
 #------------------------------------------------------------------------------
 add_failure() {
     local id="$1"
     local name="$2"
     local endpoint="$3"
     local error="$4"
+    local response_body="${5:-}"
     
     # Generate diagnosis based on error
     local diagnosis=""
@@ -219,6 +233,7 @@ add_failure() {
     esac
     
     error=$(json_escape "$error")
+    response_body=$(json_escape "$response_body")
     
     local failure=$(cat <<EOF
 {
@@ -227,7 +242,8 @@ add_failure() {
     "endpoint": "${endpoint}",
     "error": "${error}",
     "diagnosis": "${diagnosis}",
-    "suggested_fix": "${suggested_fix}"
+    "suggested_fix": "${suggested_fix}",
+    "response_body": "${response_body}"
 }
 EOF
 )
@@ -352,10 +368,19 @@ print_report_summary() {
             local name=$(echo "$failure" | jq -r '.name')
             local error=$(echo "$failure" | jq -r '.error')
             local diagnosis=$(echo "$failure" | jq -r '.diagnosis')
+            local response=$(echo "$failure" | jq -r '.response_body // ""')
             
             echo -e "${COLOR_RED}✗${COLOR_RESET} ${name}"
             echo -e "  ${COLOR_GRAY}Error:${COLOR_RESET} ${error}"
             echo -e "  ${COLOR_GRAY}Likely cause:${COLOR_RESET} ${diagnosis}"
+            
+            # Show truncated response body if available
+            if [[ -n "$response" ]] && [[ "$response" != "null" ]] && [[ ${#response} -gt 0 ]]; then
+                # Truncate to first 200 chars for console
+                local truncated="${response:0:200}"
+                [[ ${#response} -gt 200 ]] && truncated+="..."
+                echo -e "  ${COLOR_GRAY}Response:${COLOR_RESET} ${truncated}"
+            fi
             echo ""
         done
     fi

@@ -158,18 +158,25 @@ run_single_test() {
     local expected_fields=$(echo "$endpoint" | jq -r '.expected_fields // [] | .[]' 2>/dev/null)
     local is_binary=$(echo "$endpoint" | jq -r '.is_binary_response // false')
     local is_plain_text=$(echo "$endpoint" | jq -r '.is_plain_text // false')
+    local auth_required=$(echo "$endpoint" | jq -r '.auth_required // false')
+    
+    # Track if auth was used
+    local auth_used="false"
+    if [[ "$auth_required" == "true" ]] && is_authenticated; then
+        auth_used="true"
+    fi
     
     # Check if skipped
     if [[ "$skip" == "true" ]]; then
         log_test_skip "$name" "$skip_reason"
-        add_rest_result "$id" "$name" "$method" "$path" "SKIPPED" "$expected_status" 0 0 "$skip_reason"
+        add_rest_result "$id" "$name" "$method" "$path" "SKIPPED" "$expected_status" 0 0 "$skip_reason" "" "$auth_used"
         return 0
     fi
     
     # Check dependencies (auth required but not authenticated)
     if [[ -n "$depends_on" ]] && [[ "$depends_on" == "auth_login" ]] && ! is_authenticated; then
         log_test_skip "$name" "Authentication required but not logged in"
-        add_rest_result "$id" "$name" "$method" "$path" "SKIPPED" "$expected_status" 0 0 "Authentication required"
+        add_rest_result "$id" "$name" "$method" "$path" "SKIPPED" "$expected_status" 0 0 "Authentication required" "" "false"
         return 0
     fi
     
@@ -191,7 +198,7 @@ run_single_test() {
     
     if [[ $curl_exit -ne 0 ]]; then
         log_test_fail "$name" "curl error: ${response}"
-        add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" 0 0 "curl error: ${response}"
+        add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" 0 0 "curl error: ${response}" "$response" "$auth_used"
         return 1
     fi
     
@@ -208,7 +215,7 @@ run_single_test() {
     if ! assert_status_code "$expected_status" "$http_code"; then
         local error=$(get_last_assertion_error)
         log_test_fail "$name" "$error"
-        add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error"
+        add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error" "$body" "$auth_used"
         return 1
     fi
     
@@ -218,7 +225,7 @@ run_single_test() {
             if ! assert_json_field "$body" ".$field"; then
                 local error=$(get_last_assertion_error)
                 log_test_fail "$name" "$error"
-                add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error"
+                add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error" "$body" "$auth_used"
                 return 1
             fi
         done
@@ -235,7 +242,7 @@ run_single_test() {
     fi
     
     log_test_pass "$name" "$latency_ms"
-    add_rest_result "$id" "$name" "$method" "$path" "PASSED" "$expected_status" "$http_code" "$latency_ms"
+    add_rest_result "$id" "$name" "$method" "$path" "PASSED" "$expected_status" "$http_code" "$latency_ms" "" "" "$auth_used"
     return 0
 }
 
