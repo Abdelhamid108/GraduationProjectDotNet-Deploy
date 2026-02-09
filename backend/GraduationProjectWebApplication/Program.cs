@@ -257,7 +257,7 @@ namespace GraduationProjectWebApplication
 
                 options.AddFixedWindowLimiter("GeminiLimiter", limiter =>
                 {
-                    limiter.PermitLimit = 10;
+                    limiter.PermitLimit = 3;
                     limiter.Window = TimeSpan.FromMinutes(1);
                     limiter.QueueLimit = 0;
                 });
@@ -298,6 +298,8 @@ namespace GraduationProjectWebApplication
                 });
             });
 
+            /*============ To Get User Instance In a service ============*/
+            builder.Services.AddHttpContextAccessor();
 
 
             var app = builder.Build();

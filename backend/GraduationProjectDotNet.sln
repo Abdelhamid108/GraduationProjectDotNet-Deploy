@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProjectWebApplica
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraduationProject.StaticDetails", "StaticDetails\GraduationProject.StaticDetails.csproj", "{70DAF223-D700-4710-9636-34A883015F0F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeminiEndPointsTesting", "GeminiEndPointsTesting\GeminiEndPointsTesting.csproj", "{0A16FFFE-070F-4B69-AF55-8C8C2FD4AAB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{70DAF223-D700-4710-9636-34A883015F0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70DAF223-D700-4710-9636-34A883015F0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A16FFFE-070F-4B69-AF55-8C8C2FD4AAB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A16FFFE-070F-4B69-AF55-8C8C2FD4AAB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A16FFFE-070F-4B69-AF55-8C8C2FD4AAB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A16FFFE-070F-4B69-AF55-8C8C2FD4AAB4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
