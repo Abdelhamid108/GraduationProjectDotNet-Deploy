@@ -28,7 +28,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("register-user")]
         [EnableRateLimiting("RegisterLimiter")]
-        public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync(RegisterDTO registerDTO)
+        public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync([FromForm] RegisterDTO registerDTO)
         {
             AuthResponse<ApplicationUserDTO>? authResponse = new AuthResponse<ApplicationUserDTO>();
 
@@ -78,7 +78,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("login-user")]
         [EnableRateLimiting("LoginLimiter")]
-        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync(LoginDTO loginDTO)
+        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync([FromBody] LoginDTO loginDTO)
         {
             AuthResponse<TokenResponseDTO>? authResponse = new AuthResponse<TokenResponseDTO>();
             try
@@ -129,7 +129,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("refresh-tokens")]
         [EnableRateLimiting("RefreshTokenLimiter")]
-        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens(TokenRequestDTO tokenRequestDTO)
+        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens([FromBody] TokenRequestDTO tokenRequestDTO)
         {
             try
             {
@@ -152,17 +152,17 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("get-reset-password-token")]
         [EnableRateLimiting("GetResetPasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken(string Email)
+        public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken([FromBody] GetResetPasswordTokenByEmailDTO tokenByEmailDTO)
         {
 
-            if (string.IsNullOrEmpty(Email))
+            if (string.IsNullOrEmpty(tokenByEmailDTO.Email))
                 return BadRequest(ErrorResponse<ResetPasswordToken>("Invaild Email"));
 
             try
             {
                 AuthResponse<ResetPasswordTokenDTO>? authResponse = new AuthResponse<ResetPasswordTokenDTO>();
 
-                authResponse = await _authService.GenerateResetPasswordTokenAsync(Email);
+                authResponse = await _authService.GenerateResetPasswordTokenAsync(tokenByEmailDTO.Email);
 
                 if (authResponse != null)
                 {
@@ -173,7 +173,7 @@ namespace GraduationProjectWebApplication.Controllers
 
                     MailData mailData = new MailData()
                     {
-                        EmailToId = Email,
+                        EmailToId = tokenByEmailDTO.Email,
                         EmailToName = resetPasswordToken.UserName,
                         EmailSubject = "Reset Your Password",
                         EmailBody = $@"
@@ -232,7 +232,7 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("reset-password")]
         [EnableRateLimiting("ResetPasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword(ResetPasswordDTO resetPasswordDTO)
+        public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDTO)
         {
             try
             {
@@ -275,7 +275,7 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("change-password")]
         [EnableRateLimiting("ChangePasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromForm] ChangePasswordDTO changePasswordDTO)
+        public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromBody] ChangePasswordDTO changePasswordDTO)
         {
             try
             {
@@ -372,11 +372,11 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("update-user-image")]
         [EnableRateLimiting("UpdateImageLimiter")]
-        public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage( IFormFile newImge)
+        public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage([FromForm] ChangeUserImageDTO changeUserImageDTO)
         {
             try
             {
-                if(newImge == null)
+                if(changeUserImageDTO.NewImge == null)
                     return BadRequest(ErrorResponse<string>("No Image Provided"));
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -390,7 +390,7 @@ namespace GraduationProjectWebApplication.Controllers
                         ErrorResponse<string>($"An unexpected error occurred: Failed to get user credentails"));
                 }
 
-                var response = await _authService.UpdateUserImage(userId, newImge);
+                var response = await _authService.UpdateUserImage(userId, changeUserImageDTO.NewImge);
 
                 if(!response.IsSuccess)
                     return BadRequest(ErrorResponse<string>(response.ErrorMessage));
@@ -412,7 +412,7 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("logout")]
         [EnableRateLimiting("LogoutLimiter")]
-        public async Task<IActionResult> Logout(TokenRequestDTO tokenRequestDTO)
+        public async Task<IActionResult> Logout([FromBody] TokenRequestDTO tokenRequestDTO)
         {
             try
             {
@@ -467,7 +467,7 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("update-user-profile")]
         [EnableRateLimiting("UserProfileUpdateLimiter")]
-        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile([FromBody] UpdateUserProfileDTO UpdateuserProfileDTO)
         {
             try
             {
@@ -497,20 +497,10 @@ namespace GraduationProjectWebApplication.Controllers
         // For testing 
 
         [Authorize]
-        [HttpGet("TestAuthentication")]
+        [HttpGet("test-authentication")]
         public IActionResult YouAreAuthenticated()
         {
             return Ok("You Are Authenticated");
         }
-
-        // For testing 
-
-
-        //[Authorize(Roles = "Admin")]
-        //[HttpGet("TestAuthorization")]
-        //public IActionResult YouAreAtuhorized()
-        //{
-        //    return Ok("You Are an admin");
-        //}
     }
 }

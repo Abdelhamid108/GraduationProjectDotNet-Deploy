@@ -20,7 +20,11 @@ namespace GraduationProjectWebApplication.Controllers
     {
         private readonly HttpClient _httpClient;
         private readonly string? correctSentenceAPIKey;
+        private readonly string? correctSentenceBackUpAPIKey;
         private readonly string? generateAudioAPIKey;
+        private readonly string? generateAudioBackUpAPIKey;
+        private readonly string? textToAudioAPIKey;
+        private readonly string? textToAudioStep2APIKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -38,11 +42,16 @@ namespace GraduationProjectWebApplication.Controllers
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
 
             correctSentenceAPIKey = configuration["CORRECT_SENTENCE_KEY"];
+            correctSentenceBackUpAPIKey = configuration["CORRECT_SENTENCE_BACKUP_KEY"];
             generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
+            generateAudioBackUpAPIKey = configuration["GENERATE_AUDIO_BACKUP_KEY"];
+            textToAudioAPIKey = configuration["TEXT_TO_AUDIO_KEY"];
+            textToAudioStep2APIKey = configuration["TEXT_TO_AUDIO_STEP_2_KEY"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
         }
+
 
         [HttpPost]
         public async Task<ActionResult<APIResponseDTO<string>>> TranslateSign([FromBody] FrameData frameData)
@@ -50,7 +59,7 @@ namespace GraduationProjectWebApplication.Controllers
             if (string.IsNullOrEmpty(frameData?.ImageData))
             {
                 _logger.LogWarning("TranslateSign: No image data provided");
-                return BadRequest(ErrorResponse<string>("No image data provided."));
+                return BadRequest(ErrorResponse<string>("No image data provided. Please include base64-encoded image in 'ImageData'."));
             }
 
             byte[]? imageBytes = null;
@@ -110,14 +119,14 @@ namespace GraduationProjectWebApplication.Controllers
             catch (FormatException ex)
             {
                 _logger.LogError(ex, "TranslateSign: Invalid base64 image format");
-                return BadRequest(ErrorResponse<string>("Invalid image format. Please provide a valid base64-encoded image."));
+                return BadRequest(ErrorResponse<string>("Invalid image format. Ensure the image is a valid base64-encoded JPEG."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "TranslateSign: Unexpected error occurred");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+                    ErrorResponse<string>($"Unexpected server error while processing the image: {ex.Message}"));
             }
             finally
             {
@@ -173,7 +182,16 @@ namespace GraduationProjectWebApplication.Controllers
                 string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
 
                 HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    _logger.LogWarning("FinalizeSentence: Rate limit exceeded for primary API key, switching to backup key");
+                    string backupApiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceBackUpAPIKey}";
+                    response = await _httpClient.PostAsync(backupApiUrl, content);
+                }
+
                 response.EnsureSuccessStatusCode();
+
 
                 string responseBody = await response.Content.ReadAsStringAsync();
                 _logger.LogDebug("FinalizeSentence: Gemini API response received");
@@ -211,7 +229,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(httpEx, "FinalizeSentence: HTTP request to Gemini API failed");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>("Failed to communicate with sentence correction service."));
+                    ErrorResponse<string>($"Failed to communicate with sentence correction service. {httpEx.Message}"));
             }
             catch (Exception ex)
             {
@@ -222,7 +240,7 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        [HttpPost("CorrectSentence")]
+        [HttpPost("correct-sentence")]
         [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<CorrectedResponse>>> CorrectSentence([FromBody] SentenceData sentenceData)
         {
@@ -320,14 +338,14 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        [HttpPost("GenerateAudio")]
+        [HttpPost("generate-audio")]
         [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {
             if (string.IsNullOrEmpty(request?.Text))
             {
                 _logger.LogWarning("GenerateAudio: Missing 'text' field");
-                return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field in request body."));
+                return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
             }
 
             _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
@@ -365,6 +383,13 @@ namespace GraduationProjectWebApplication.Controllers
             try
             {
                 var response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioAPIKey}", content);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
+                    response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioBackUpAPIKey}", content);
+                }
+
                 response.EnsureSuccessStatusCode();
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
@@ -415,7 +440,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
                 return StatusCode(
                    (int)HttpStatusCode.InternalServerError,
-                   ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+                   ErrorResponse<string>($"An unexpected error occurred."));
             }
         }
 
@@ -463,7 +488,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var finalizeContent = new StringContent(jsonFinalize, Encoding.UTF8, "application/json");
 
                 string finalizeUrl =
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={textToAudioAPIKey}";
 
                 var finalizeResponse = await _httpClient.PostAsync(finalizeUrl, finalizeContent);
                 finalizeResponse.EnsureSuccessStatusCode();
@@ -509,7 +534,7 @@ namespace GraduationProjectWebApplication.Controllers
                         new { text = $"Say this in a clear, friendly voice: {finalSentence}" }
                     }
                 }
-            },
+                },
                     generationConfig = new
                     {
                         responseModalities = new[] { "AUDIO" },
@@ -526,7 +551,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var jsonAudio = JsonSerializer.Serialize(audioPayload);
                 var audioContent = new StringContent(jsonAudio, Encoding.UTF8, "application/json");
 
-                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={generateAudioAPIKey}", audioContent);
+                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={textToAudioStep2APIKey}", audioContent);
                 audioResponse.EnsureSuccessStatusCode();
 
                 var audioJson = await audioResponse.Content.ReadAsStringAsync();
@@ -567,7 +592,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(ex, "TextToAudio: API request failure");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>("Failed communicating with Gemini API.")
+                    ErrorResponse<string>($"Failed communicating with Gemini API {ex.Message.ToString()}.")
                 );
             }
             catch (Exception ex)

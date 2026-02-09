@@ -1,939 +1,149 @@
-# Graduation Project Web API Documentation
+# Ema2a API Documentation
+
+**Version:** v1  
+**Base URL:** `/api`
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Authentication](#authentication)
-3. [Base Response Structure](#base-response-structure)
-4. [Rate Limiting](#rate-limiting)
-5. [API Endpoints](#api-endpoints)
-   - [Authentication Controller](#authentication-controller)
-   - [Sign Language Translator Controller](#sign-language-translator-controller)
-   - [Arabic Language Translator Controller](#arabic-language-translator-controller)
-   - [User History Controller](#user-history-controller)
-6. [Data Transfer Objects (DTOs)](#data-transfer-objects-dtos)
-7. [Error Handling](#error-handling)
 
----
-
-## Overview
-
-This API provides comprehensive sign language translation services, including real-time sign-to-text translation, text-to-sign conversion, and Arabic language processing capabilities. The API is built using ASP.NET Core and follows RESTful conventions.
-
-**Base URL:** `https://ema2a.ddnsgeek.com/`
-
-**API Version:** 1.0
-
-**Content-Type:** `application/json` (except for file uploads)
+1. [Authentication](#authentication)
+2. [API Response Format](#api-response-format)
+3. [Endpoints](#endpoints)
+   - [Authentication & User Management](#authentication--user-management)
+   - [Sign Language Translation](#sign-language-translation)
+   - [Arabic Language Translation](#arabic-language-translation)
+   - [User History](#user-history)
 
 ---
 
 ## Authentication
 
-The API uses JWT (JSON Web Token) bearer authentication. Most endpoints require a valid access token.
+This API uses **Bearer Token** authentication with JWT (JSON Web Tokens).
 
-### Authentication Flow
-1. Register a new user or login with existing credentials
-2. Receive an access token and refresh token
-3. Include the access token in the `Authorization` header for protected endpoints
-4. Use the refresh token to obtain new access tokens when they expire
+### How to Authenticate
 
-**Header Format:**
+Include the JWT token in the `Authorization` header of your requests:
+
 ```
-Authorization: Bearer {your_access_token}
+Authorization: Bearer {your_jwt_token}
 ```
 
-### Token Refresh
-Access tokens expire after a certain period. Use the refresh token endpoint to obtain new tokens without re-authenticating.
+### Obtaining Tokens
+
+- Register a new user via `/api/Auth/register-user`
+- Login via `/api/Auth/login-user` to receive access and refresh tokens
+- Use `/api/Auth/refresh-tokens` to obtain new tokens when the access token expires
 
 ---
 
-## Base Response Structure
+## API Response Format
 
-All API responses follow a standardized structure:
+All API responses follow a standardized format:
 
-### Success Response
 ```json
 {
   "success": true,
-  "data": { /* response data */ },
-  "statusCode": 200,
-  "errorMessage": null
+  "data": {},
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-### Error Response
-```json
-{
-  "success": false,
-  "data": null,
-  "statusCode": 400,
-  "errorMessage": "Error description"
-}
-```
-
-### HTTP Status Codes
-- **200 OK**: Request succeeded
-- **400 Bad Request**: Invalid request data
-- **401 Unauthorized**: Authentication required or invalid token
-- **429 Too Many Requests**: Rate limit exceeded
-- **500 Internal Server Error**: Server-side error
+**Fields:**
+- `success` (boolean): Indicates if the request was successful
+- `data` (varies): The response payload (type varies by endpoint)
+- `errorMessage` (string|null): Error description if `success` is false
+- `statusCode` (integer): HTTP status code
 
 ---
 
-## Rate Limiting
+## Endpoints
 
-The API implements rate limiting on various endpoints to ensure fair usage:
-
-| Limiter | Endpoints | Purpose |
-|---------|-----------|---------|
-| RegisterLimiter | `/api/auth/register-user` | User registration |
-| LoginLimiter | `/api/auth/login-user` | User login |
-| RefreshTokenLimiter | `/api/auth/refresh-tokens` | Token refresh |
-| GetResetPasswordLimiter | `/api/auth/get-reset-password-token` | Password reset request |
-| ResetPasswordLimiter | `/api/auth/reset-password` | Password reset |
-| GoogleLoginLimiter | `/api/auth/login-google` | Google OAuth login |
-| GoogleCallbackLimiter | `/api/auth/google-callback` | Google OAuth callback |
-| UpdateImageLimiter | `/api/auth/update-user-image` | Profile image update |
-| LogoutLimiter | `/api/auth/logout` | User logout |
-| UserProfileReadLimiter | `/api/auth/user-profile` | Profile retrieval |
-| UserProfileUpdateLimiter | `/api/auth/update-user-profile` | Profile update |
-| GeminiLimiter | Sign translation & audio endpoints | AI model operations |
-| ArabicLimiter | Arabic translation endpoints | Arabic text processing |
-
-When rate limited, you'll receive a `429 Too Many Requests` status code.
+### Authentication & User Management
 
 ---
-
-## API Endpoints
-
-### Authentication Controller
-**Base Route:** `/api/auth`
 
 #### 1. Register User
-Create a new user account.
 
-**Endpoint:** `POST /api/auth/register-user`
+**Endpoint:** `/api/Auth/register-user`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Not required  
+**Content-Type:** `multipart/form-data`
 
-**Rate Limit:** RegisterLimiter
+**Description:** Register a new user account with optional profile image.
 
-**Authentication:** Not required
+**Request Parameters (Form Data):**
 
-**Request Body:**
-```json
-{
-  "userName": "string",
-  "email": "user@example.com",
-  "password": "SecurePassword123!",
-  "phoneNumber": "01234567890"
-}
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Email | string | Yes | User's email address |
+| FullName | string | Yes | User's full name |
+| UserName | string | Yes | Unique username |
+| Password | string | Yes | User's password |
+| PhoneNumber | string | Yes | User's phone number |
+| UserImage | file (binary) | No | Profile image file |
+
+**Example Request (cURL):**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/register-user" \
+  -H "Content-Type: multipart/form-data" \
+  -F "Email=user@example.com" \
+  -F "FullName=John Doe" \
+  -F "UserName=johndoe" \
+  -F "Password=SecurePass123!" \
+  -F "PhoneNumber=+1234567890" \
+  -F "UserImage=@profile.jpg"
 ```
 
-**Success Response (200):**
+**Response Schema:**
+
 ```json
 {
   "success": true,
   "data": {
-    "id": "user-guid",
+    "email": "string",
+    "fullName": "string",
     "userName": "string",
-    "email": "user@example.com",
-    "phoneNumber": "01234567890",
-    "profilePictureUrl": "https://..."
+    "phoneNumber": "string",
+    "userBase64Image": "string"
   },
-  "statusCode": 200,
-  "errorMessage": null
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-**Error Responses:**
-- `400 Bad Request`: Validation error or user already exists
-- `500 Internal Server Error`: Server error
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "email": "user@example.com",
+    "fullName": "John Doe",
+    "userName": "johndoe",
+    "phoneNumber": "+1234567890",
+    "userBase64Image": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
 
 ---
 
 #### 2. Login User
-Authenticate and receive access tokens.
 
-**Endpoint:** `POST /api/auth/login-user`
+**Endpoint:** `/api/Auth/login-user`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
 
-**Rate Limit:** LoginLimiter
+**Description:** Authenticate user and receive JWT tokens.
 
-**Authentication:** Not required
+**Request Body Schema:**
 
-**Request Body:**
-```json
-{
-  "userName": "string",
-  "password": "SecurePassword123!"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "refresh-token-string",
-    "expiresAt": "2024-01-30T12:00:00Z"
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid credentials
-- `500 Internal Server Error`: Server error
-
----
-
-#### 3. Refresh Tokens
-Obtain new access tokens using a refresh token.
-
-**Endpoint:** `POST /api/auth/refresh-tokens`
-
-**Rate Limit:** RefreshTokenLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "accessToken": "expired-access-token",
-  "refreshToken": "valid-refresh-token"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "new-access-token",
-    "refreshToken": "new-refresh-token",
-    "expiresAt": "2024-01-30T12:00:00Z"
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized`: Invalid refresh token
-- `500 Internal Server Error`: Server error
-
----
-
-#### 4. Get Reset Password Token
-Request a password reset OTP via email.
-
-**Endpoint:** `POST /api/auth/get-reset-password-token`
-
-**Rate Limit:** GetResetPasswordLimiter
-
-**Authentication:** Not required
-
-**Query Parameters:**
-- `Email` (string, required): User's email address
-
-**Request:**
-```
-POST /api/auth/get-reset-password-token?Email=user@example.com
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": true,
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Note:** An email containing a 6-digit OTP will be sent to the user. The OTP expires in 10 minutes.
-
-**Error Responses:**
-- `400 Bad Request`: Invalid email or user not found
-- `500 Internal Server Error`: Email service error or server error
-
----
-
-#### 5. Reset Password
-Reset password using the OTP received via email.
-
-**Endpoint:** `POST /api/auth/reset-password`
-
-**Rate Limit:** ResetPasswordLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "otp": "123456",
-  "newPassword": "NewSecurePassword123!"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": true,
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid OTP, expired OTP, or validation error
-- `500 Internal Server Error`: Server error
-
----
-
-#### 6. Login with Google
-Initiate Google OAuth authentication.
-
-**Endpoint:** `GET /api/auth/login-google`
-
-**Rate Limit:** GoogleLoginLimiter
-
-**Authentication:** Not required
-
-**Response:** Redirects to Google authentication page
-
-**Usage:** Navigate user to this endpoint in a browser to start Google OAuth flow.
-
----
-
-#### 7. Google OAuth Callback
-Handle Google OAuth callback and create/login user.
-
-**Endpoint:** `GET /api/auth/google-callback`
-
-**Rate Limit:** GoogleCallbackLimiter
-
-**Authentication:** Not required (handled by OAuth)
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "userId": "user-guid",
-    "accessToken": "jwt-access-token",
-    "refreshToken": "refresh-token-string",
-    "isNewUser": true
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized`: External authentication failed
-- `400 Bad Request`: JWT token not issued
-- `500 Internal Server Error`: Server error
-
----
-
-#### 8. Update User Image
-Update user profile picture.
-
-**Endpoint:** `POST /api/auth/update-user-image`
-
-**Rate Limit:** UpdateImageLimiter
-
-**Authentication:** Required
-
-**Content-Type:** `multipart/form-data`
-
-**Request Body:**
-- `newImge` (file, required): Image file to upload
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": "https://path-to-uploaded-image.jpg",
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: No image provided or invalid image
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Upload or server error
-
----
-
-#### 9. Logout
-Invalidate the current refresh token.
-
-**Endpoint:** `POST /api/auth/logout`
-
-**Rate Limit:** LogoutLimiter
-
-**Authentication:** Required
-
-**Request Body:**
-```json
-{
-  "accessToken": "current-access-token",
-  "refreshToken": "current-refresh-token"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": true,
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid token
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Server error
-
----
-
-#### 10. Get User Profile
-Retrieve the authenticated user's profile information.
-
-**Endpoint:** `GET /api/auth/user-profile`
-
-**Rate Limit:** UserProfileReadLimiter
-
-**Authentication:** Required
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-guid",
-    "userName": "username",
-    "email": "user@example.com",
-    "phoneNumber": "01234567890",
-    "profilePictureUrl": "https://...",
-    "createdAt": "2024-01-01T00:00:00Z"
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: User not found
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Server error
-
----
-
-#### 11. Update User Profile
-Update user profile information.
-
-**Endpoint:** `POST /api/auth/update-user-profile`
-
-**Rate Limit:** UserProfileUpdateLimiter
-
-**Authentication:** Required
-
-**Request Body:**
-```json
-{
-  "userName": "newUsername",
-  "email": "newemail@example.com",
-  "phoneNumber": "01234567890"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "user-guid",
-    "userName": "newUsername",
-    "email": "newemail@example.com",
-    "phoneNumber": "01234567890",
-    "profilePictureUrl": "https://...",
-    "createdAt": "2024-01-01T00:00:00Z"
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Validation error or duplicate username/email
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Server error
-
----
-
-#### 12. Test Authentication
-Test endpoint to verify authentication is working.
-
-**Endpoint:** `GET /api/auth/TestAuthentication`
-
-**Authentication:** Required
-
-**Success Response (200):**
-```
-"You Are Authenticated"
-```
-
-**Error Responses:**
-- `401 Unauthorized`: Not authenticated
-
----
-
-### Sign Language Translator Controller
-**Base Route:** `/api/signlanguagetranslator`
-
-This controller handles real-time sign language detection, sentence finalization, and audio generation.
-
-#### 1. Translate Sign
-Detect and translate sign language from an image frame.
-
-**Endpoint:** `POST /api/signlanguagetranslator`
-
-**Rate Limit:** None specified (may have server-side limits)
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "translation": "ا"
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Detection Response Examples:**
-- High confidence detection: `{"translation": "ا"}`
-- Low confidence: `{"translation": "No sign detected (try adjusting your gesture)."}`
-- No detection: `{"translation": "No sign detected."}`
-
-**Notes:**
-- Image must be base64-encoded JPEG
-- Minimum confidence threshold: 0.71
-- Returns the Arabic letter with highest confidence
-- Processes images using ML model for sign detection
-
-**Error Responses:**
-- `400 Bad Request`: No image data, invalid base64, or model detection failed
-- `500 Internal Server Error`: Processing error
-
----
-
-#### 2. Finalize Sentence
-Process concatenated Arabic letters into a coherent sentence with proper spacing and corrections.
-
-**Endpoint:** `POST /api/signlanguagetranslator/finalize-sentence`
-
-**Rate Limit:** GeminiLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "sentence": "مرحبابكفيتطبيقنا"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": "مرحبا بك في تطبيقنا",
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Notes:**
-- Uses Gemini AI to intelligently add spaces and correct spelling
-- Optimized for sign language translator output
-- Processes Arabic text only
-
-**Error Responses:**
-- `400 Bad Request`: No sentence data provided
-- `500 Internal Server Error`: Gemini API error or processing error
-
----
-
-#### 3. Generate Audio
-Convert finalized sentence to speech audio.
-
-**Endpoint:** `POST /api/signlanguagetranslator/generate-audio`
-
-**Rate Limit:** GeminiLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "sentence": "مرحبا بك في تطبيقنا"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "audioData": "base64-encoded-audio-data...",
-    "sampleRate": 24000
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Audio Format:**
-- Encoding: Base64
-- Format: PCM/WAV
-- Sample Rate: Typically 24000 Hz
-- Voice: Kore (Gemini TTS voice)
-
-**Notes:**
-- Requires finalized sentence (with proper spacing)
-- Uses Gemini Text-to-Speech API
-- Returns base64-encoded audio data
-
-**Error Responses:**
-- `400 Bad Request`: Missing sentence field or empty sentence
-- `500 Internal Server Error`: Gemini API error or processing error
-
----
-
-#### 4. Text to Audio (Combined)
-Finalize a concatenated sentence and generate audio in a single request.
-
-**Endpoint:** `POST /api/signlanguagetranslator/text-to-audio`
-
-**Rate Limit:** GeminiLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "sentence": "مرحبابكفيتطبيقنا"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "audioData": "base64-encoded-audio-data...",
-    "sampleRate": 24000
-  },
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Process:**
-1. Receives concatenated Arabic letters
-2. Finalizes sentence using Gemini (adds spaces, corrects spelling)
-3. Generates audio from finalized sentence
-4. Returns audio data
-
-**Notes:**
-- Combines finalize-sentence and generate-audio operations
-- More efficient for end-to-end conversion
-- Two sequential Gemini API calls
-
-**Error Responses:**
-- `400 Bad Request`: Missing sentence field
-- `500 Internal Server Error`: API communication error or processing error
-
----
-
-### Arabic Language Translator Controller
-**Base Route:** `/api/arabiclanguagetranslator`
-
-This controller provides Arabic text-to-sign conversion and audio transcription services.
-
-#### 1. Text to Sign
-Convert Arabic text to sign language letter images.
-
-**Endpoint:** `POST /api/arabiclanguagetranslator/text-to-sign`
-
-**Rate Limit:** ArabicLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "text": "مرحبا بك"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    [
-      "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "data:image/png;base64,iVBORw0KGgoAAAANS..."
-    ],
-    [
-      "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "data:image/png;base64,iVBORw0KGgoAAAANS..."
-    ]
-  ],
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Response Structure:**
-- Outer array: Contains arrays for each word
-- Inner arrays: Contains base64 PNG images for each letter in the word
-- Images are sign language representations of Arabic letters
-
-**Notes:**
-- Splits text by spaces to separate words
-- Each letter is mapped to a corresponding sign language image
-- Letters not in dictionary are skipped (logged on server)
-- Returns base64-encoded PNG images
-
-**Error Responses:**
-- `400 Bad Request`: No text provided or empty text
-- `500 Internal Server Error`: File reading error or processing error
-
----
-
-#### 2. Audio to Text
-Transcribe Arabic speech from audio to text.
-
-**Endpoint:** `POST /api/arabiclanguagetranslator/audio-to-text`
-
-**Rate Limit:** GeminiLimiter
-
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "audioData": "base64-encoded-audio-data",
-  "mimeType": "audio/wav"
-}
-```
-
-**Supported Audio Formats:**
-- `audio/wav`
-- `audio/mp3`
-- `audio/mpeg`
-- `audio/ogg`
-- Other formats supported by Gemini API
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": "مرحبا بك في تطبيقنا",
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Notes:**
-- Uses Gemini 2.5 Flash Preview model for transcription
-- Optimized for Arabic speech recognition
-- Filters out non-speech sounds and background noise
-- Audio should be base64-encoded
-
-**Error Responses:**
-- `400 Bad Request`: Audio data or MIME type not provided
-- `502 Bad Gateway`: Error calling Gemini API (network issues)
-- `500 Internal Server Error`: JSON parsing error or unexpected error
-
----
-
-#### 3. Letters Keyboard
-Get sign language image for a specific Arabic letter.
-
-**Endpoint:** `GET /api/arabiclanguagetranslator/letters-keyboard`
-
-**Rate Limit:** ArabicLimiter
-
-**Authentication:** Not required
-
-**Query Parameters:**
-- `letter` (char, required): Single Arabic letter
-
-**Request:**
-```
-GET /api/arabiclanguagetranslator/letters-keyboard?letter=ا
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Notes:**
-- Returns a single base64-encoded PNG image
-- Useful for keyboard/input interfaces showing sign language letters
-- Letter must exist in the sign language dictionary
-
-**Error Responses:**
-- `400 Bad Request`: Letter parameter missing or letter not found in dictionary
-- `500 Internal Server Error`: File reading error or processing error
-
----
-
-### User History Controller
-**Base Route:** `/api/userhistory`
-
-This controller manages user's translation history records.
-
-#### 1. Get User History
-Retrieve all history records for the authenticated user.
-
-**Endpoint:** `GET /api/userhistory/get-user-history`
-
-**Authentication:** Required
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "formedSentence": "مرحبا بك في تطبيقنا",
-      "formedAt": "2024-01-30T10:30:00Z"
-    },
-    {
-      "id": 2,
-      "formedSentence": "كيف حالك",
-      "formedAt": "2024-01-30T11:45:00Z"
-    }
-  ],
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Notes:**
-- Returns all history records for the authenticated user
-- Ordered by creation time
-- Each record includes sentence and timestamp
-
-**Error Responses:**
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Database or server error
-
----
-
-#### 2. Delete User History Record
-Delete a specific history record by ID.
-
-**Endpoint:** `DELETE /api/userhistory/delete-user-history-record`
-
-**Authentication:** Required
-
-**Request Body:**
-```json
-{
-  "id": 1
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": true,
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Null record or ID is 0, or record not found
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Database or server error
-
----
-
-#### 3. Delete All User History
-Delete all history records for the authenticated user.
-
-**Endpoint:** `DELETE /api/userhistory/delete-all-user-history`
-
-**Authentication:** Required
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": true,
-  "statusCode": 200,
-  "errorMessage": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: No records found to delete
-- `401 Unauthorized`: Not authenticated
-- `500 Internal Server Error`: Database or server error
-
----
-
-## Data Transfer Objects (DTOs)
-
-### Authentication DTOs
-
-#### RegisterDTO
-```json
-{
-  "userName": "string",
-  "email": "string",
-  "password": "string",
-  "phoneNumber": "string"
-}
-```
-
-#### LoginDTO
 ```json
 {
   "userName": "string",
@@ -941,35 +151,161 @@ Delete all history records for the authenticated user.
 }
 ```
 
-#### TokenRequestDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/login-user" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userName": "johndoe",
+    "password": "SecurePass123!"
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "accessToken": "string",
+  "success": true,
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string",
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "a1b2c3d4e5f6...",
+    "accessTokenExpires": "2024-01-01T13:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 3. Refresh Tokens
+
+**Endpoint:** `/api/Auth/refresh-tokens`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Obtain new access and refresh tokens using a valid refresh token.
+
+**Request Body Schema:**
+
+```json
+{
   "refreshToken": "string"
 }
 ```
 
-#### TokenResponseDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/refresh-tokens" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "a1b2c3d4e5f6..."
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "accessToken": "string",
-  "refreshToken": "string",
-  "expiresAt": "datetime"
+  "success": true,
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string",
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
+  },
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-#### ApplicationUserDTO
+---
+
+#### 4. Get Reset Password Token
+
+**Endpoint:** `/api/Auth/get-reset-password-token`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Request a password reset OTP to be sent to the user's email.
+
+**Request Body Schema:**
+
 ```json
 {
-  "id": "string",
-  "userName": "string",
-  "email": "string",
-  "phoneNumber": "string",
-  "profilePictureUrl": "string"
+  "email": "string"
 }
 ```
 
-#### ResetPasswordDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/get-reset-password-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 5. Reset Password
+
+**Endpoint:** `/api/Auth/reset-password`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Reset user password using the OTP sent via email.
+
+**Request Body Schema:**
+
 ```json
 {
   "email": "string",
@@ -978,122 +314,894 @@ Delete all history records for the authenticated user.
 }
 ```
 
-#### ResetPasswordTokenDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "otp": "123456",
+    "newPassword": "NewSecurePass123!"
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "userName": "string",
-  "otp": "string"
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-#### ExternalLoginDTO
+
+#### 6. Change Password
+
+**Endpoint:** `/api/Auth/change-password`
+**Method:** `POST`
+**Tag:** Auth
+**Authentication:** Required (Bearer Token)
+**Content-Type:** `application/json`
+
+**Description:** Change the authenticated user's password.
+
+**Request Body Schema:**
+
 ```json
 {
-  "provider": "string",
-  "providerUserId": "string",
-  "email": "string",
-  "name": "string",
-  "phoneNumber": "string"
+  "currentPassword": "string",
+  "newPassword": "string"
+}
+
+---
+
+#### 7. Login with Google
+
+**Endpoint:** `/api/Auth/login-google`  
+**Method:** `GET`  
+**Tag:** Auth  
+**Authentication:** Not required
+
+**Description:** Initiate Google OAuth authentication flow.
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/Auth/login-google"
+```
+
+**Response:** Redirects to Google OAuth consent screen.
+
+---
+
+#### 8. Google Callback
+
+**Endpoint:** `/api/Auth/google-callback`  
+**Method:** `GET`  
+**Tag:** Auth  
+**Authentication:** Not required
+
+**Description:** Callback endpoint for Google OAuth. Returns JWT tokens after successful authentication.
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string",
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z",
+    "isNewUser": true
+  },
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-#### ExternalLoginResponseDTO
+---
+
+#### 9. Update User Image
+
+**Endpoint:** `/api/Auth/update-user-image`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `multipart/form-data`
+
+**Description:** Update the authenticated user's profile image.
+
+**Request Parameters (Form Data):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| NewImge | file (binary) | Yes | New profile image file |
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/update-user-image" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: multipart/form-data" \
+  -F "NewImge=@new_profile.jpg"
+```
+
+**Response Schema:**
+
 ```json
 {
-  "userId": "string",
-  "accessToken": "string",
-  "refreshToken": "string",
-  "isNewUser": "boolean"
+  "success": true,
+  "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-#### UserProfileDTO
+---
+
+#### 10. Logout
+
+**Endpoint:** `/api/Auth/logout`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `application/json`
+
+**Description:** Logout user and invalidate refresh token.
+
+**Request Body Schema:**
+
 ```json
 {
-  "id": "string",
-  "userName": "string",
+  "refreshToken": "string"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/logout" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "a1b2c3d4e5f6..."
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 11. Get User Profile
+
+**Endpoint:** `/api/Auth/user-profile`  
+**Method:** `GET`  
+**Tag:** Auth  
+**Authentication:** Required (Bearer Token)
+
+**Description:** Retrieve the authenticated user's profile information.
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/Auth/user-profile" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fullName": "string",
+    "email": "string",
+    "userBase64Image": "string",
+    "phoneNumber": "string",
+    "userName": "string"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "fullName": "John Doe",
+    "email": "user@example.com",
+    "userBase64Image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+    "phoneNumber": "+1234567890",
+    "userName": "johndoe"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 12. Update User Profile
+
+**Endpoint:** `/api/Auth/update-user-profile`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `application/json`
+
+**Description:** Update the authenticated user's profile information.
+
+**Request Body Schema:**
+
+```json
+{
+  "fullName": "string",
   "email": "string",
   "phoneNumber": "string",
-  "profilePictureUrl": "string",
-  "createdAt": "datetime"
+  "userName": "string"
 }
 ```
 
-#### UpdateUserProfileDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/Auth/update-user-profile" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "phoneNumber": "+1234567891",
+    "userName": "janedoe"
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "userName": "string",
-  "email": "string",
-  "phoneNumber": "string"
+  "success": true,
+  "data": {
+    "fullName": "string",
+    "email": "string",
+    "userBase64Image": "string",
+    "phoneNumber": "string",
+    "userName": "string"
+  },
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-### Translation DTOs
+---
 
-#### FrameData
+### Sign Language Translation
+
+---
+
+#### 13. Translate Sign Language to Text
+
+**Endpoint:** `/api/SignLanguageTranslator`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Translate a sign language gesture from an image to Arabic text. The image is processed through a machine learning model to detect sign language letters.
+
+**Request Body Schema:**
+
 ```json
 {
-  "imageData": "string (base64)"
+  "imageData": "string"
 }
 ```
 
-#### SentenceData
+**Fields:**
+- `imageData` (string): Base64-encoded image data with MIME type prefix (e.g., `data:image/jpeg;base64,...`)
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "translation": "string"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "translation": "ا"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Note:** If no sign is detected or confidence is below threshold (0.71), the response will indicate:
+```json
+{
+  "success": true,
+  "data": {
+    "translation": "No sign detected."
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 14. Finalize Sentence
+
+**Endpoint:** `/api/SignLanguageTranslator/finalize-sentence`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Takes concatenated Arabic letters from sign language translation and formats them into a coherent sentence with proper spacing and spelling corrections using AI.
+
+**Request Body Schema:**
+
+```json
+{
+  "sentence": "string",
+}
+```
+
+**Fields:**
+- `sentence` (string): Concatenated Arabic letters without spaces
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/finalize-sentence" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبابكم",
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": "مرحبا بكم",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 15. Get Sentence Correction
+
+**Endpoint:** `/api/SignLanguageTranslator/correct-sentence`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Get AI-powered suggestion to correct or improve an Arabic sentence.
+
+**Request Body Schema:**
+
 ```json
 {
   "sentence": "string"
 }
 ```
 
-#### TextToSignDTO
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/suggestions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبا بكم"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "correctedSentence": "string"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "correctedSentence": "مرحباً بكم"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 16. Generate Audio from Sentence
+
+**Endpoint:** `/api/SignLanguageTranslator/generate-audio`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Generate audio (Text-to-Speech) for a given Arabic sentence.
+
+**Request Body Schema:**
+
 ```json
 {
   "text": "string"
 }
 ```
 
-#### TranscriptionRequest
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/generate-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "مرحبا بكم"
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "audioData": "string (base64)",
+  "success": true,
+  "data": {
+    "audioData": "string",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Fields:**
+- `audioData` (string): Base64-encoded audio data
+- `sampleRate` (integer): Audio sample rate in Hz
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 17. Text to Audio (Combined)
+
+**Endpoint:** `/api/SignLanguageTranslator/text-to-audio`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Combines sentence finalization and audio generation in a single request. Takes concatenated letters, formats them into a proper sentence, and generates audio.
+
+**Request Body Schema:**
+
+```json
+{
+  "sentence": "string"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/text-to-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبابكم"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "string",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+### Arabic Language Translation
+
+---
+
+#### 18. Text to Sign Language
+
+**Endpoint:** `/api/ArabicLanguageTranslator/text-to-sign`  
+**Method:** `POST`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Convert Arabic text to sign language images. Returns base64-encoded images for each letter, organized by words.
+
+**Request Body Schema:**
+
+```json
+{
+  "text": "string"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/text-to-sign" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "مرحبا بكم"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": [
+    [
+      "string"
+    ]
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Data Structure:**
+- Outer array: Each element represents a word
+- Inner array: Each element is a base64-encoded image representing a letter
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+    ],
+    [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+    ]
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 19. Audio to Text
+
+**Endpoint:** `/api/ArabicLanguageTranslator/audio-to-text`  
+**Method:** `POST`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Transcribe Arabic speech from audio to text using AI speech recognition.
+
+**Request Body Schema:**
+
+```json
+{
+  "audioData": "string",
   "mimeType": "string"
 }
 ```
 
-#### TTSResponse
+**Fields:**
+- `audioData` (string): Base64-encoded audio data
+- `mimeType` (string): MIME type of the audio (e.g., "audio/wav", "audio/mp3")
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/audio-to-text" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "mimeType": "audio/wav"
+  }'
+```
+
+**Response Schema:**
+
 ```json
 {
-  "audioData": "string (base64)",
-  "sampleRate": "integer"
+  "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-### History DTOs
+**Example Response:**
 
-#### UserRecordDTO
 ```json
 {
-  "id": "integer",
-  "formedSentence": "string",
-  "formedAt": "datetime"
+  "success": true,
+  "data": "مرحبا بكم في تطبيقنا",
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-#### DeleteUserRecordDTO
+---
+
+#### 20. Get Letter Image (Keyboard)
+
+**Endpoint:** `/api/ArabicLanguageTranslator/letters-keyboard`  
+**Method:** `GET`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required
+
+**Description:** Get the sign language image for a specific Arabic letter.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| letter | string | Yes | Single Arabic letter character |
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/ArabicLanguageTranslator/letters-keyboard?letter=م" \
+  -H "Content-Type: application/json"
+```
+
+**Response Schema:**
+
 ```json
 {
-  "id": "integer"
+  "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-### Base Response DTO
+**Example Response:**
 
-#### APIResponseDTO<T>
 ```json
 {
-  "success": "boolean",
-  "data": "T (generic type)",
-  "statusCode": "HttpStatusCode (integer)",
-  "errorMessage": "string | null"
+  "success": true,
+  "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+### User History
+
+---
+
+#### 21. Get User History
+
+**Endpoint:** `/api/UserHistory/get-user-history`  
+**Method:** `GET`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)
+
+**Description:** Retrieve all translation history records for the authenticated user.
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/UserHistory/get-user-history" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 0,
+      "formedSentence": "string",
+      "formedAt": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "formedSentence": "مرحبا بكم",
+      "formedAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "formedSentence": "كيف حالك",
+      "formedAt": "2024-01-15T11:45:00Z"
+    }
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 22. Delete User History Record
+
+**Endpoint:** `/api/UserHistory/delete-user-history-record`  
+**Method:** `DELETE`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `application/json`
+
+**Description:** Delete a specific history record by ID.
+
+**Request Body Schema:**
+
+```json
+{
+  "id": 0
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X DELETE "https://api.example.com/api/UserHistory/delete-user-history-record" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 1
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 23. Delete All User History
+
+**Endpoint:** `/api/UserHistory/delete-all-user-history`  
+**Method:** `DELETE`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)
+
+**Description:** Delete all history records for the authenticated user.
+
+**Example Request:**
+
+```bash
+curl -X DELETE "https://api.example.com/api/UserHistory/delete-all-user-history" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
@@ -1101,320 +1209,169 @@ Delete all history records for the authenticated user.
 
 ## Error Handling
 
-### Standard Error Response Format
+### Common Error Responses
+
+**400 Bad Request:**
 ```json
 {
   "success": false,
   "data": null,
-  "statusCode": 400,
-  "errorMessage": "Descriptive error message"
+  "errorMessage": "Invalid request data",
+  "statusCode": 400
 }
 ```
 
-### Common Error Scenarios
-
-#### 1. Authentication Errors
-**Status Code:** 401 Unauthorized
+**401 Unauthorized:**
 ```json
 {
   "success": false,
   "data": null,
-  "statusCode": 401,
-  "errorMessage": "Invalid credentials" 
+  "errorMessage": "Unauthorized access",
+  "statusCode": 401
 }
 ```
 
-#### 2. Validation Errors
-**Status Code:** 400 Bad Request
+**500 Internal Server Error:**
 ```json
 {
   "success": false,
   "data": null,
-  "statusCode": 400,
-  "errorMessage": "Null DTO"
-}
-```
-
-#### 3. Rate Limit Errors
-**Status Code:** 429 Too Many Requests
-- Server responds with rate limit exceeded message
-- Client should implement exponential backoff
-
-#### 4. Server Errors
-**Status Code:** 500 Internal Server Error
-```json
-{
-  "success": false,
-  "data": null,
-  "statusCode": 500,
-  "errorMessage": "An unexpected error occurred"
-}
-```
-
-#### 5. External API Errors
-**Status Code:** 502 Bad Gateway
-```json
-{
-  "success": false,
-  "data": null,
-  "statusCode": 502,
-  "errorMessage": "Error calling Gemini API: [details]"
-}
-```
-
-### Error Logging
-- All errors are logged on the server with detailed information
-- Client receives sanitized error messages
-- Sensitive information is never exposed in error responses
-
----
-
-## Best Practices
-
-### 1. Authentication
-- Store tokens securely (never in localStorage for production apps)
-- Implement automatic token refresh before expiration
-- Handle 401 errors by redirecting to login
-- Clear tokens on logout
-
-### 2. Rate Limiting
-- Implement client-side rate limiting to avoid hitting API limits
-- Cache responses where appropriate
-- Use exponential backoff for retries
-
-### 3. Image Processing
-- Compress images before sending to reduce payload size
-- Use appropriate image quality for sign language detection
-- Handle base64 encoding/decoding efficiently
-
-### 4. Error Handling
-- Always check the `success` field in responses
-- Display user-friendly error messages
-- Implement proper error logging on client side
-- Handle network errors gracefully
-
-### 5. Performance
-- Use pagination for large datasets (when available)
-- Implement request cancellation for long-running operations
-- Cache frequently accessed data
-- Minimize redundant API calls
-
----
-
-## Integration Examples
-
-### Example 1: User Registration and Login Flow
-
-```javascript
-// 1. Register
-const registerResponse = await fetch('https://api.example.com/api/auth/register-user', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    userName: 'johndoe',
-    email: 'john@example.com',
-    password: 'SecurePass123!',
-    phoneNumber: '01234567890'
-  })
-});
-
-const registerData = await registerResponse.json();
-
-if (registerData.success) {
-  console.log('User registered:', registerData.data);
-  
-  // 2. Login
-  const loginResponse = await fetch('https://api.example.com/api/auth/login-user', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userName: 'johndoe',
-      password: 'SecurePass123!'
-    })
-  });
-  
-  const loginData = await loginResponse.json();
-  
-  if (loginData.success) {
-    // Store tokens
-    localStorage.setItem('accessToken', loginData.data.accessToken);
-    localStorage.setItem('refreshToken', loginData.data.refreshToken);
-  }
-}
-```
-
-### Example 2: Real-time Sign Language Translation
-
-```javascript
-// Capture frame from video
-const canvas = document.createElement('canvas');
-const context = canvas.getContext('2d');
-canvas.width = video.videoWidth;
-canvas.height = video.videoHeight;
-context.drawImage(video, 0, 0);
-
-// Convert to base64
-const imageData = canvas.toDataURL('image/jpeg');
-
-// Send to API
-const response = await fetch('https://api.example.com/api/signlanguagetranslator', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ imageData })
-});
-
-const result = await response.json();
-
-if (result.success) {
-  console.log('Detected sign:', result.data.translation);
-  // Append to sentence
-  currentSentence += result.data.translation;
-}
-```
-
-### Example 3: Text to Sign Conversion
-
-```javascript
-const response = await fetch('https://api.example.com/api/arabiclanguagetranslator/text-to-sign', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    text: 'مرحبا بك'
-  })
-});
-
-const result = await response.json();
-
-if (result.success) {
-  // result.data is array of arrays
-  // Each inner array represents a word
-  result.data.forEach((word, wordIndex) => {
-    console.log(`Word ${wordIndex + 1}:`);
-    word.forEach((letterImage, letterIndex) => {
-      // Display letterImage (base64 PNG)
-      const img = document.createElement('img');
-      img.src = letterImage;
-      document.body.appendChild(img);
-    });
-  });
-}
-```
-
-### Example 4: Audio Transcription
-
-```javascript
-// Record audio and convert to base64
-const audioBlob = await recordAudio();
-const reader = new FileReader();
-
-reader.onloadend = async () => {
-  const base64Audio = reader.result.split(',')[1];
-  
-  const response = await fetch('https://api.example.com/api/arabiclanguagetranslator/audio-to-text', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      audioData: base64Audio,
-      mimeType: 'audio/wav'
-    })
-  });
-  
-  const result = await response.json();
-  
-  if (result.success) {
-    console.log('Transcribed text:', result.data);
-  }
-};
-
-reader.readAsDataURL(audioBlob);
-```
-
-### Example 5: Token Refresh
-
-```javascript
-async function refreshTokens() {
-  const accessToken = localStorage.getItem('accessToken');
-  const refreshToken = localStorage.getItem('refreshToken');
-  
-  const response = await fetch('https://api.example.com/api/auth/refresh-tokens', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      accessToken,
-      refreshToken
-    })
-  });
-  
-  const result = await response.json();
-  
-  if (result.success) {
-    localStorage.setItem('accessToken', result.data.accessToken);
-    localStorage.setItem('refreshToken', result.data.refreshToken);
-    return result.data.accessToken;
-  } else {
-    // Redirect to login
-    window.location.href = '/login';
-  }
-}
-
-// Use in API calls
-async function makeAuthenticatedRequest(url, options = {}) {
-  let token = localStorage.getItem('accessToken');
-  
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  
-  if (response.status === 401) {
-    // Token expired, refresh and retry
-    token = await refreshTokens();
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`
-      }
-    });
-  }
-  
-  return response;
+  "errorMessage": "An unexpected error occurred",
+  "statusCode": 500
 }
 ```
 
 ---
 
-## Changelog
+## Rate Limiting
 
-### Version 1.0 (Current)
-- Initial API release
-- User authentication with JWT
-- Google OAuth integration
-- Real-time sign language detection
-- Arabic text-to-sign conversion
-- Audio transcription and generation
-- User history management
-- Comprehensive rate limiting
+The API implements strict rate limiting to ensure fair usage and system stability. If you exceed the limits below, you will receive a `429 Too Many Requests` response with the message:
+`{ "message": "Rate limit exceeded. Try again later." }`
+
+| Endpoint | Limiter Name | Quota / Policy |
+|----------|--------------|----------------|
+| `/api/Auth/register-user` | `RegisterLimiter` | 5 requests per 10 minutes |
+| `/api/Auth/login-user` | `LoginLimiter` | Token Bucket: 5 tokens initially, replenishes 5 tokens every 10 seconds |
+| `/api/Auth/refresh-tokens` | `RefreshTokenLimiter` | 10 requests per 1 minute |
+| `/api/Auth/get-reset-password-token` | `GetResetPasswordLimiter` | 3 requests per 1 hour |
+| `/api/Auth/reset-password` | `ResetPasswordLimiter` | 3 requests per 1 hour |
+| `/api/Auth/change-password` | `ChangePasswordLimiter` | 10 requests per 1 hour |
+| `/api/Auth/login-google` | `GoogleLoginLimiter` | 10 requests per 1 minute |
+| `/api/Auth/google-callback` | `GoogleCallbackLimiter` | 10 requests per 1 minute |
+| `/api/Auth/update-user-image` | `UpdateImageLimiter` | 10 requests per 10 minutes |
+| `/api/Auth/logout` | `LogoutLimiter` | 20 requests per 1 minute |
+| `/api/Auth/user-profile` (GET) | `UserProfileReadLimiter` | 100 requests per 10 minutes |
+| `/api/Auth/update-user-profile` | `UserProfileUpdateLimiter` | 10 requests per 10 minutes |
+| `/api/SignLanguageTranslator/finalize-sentence` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/correct-sentence` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/generate-audio` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/text-to-audio` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/text-to-sign` | `ArabicLimiter` | 30 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/audio-to-text` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/letters-keyboard` | `ArabicLimiter` | 30 requests per 1 minute |
+
+
+---
+
+## HTTP Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | OK - Request successful |
+| 400 | Bad Request - Invalid input |
+| 401 | Unauthorized - Authentication required or failed |
+| 404 | Not Found - Resource doesn't exist |
+| 429 | Too Many Requests - Rate limit exceeded |
+| 500 | Internal Server Error - Server-side error |
+| 502 | Bad Gateway - External API error (e.g., Gemini API) |
+
+---
+
+## Data Models Reference
+
+### ApplicationUserDTO
+```json
+{
+  "email": "string",
+  "fullName": "string",
+  "userName": "string",
+  "phoneNumber": "string",
+  "userBase64Image": "string"
+}
+```
+
+### TokenResponseDTO
+```json
+{
+  "accessToken": "string",
+  "refreshToken": "string",
+  "accessTokenExpires": "2024-01-01T12:00:00Z",
+  "refreshTokenExpires": "2024-01-08T12:00:00Z"
+}
+```
+
+### UserProfileDTO
+```json
+{
+  "fullName": "string",
+  "email": "string",
+  "userBase64Image": "string",
+  "phoneNumber": "string",
+  "userName": "string"
+}
+```
+
+### UserRecordDTO
+```json
+{
+  "id": 0,
+  "formedSentence": "string",
+  "formedAt": "2024-01-01T12:00:00Z"
+}
+```
+
+### TTSResponse
+```json
+{
+  "audioData": "string",
+  "sampleRate": 24000
+}
+```
+
+### Suggestion
+```json
+{
+  "correctedSentence": "string"
+}
+```
+
+---
+
+## Notes
+
+1. **Base64 Image Format**: All images (profile pictures, sign language images) are returned as base64-encoded strings with MIME type prefix: `data:image/[type];base64,[data]`
+
+2. **Date-Time Format**: All timestamps follow ISO 8601 format: `YYYY-MM-DDTHH:mm:ssZ`
+
+3. **Authentication Flow**:
+   - Register or Login to obtain tokens
+   - Include access token in `Authorization` header for protected endpoints
+   - Use refresh token to obtain new access tokens when they expire
+
+4. **Sign Language Translation Workflow**:
+   - Capture image → POST to `/api/SignLanguageTranslator` → Receive letter
+   - Collect multiple letters → POST to `/api/SignLanguageTranslator/finalize-sentence` → Receive formatted sentence
+   - Optional: POST to `/api/SignLanguageTranslator/generate-audio` → Receive audio
+
+5. **Arabic to Sign Translation**:
+   - Type Arabic text → POST to `/api/ArabicLanguageTranslator/text-to-sign` → Receive sign images
+   - Or record audio → POST to `/api/ArabicLanguageTranslator/audio-to-text` → Convert to text → POST to text-to-sign
 
 ---
 
 ## Support
 
-For API support and questions:
-- **Email:** ema2ateam@gmail.com
-- **Documentation:** https://docs.example.com
-- **GitHub Issues:** https://github.com/Abdelhamid108/GraduationProjectDotNet-Deploy/issues
+For issues or questions about the API, please contact the development team or refer to the application documentation.
 
----
-
-## License
-
-This API documentation is part of a graduation project. Please refer to the repository license for usage terms.
-
----
-
-**Last Updated:** January 30, 2026
-**API Version:** 1.0
+**API Version:** v1  
+**Last Updated:** 2026
