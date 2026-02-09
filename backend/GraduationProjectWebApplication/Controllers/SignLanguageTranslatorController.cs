@@ -24,6 +24,7 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly string? generateAudioAPIKey;
         private readonly string? generateAudioBackUpAPIKey;
         private readonly string? textToAudioAPIKey;
+        private readonly string? textToAudioStep2APIKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -45,6 +46,7 @@ namespace GraduationProjectWebApplication.Controllers
             generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
             generateAudioBackUpAPIKey = configuration["GENERATE_AUDIO_BACKUP_KEY"];
             textToAudioAPIKey = configuration["TEXT_TO_AUDIO_KEY"];
+            textToAudioStep2APIKey = configuration["TEXT_TO_AUDIO_STEP_2_KEY"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
@@ -57,7 +59,7 @@ namespace GraduationProjectWebApplication.Controllers
             if (string.IsNullOrEmpty(frameData?.ImageData))
             {
                 _logger.LogWarning("TranslateSign: No image data provided");
-                return BadRequest(ErrorResponse<string>("No image data provided."));
+                return BadRequest(ErrorResponse<string>("No image data provided. Please include base64-encoded image in 'ImageData'."));
             }
 
             byte[]? imageBytes = null;
@@ -117,14 +119,14 @@ namespace GraduationProjectWebApplication.Controllers
             catch (FormatException ex)
             {
                 _logger.LogError(ex, "TranslateSign: Invalid base64 image format");
-                return BadRequest(ErrorResponse<string>("Invalid image format. Please provide a valid base64-encoded image."));
+                return BadRequest(ErrorResponse<string>("Invalid image format. Ensure the image is a valid base64-encoded JPEG."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "TranslateSign: Unexpected error occurred");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+                    ErrorResponse<string>($"Unexpected server error while processing the image: {ex.Message}"));
             }
             finally
             {
@@ -547,7 +549,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var jsonAudio = JsonSerializer.Serialize(audioPayload);
                 var audioContent = new StringContent(jsonAudio, Encoding.UTF8, "application/json");
 
-                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={textToAudioAPIKey}", audioContent);
+                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={textToAudioStep2APIKey}", audioContent);
                 audioResponse.EnsureSuccessStatusCode();
 
                 var audioJson = await audioResponse.Content.ReadAsStringAsync();
