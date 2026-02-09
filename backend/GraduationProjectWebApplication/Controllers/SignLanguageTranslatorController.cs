@@ -185,6 +185,7 @@ namespace GraduationProjectWebApplication.Controllers
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
+                    _logger.LogWarning("FinalizeSentence: Rate limit exceeded for primary API key, switching to backup key");
                     string backupApiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceBackUpAPIKey}";
                     response = await _httpClient.PostAsync(backupApiUrl, content);
                 }
@@ -228,7 +229,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(httpEx, "FinalizeSentence: HTTP request to Gemini API failed");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>($"Failed to communicate with sentence correction service, {httpEx.Message.ToString()}"));
+                    ErrorResponse<string>($"Failed to communicate with sentence correction service. {httpEx.Message}"));
             }
             catch (Exception ex)
             {
