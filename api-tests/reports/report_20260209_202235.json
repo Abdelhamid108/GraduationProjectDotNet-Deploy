@@ -1,0 +1,213 @@
+{
+    "metadata": {
+        "timestamp": "2026-02-09T18:22:35Z",
+        "start_time": "2026-02-09T18:21:33Z",
+        "end_time": "2026-02-09T18:22:35Z",
+        "base_url": "https://ema2a.ddnsgeek.com",
+        "duration_seconds": 62
+    },
+    "summary": {
+        "total": 23,
+        "passed": 22,
+        "failed": 1,
+        "skipped": 0,
+        "pass_rate": "95.6%"
+    },
+    "rest_tests": [{
+    "id": "auth_login",
+    "name": "Login User",
+    "endpoint": "POST /api/Auth/login-user",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 643,
+    "auth_used": false
+},{
+    "id": "auth_test_authentication",
+    "name": "Test Authentication",
+    "endpoint": "GET /api/Auth/test-authentication",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 575,
+    "auth_used": true
+},{
+    "id": "auth_user_profile",
+    "name": "Get User Profile",
+    "endpoint": "GET /api/Auth/user-profile",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 576,
+    "auth_used": true
+},{
+    "id": "auth_refresh_tokens",
+    "name": "Refresh Tokens",
+    "endpoint": "POST /api/Auth/refresh-tokens",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 576,
+    "auth_used": false
+},{
+    "id": "auth_google_login",
+    "name": "Google OAuth Login",
+    "endpoint": "GET /api/Auth/login-google",
+    "status": "PASSED",
+    "expected_status": 302,
+    "actual_status": 302,
+    "latency_ms": 589,
+    "auth_used": false
+},{
+    "id": "auth_google_callback",
+    "name": "Google OAuth Callback",
+    "endpoint": "GET /api/Auth/google-callback",
+    "status": "SKIPPED",
+    "expected_status": 401,
+    "actual_status": 0,
+    "latency_ms": 0,
+    "auth_used": false,
+    "error": "Pending: Redirect URI configuration in Google Cloud Console awaiting final domain setup"
+},{
+    "id": "arabic_text_to_sign",
+    "name": "Text to Sign Language",
+    "endpoint": "POST /api/ArabicLanguageTranslator/text-to-sign",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 3103,
+    "auth_used": false
+},{
+    "id": "arabic_letters_keyboard",
+    "name": "Get Letters Keyboard",
+    "endpoint": "GET /api/ArabicLanguageTranslator/letters-keyboard",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 1020,
+    "auth_used": false
+},{
+    "id": "sign_finalize_sentence",
+    "name": "Finalize Sentence",
+    "endpoint": "POST /api/SignLanguageTranslator/finalize-sentence",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 2138,
+    "auth_used": false
+},{
+    "id": "sign_generate_audio",
+    "name": "Generate Audio from Text",
+    "endpoint": "POST /api/SignLanguageTranslator/generate-audio",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 2116,
+    "auth_used": false
+},{
+    "id": "sign_text_to_audio",
+    "name": "Text to Audio (Full Flow)",
+    "endpoint": "POST /api/SignLanguageTranslator/text-to-audio",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 3869,
+    "auth_used": false
+},{
+    "id": "history_get",
+    "name": "Get User History",
+    "endpoint": "GET /api/UserHistory/get-user-history",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 734,
+    "auth_used": true
+},{
+    "id": "tts_health",
+    "name": "TTS Service Health",
+    "endpoint": "GET /tts/health",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 738,
+    "auth_used": false
+},{
+    "id": "tts_speakers",
+    "name": "TTS List Speakers",
+    "endpoint": "GET /tts/speakers",
+    "status": "PASSED",
+    "expected_status": 200,
+    "actual_status": 200,
+    "latency_ms": 722,
+    "auth_used": false
+},{
+    "id": "tts_get",
+    "name": "TTS Convert Text to Speech (GET)",
+    "endpoint": "GET /tts/tts",
+    "status": "FAILED",
+    "expected_status": 200,
+    "actual_status": 000,
+    "latency_ms": 707,
+    "auth_used": false,
+    "error": "Expected status 200, got 000",
+    "response_body": "[binary data]"
+}],
+    "websocket_tests": [{
+    "id": "ws_signalr_negotiate",
+    "name": "SignalR Negotiation",
+    "action": "HTTP POST",
+    "status": "PASSED",
+    "latency_ms": 598
+},{
+    "id": "ws_connect",
+    "name": "WebSocket Connection",
+    "action": "connect",
+    "status": "PASSED",
+    "latency_ms": 10012
+},{
+    "id": "ws_handshake",
+    "name": "SignalR Handshake",
+    "action": "send",
+    "status": "PASSED",
+    "latency_ms": 893
+},{
+    "id": "ws_ping_pong",
+    "name": "SignalR Ping",
+    "action": "send",
+    "status": "PASSED",
+    "latency_ms": 886
+},{
+    "id": "ws_process_frame_valid",
+    "name": "ProcessFrame with Valid Image",
+    "action": "invoke:ProcessFrame",
+    "status": "PASSED",
+    "latency_ms": 1053
+},{
+    "id": "ws_process_frame_empty",
+    "name": "ProcessFrame with Empty Data",
+    "action": "invoke:ProcessFrame",
+    "status": "PASSED",
+    "latency_ms": 1006
+},{
+    "id": "ws_invalid_method",
+    "name": "Invoke Invalid Method",
+    "action": "invoke:NonExistentMethod",
+    "status": "PASSED",
+    "latency_ms": 1056
+},{
+    "id": "ws_disconnect",
+    "name": "Graceful Disconnect",
+    "action": "disconnect",
+    "status": "PASSED",
+    "latency_ms": 0
+}],
+    "failures": [{
+    "id": "tts_get",
+    "name": "TTS Convert Text to Speech (GET)",
+    "endpoint": "GET /tts/tts",
+    "error": "Expected status 200, got 000",
+    "diagnosis": "Unknown error",
+    "suggested_fix": "Review error message and check endpoint implementation",
+    "response_body": "[binary data]"
+}]
+}
