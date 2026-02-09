@@ -345,7 +345,7 @@ namespace GraduationProjectWebApplication.Controllers
             if (string.IsNullOrEmpty(request?.Text))
             {
                 _logger.LogWarning("GenerateAudio: Missing 'text' field");
-                return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field in request body."));
+                return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
             }
 
             _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
@@ -386,6 +386,7 @@ namespace GraduationProjectWebApplication.Controllers
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
+                    _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
                     response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioBackUpAPIKey}", content);
                 }
 
@@ -591,7 +592,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(ex, "TextToAudio: API request failure");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>("Failed communicating with Gemini API.")
+                    ErrorResponse<string>($"Failed communicating with Gemini API {ex.Message.ToString()}.")
                 );
             }
             catch (Exception ex)
