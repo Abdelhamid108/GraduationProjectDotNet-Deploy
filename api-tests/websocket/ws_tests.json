@@ -51,7 +51,7 @@
             "action": "invoke",
             "method": "ProcessFrame",
             "arguments": {
-                "imageData": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                "imageData": "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
             },
             "expected_event": "ReceiveTranslation",
             "timeout_ms": 10000
@@ -133,7 +133,7 @@
         "ws_disconnect"
     ],
     "sample_images": {
-        "tiny_valid_png": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "description": "1x1 transparent PNG for basic connectivity testing"
+        "tiny_valid_jpeg": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "description": "1x1 transparent JPEG (conceptually) for basic connectivity testing"
     }
 }

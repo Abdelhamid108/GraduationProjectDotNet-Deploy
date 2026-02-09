@@ -12,7 +12,7 @@
 8. [Endpoint Reference](#endpoint-reference)
 9. [Adding New Tests](#adding-new-tests)
 10. [Troubleshooting](#troubleshooting)
-11. [CI/CD Integration](#cicd-integration)
+11. [Report Format](#report-format)
 
 ---
 
@@ -26,13 +26,13 @@ A production-grade, Bash-based API testing framework for validating:
 
 ### Why Use This Framework?
 
-| Feature | Benefit |
-|---------|---------|
-| **Data-driven tests** | Add/modify tests without code changes |
-| **Cross-platform** | Works on Linux, macOS, and Windows (Git Bash) |
-| **CI/CD ready** | GitHub Actions workflow included |
-| **Unified reporting** | Single report for REST + WebSocket tests |
-| **Failure analysis** | Detailed diagnosis for debugging |
+| Feature              | Benefit                                    |
+|----------------------|--------------------------------------------|
+| Data-driven tests    | Add/modify tests without code changes      |
+| Cross-platform       | Works on Linux, macOS, and Windows         |
+| Unified reporting    | Single report for REST + WebSocket tests   |
+| Failure analysis     | Detailed diagnosis for debugging           |
+| UTF-8 support        | Full Arabic character encoding support     |
 
 ### How It Works
 
@@ -94,12 +94,12 @@ api-tests/
 
 ### 1. Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Bash | 4.0+ | Script execution |
-| curl | any | REST API calls |
-| jq | 1.6+ | JSON parsing |
-| websocat | 1.11+ | WebSocket testing |
+| Tool     | Version | Purpose           |
+|----------|---------|-------------------|
+| Bash     | 4.0+    | Script execution  |
+| curl     | any     | REST API calls    |
+| jq       | 1.6+    | JSON parsing      |
+| websocat | 1.11+   | WebSocket testing |
 
 ### 2. Run Tests
 
@@ -254,7 +254,10 @@ Options:
   
   --ws-only         Run only WebSocket tests
   
-  --verbose         Enable detailed output
+  --verbose         Enable detailed output (shows request/response bodies)
+  
+  --show-bodies     Show request and response bodies for ALL tests
+                    (Failed tests always show bodies regardless)
   
   --skip-auth       Skip authentication tests
                     (requires valid token in environment)
@@ -273,6 +276,9 @@ Options:
 
 # Verbose output for debugging
 ./run_tests.sh --base-url https://ema2a.ddns.net --verbose
+
+# Show all request/response bodies (for detailed analysis)
+./run_tests.sh --base-url https://ema2a.ddns.net --show-bodies
 
 # Dry run (see what would execute)
 ./run_tests.sh --base-url https://ema2a.ddns.net --dry-run
@@ -322,13 +328,13 @@ Options:
 
 ### Execution Phases
 
-| Phase | Description | Duration |
-|-------|-------------|----------|
-| **1. Initialization** | Load config, parse args | ~1s |
-| **2. Authentication** | Login, get JWT token | ~2s |
-| **3. REST Tests** | Test 28 endpoints | ~30-60s |
-| **4. WebSocket Tests** | SignalR connection & messaging | ~10-20s |
-| **5. Report Generation** | Create JSON/HTML report | ~1s |
+| Phase                  | Description                      | Duration  |
+|------------------------|----------------------------------|-----------|  
+| 1. Initialization      | Load config, parse args          | ~1s       |
+| 2. Authentication      | Login, get JWT token             | ~2s       |
+| 3. REST Tests          | Test 28 endpoints                | ~30-60s   |
+| 4. WebSocket Tests     | SignalR connection & messaging   | ~10-20s   |
+| 5. Report Generation   | Create JSON/HTML report          | ~1s       |
 
 ---
 
@@ -336,62 +342,62 @@ Options:
 
 ### Authentication Endpoints (Auth Controller)
 
-| # | Method | Path | Auth | Purpose |
-|---|--------|------|------|---------|
-| 1 | POST | `/api/Auth/register-user` | ❌ | Register new user |
-| 2 | POST | `/api/Auth/login-user` | ❌ | Login, get JWT token |
-| 3 | POST | `/api/Auth/refresh-tokens` | ❌ | Refresh access token |
-| 4 | POST | `/api/Auth/get-reset-password-token` | ❌ | Request password reset |
-| 5 | POST | `/api/Auth/reset-password` | ❌ | Reset password with OTP |
-| 6 | POST | `/api/Auth/change-password` | ✅ | Change password (auth) |
-| 7 | GET | `/api/Auth/login-google` | ❌ | Google OAuth redirect |
-| 8 | GET | `/api/Auth/google-callback` | ❌ | Google OAuth callback |
-| 9 | POST | `/api/Auth/update-user-image` | ✅ | Update profile image |
-| 10 | POST | `/api/Auth/logout` | ✅ | Logout, invalidate token |
-| 11 | GET | `/api/Auth/user-profile` | ✅ | Get user profile |
-| 12 | POST | `/api/Auth/update-user-profile` | ✅ | Update user profile |
-| 13 | GET | `/api/Auth/TestAuthentication` | ✅ | Verify authentication |
+| #  | Method | Path                                 | Auth | Purpose                 |
+|----|--------|--------------------------------------|------|-------------------------|
+| 1  | POST   | `/api/Auth/register-user`            | ❌   | Register new user       |
+| 2  | POST   | `/api/Auth/login-user`               | ❌   | Login, get JWT token    |
+| 3  | POST   | `/api/Auth/refresh-tokens`           | ❌   | Refresh access token    |
+| 4  | POST   | `/api/Auth/get-reset-password-token` | ❌   | Request password reset  |
+| 5  | POST   | `/api/Auth/reset-password`           | ❌   | Reset password with OTP |
+| 6  | POST   | `/api/Auth/change-password`          | ✅   | Change password (auth)  |
+| 7  | GET    | `/api/Auth/login-google`             | ❌   | Google OAuth redirect   |
+| 8  | GET    | `/api/Auth/google-callback`          | ❌   | Google OAuth callback   |
+| 9  | POST   | `/api/Auth/update-user-image`        | ✅   | Update profile image    |
+| 10 | POST   | `/api/Auth/logout`                   | ✅   | Logout, invalidate token|
+| 11 | GET    | `/api/Auth/user-profile`             | ✅   | Get user profile        |
+| 12 | POST   | `/api/Auth/update-user-profile`      | ✅   | Update user profile     |
+| 13 | GET    | `/api/Auth/TestAuthentication`       | ✅   | Verify authentication   |
 
 ### Arabic Translator Endpoints
 
-| # | Method | Path | Auth | Purpose |
-|---|--------|------|------|---------|
-| 14 | POST | `/api/ArabicLanguageTranslator/text-to-sign` | ❌ | Convert text to sign images |
-| 15 | POST | `/api/ArabicLanguageTranslator/audio-to-text` | ❌ | Transcribe audio to text |
-| 16 | GET | `/api/ArabicLanguageTranslator/letters-keyboard` | ❌ | Get sign for single letter |
+| #  | Method | Path                                          | Auth | Purpose                    |
+|----|--------|-----------------------------------------------|------|----------------------------|
+| 14 | POST   | `/api/ArabicLanguageTranslator/text-to-sign`  | ❌   | Convert text to sign images|
+| 15 | POST   | `/api/ArabicLanguageTranslator/audio-to-text` | ❌   | Transcribe audio to text   |
+| 16 | GET    | `/api/ArabicLanguageTranslator/letters-keyboard`| ❌ | Get sign for single letter |
 
 ### Sign Language Translator Endpoints
 
-| # | Method | Path | Auth | Purpose |
-|---|--------|------|------|---------|
-| 17 | POST | `/api/SignLanguageTranslator` | ❌ | Translate sign image to text |
-| 18 | POST | `/api/SignLanguageTranslator/finalize-sentence` | ❌ | Finalize concatenated letters |
-| 19 | POST | `/api/SignLanguageTranslator/CorrectSentence` | ❌ | Correct grammar/spelling |
-| 20 | POST | `/api/SignLanguageTranslator/GenerateAudio` | ❌ | Generate audio from text |
-| 21 | POST | `/api/SignLanguageTranslator/text-to-audio` | ❌ | Complete text-to-audio flow |
+| #  | Method | Path                                           | Auth | Purpose                     |
+|----|--------|------------------------------------------------|------|-----------------------------|  
+| 17 | POST   | `/api/SignLanguageTranslator`                  | ❌   | Translate sign image to text|
+| 18 | POST   | `/api/SignLanguageTranslator/finalize-sentence`| ❌   | Finalize concatenated letters|
+| 19 | POST   | `/api/SignLanguageTranslator/CorrectSentence`  | ❌   | Correct grammar/spelling    |
+| 20 | POST   | `/api/SignLanguageTranslator/GenerateAudio`    | ❌   | Generate audio from text    |
+| 21 | POST   | `/api/SignLanguageTranslator/text-to-audio`    | ❌   | Complete text-to-audio flow |
 
 ### User History Endpoints
 
-| # | Method | Path | Auth | Purpose |
-|---|--------|------|------|---------|
-| 22 | GET | `/api/UserHistory/get-user-history` | ✅ | Get user's history |
-| 23 | DELETE | `/api/UserHistory/delete-user-history-record` | ✅ | Delete single record |
-| 24 | DELETE | `/api/UserHistory/delete-all-user-history` | ✅ | Delete all history |
+| #  | Method | Path                                        | Auth | Purpose              |
+|----|--------|---------------------------------------------|------|----------------------|
+| 22 | GET    | `/api/UserHistory/get-user-history`         | ✅   | Get user's history   |
+| 23 | DELETE | `/api/UserHistory/delete-user-history-record`| ✅  | Delete single record |
+| 24 | DELETE | `/api/UserHistory/delete-all-user-history`  | ✅   | Delete all history   |
 
 ### TTS Service Endpoints
 
-| # | Method | Path | Auth | Purpose |
-|---|--------|------|------|---------|
-| 25 | GET | `/tts/health` | ❌ | Health check |
-| 26 | GET | `/tts/speakers` | ❌ | List voice options |
-| 27 | POST | `/tts/tts` | ❌ | Text-to-speech (POST) |
-| 28 | GET | `/tts/tts` | ❌ | Text-to-speech (GET) |
+| #  | Method | Path           | Auth | Purpose               |
+|----|--------|----------------|------|-----------------------|
+| 25 | GET    | `/tts/health`  | ❌   | Health check          |
+| 26 | GET    | `/tts/speakers`| ❌   | List voice options    |
+| 27 | POST   | `/tts/tts`     | ❌   | Text-to-speech (POST) |
+| 28 | GET    | `/tts/tts`     | ❌   | Text-to-speech (GET)  |
 
 ### WebSocket Endpoint
 
-| Hub | Path | Method | Purpose |
-|-----|------|--------|---------|
-| SignHub | `/signHub` | `ProcessFrame` | Real-time sign translation |
+| Hub     | Path       | Method         | Purpose                   |
+|---------|------------|----------------|---------------------------|
+| SignHub | `/signHub` | `ProcessFrame` | Real-time sign translation|
 
 ---
 
@@ -436,6 +442,52 @@ Edit `rest/endpoints.json`:
 | `expected_status` | int | ✅ | Expected HTTP status code |
 | `expected_fields` | array | ❌ | Fields to verify in response |
 | `skip` | bool | ❌ | Set true to skip this test |
+| `skip_reason` | string | ❌ | Reason for skipping (displayed in output) |
+| `deprecated` | bool | ❌ | Mark endpoint as deprecated |
+| `replacement_endpoint` | string | ❌ | New endpoint path (for deprecated) |
+| `rate_limit` | object | ❌ | Rate limiting configuration |
+| `rate_limit.max_requests_per_minute` | int | ❌ | Max requests allowed per minute |
+| `rate_limit.throttle_delay_ms` | int | ❌ | Delay in ms after this test |
+
+### Rate Limiting Configuration
+
+For endpoints with rate limits, add a `rate_limit` object to automatically throttle requests:
+
+```json
+{
+  "id": "sign_text_to_audio",
+  "name": "Text to Audio (Full Flow)",
+  "method": "POST",
+  "path": "/api/SignLanguageTranslator/text-to-audio",
+  "payload": { "sentence": "مرحبا" },
+  "expected_status": 200,
+  "rate_limit": {
+    "max_requests_per_minute": 3,
+    "throttle_delay_ms": 20000
+  },
+  "notes": "Rate limited to 3 requests/minute"
+}
+```
+
+The test runner will automatically wait `throttle_delay_ms` (20 seconds) after this test before proceeding.
+
+### Deprecated Endpoint Handling
+
+Mark deprecated endpoints to skip them and document the replacement:
+
+```json
+{
+  "id": "sign_correct_sentence",
+  "name": "Correct Sentence (DEPRECATED)",
+  "method": "POST",
+  "path": "/api/SignLanguageTranslator/correct-sentence",
+  "expected_status": 200,
+  "skip": true,
+  "skip_reason": "DEPRECATED: Use sign_finalize_sentence instead",
+  "deprecated": true,
+  "replacement_endpoint": "/api/SignLanguageTranslator/finalize-sentence"
+}
+```
 
 ### Adding a WebSocket Test
 
@@ -465,14 +517,15 @@ Edit `websocket/ws_tests.json`:
 
 ### Common Issues
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `curl: command not found` | curl not installed | Install curl |
-| `jq: command not found` | jq not installed | Install jq |
-| `Connection refused` | API not running | Verify base URL |
-| `401 Unauthorized` | Invalid/expired token | Check credentials |
-| `429 Too Many Requests` | Rate limit hit | Wait and retry |
-| `WebSocket connect failed` | SignalR negotiation issue | Check /signHub endpoint |
+| Issue                         | Cause                      | Solution                                 |
+|-------------------------------|----------------------------|------------------------------------------|
+| `curl: command not found`     | curl not installed         | Install curl                             |
+| `jq: command not found`       | jq not installed           | Install jq                               |
+| `Connection refused`          | API not running            | Verify base URL                          |
+| `401 Unauthorized`            | Invalid/expired token      | Check credentials                        |
+| `429 Too Many Requests`       | Rate limit hit             | Add `rate_limit` config to endpoint      |
+| `400 Bad Request` with Arabic | URL encoding issue         | Framework handles UTF-8 automatically    |
+| `WebSocket connect failed`    | SignalR negotiation issue  | Check /signHub endpoint                  |
 
 ### Debug Mode
 
@@ -490,92 +543,6 @@ curl --version
 jq --version
 websocat --version
 bash --version
-```
-
----
-
-## CI/CD Integration
-
-### GitHub Actions
-
-Create `.github/workflows/api-tests.yml`:
-
-```yaml
-name: API Tests
-
-on:
-  workflow_dispatch:
-    inputs:
-      base_url:
-        description: 'API Base URL'
-        required: true
-        default: 'https://ema2a.ddns.net'
-  
-  # Optional: run on schedule
-  schedule:
-    - cron: '0 6 * * *'  # Daily at 6 AM
-
-jobs:
-  api-tests:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          wget -qO /tmp/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl
-          chmod +x /tmp/websocat && sudo mv /tmp/websocat /usr/local/bin/
-      
-      - name: Run API Tests
-        run: |
-          chmod +x api-tests/run_tests.sh
-          ./api-tests/run_tests.sh --base-url ${{ inputs.base_url || 'https://ema2a.ddns.net' }}
-      
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-test-report
-          path: api-tests/reports/
-          retention-days: 30
-```
-
-### Jenkins Pipeline
-
-```groovy
-pipeline {
-    agent any
-    
-    parameters {
-        string(name: 'BASE_URL', defaultValue: 'https://ema2a.ddns.net', description: 'API Base URL')
-    }
-    
-    stages {
-        stage('Install Dependencies') {
-            steps {
-                sh 'apt-get update && apt-get install -y jq'
-            }
-        }
-        
-        stage('Run API Tests') {
-            steps {
-                sh """
-                    chmod +x api-tests/run_tests.sh
-                    ./api-tests/run_tests.sh --base-url ${params.BASE_URL}
-                """
-            }
-        }
-    }
-    
-    post {
-        always {
-            archiveArtifacts artifacts: 'api-tests/reports/**', allowEmptyArchive: true
-        }
-    }
-}
 ```
 
 ---

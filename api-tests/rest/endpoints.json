@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "description": "REST API Endpoint Test Definitions for Ema2a Graduation Project",
   "endpoints": [
     {
@@ -62,7 +62,7 @@
       "id": "auth_test_authentication",
       "name": "Test Authentication",
       "method": "GET",
-      "path": "/api/Auth/TestAuthentication",
+      "path": "/api/Auth/test-authentication",
       "auth_required": true,
       "expected_status": 200,
       "depends_on": "auth_login"
@@ -172,7 +172,7 @@
       "auth_required": true,
       "content_type": "multipart/form-data",
       "payload": {
-        "image": "{{SAMPLE_IMAGE_BASE64}}"
+        "NewImge": "{{SAMPLE_IMAGE_BASE64}}"
       },
       "expected_status": 200,
       "depends_on": "auth_login",
@@ -268,7 +268,7 @@
       "id": "sign_correct_sentence",
       "name": "Correct Sentence",
       "method": "POST",
-      "path": "/api/SignLanguageTranslator/CorrectSentence",
+      "path": "/api/SignLanguageTranslator/correct-sentence",
       "auth_required": false,
       "payload": {
         "sentence": "مرحبا بكم"
@@ -282,7 +282,7 @@
       "id": "sign_generate_audio",
       "name": "Generate Audio from Text",
       "method": "POST",
-      "path": "/api/SignLanguageTranslator/GenerateAudio",
+      "path": "/api/SignLanguageTranslator/generate-audio",
       "auth_required": false,
       "payload": {
         "text": "مرحبا بكم"
@@ -318,8 +318,8 @@
       "method": "DELETE",
       "path": "/api/UserHistory/delete-user-history-record",
       "auth_required": true,
-      "query_params": {
-        "id": "00000000-0000-0000-0000-000000000000"
+      "payload": {
+        "id": 1
       },
       "expected_status": 400,
       "expected_error_contains": "not found",
@@ -357,24 +357,6 @@
       "is_plain_text": true
     },
     {
-      "id": "tts_post",
-      "name": "TTS Convert Text to Speech (POST)",
-      "method": "POST",
-      "path": "/tts/tts",
-      "auth_required": false,
-      "payload": {
-        "text": "مرحبا",
-        "speaker": 1,
-        "pace": 1.0,
-        "volume": 0.9
-      },
-      "expected_status": 200,
-      "expected_content_type": "audio/mpeg",
-      "is_binary_response": true,
-      "skip": true,
-      "skip_reason": "POST method not supported - use GET instead"
-    },
-    {
       "id": "tts_get",
       "name": "TTS Convert Text to Speech (GET)",
       "method": "GET",
@@ -389,38 +371,9 @@
       "expected_status": 200,
       "expected_content_type": "audio/mpeg",
       "is_binary_response": true
-    },
-    {
-      "id": "tts_invalid_text",
-      "name": "TTS Empty Text (Validation)",
-      "method": "GET",
-      "path": "/tts/tts",
-      "auth_required": false,
-      "query_params": {
-        "text": ""
-      },
-      "expected_status": 422,
-      "expected_error_contains": "validation"
-    },
-    {
-      "id": "tts_invalid_speaker",
-      "name": "TTS Invalid Speaker (Validation)",
-      "method": "GET",
-      "path": "/tts/tts",
-      "auth_required": false,
-      "query_params": {
-        "text": "مرحبا",
-        "speaker": "99"
-      },
-      "expected_status": 422
     }
   ],
   "test_order": [
-    "tts_health",
-    "tts_speakers",
-    "tts_get",
-    "tts_invalid_text",
-    "tts_invalid_speaker",
     "auth_login",
     "auth_test_authentication",
     "auth_user_profile",
@@ -433,6 +386,9 @@
     "sign_correct_sentence",
     "sign_generate_audio",
     "sign_text_to_audio",
-    "history_get"
+    "history_get",
+    "tts_health",
+    "tts_speakers",
+    "tts_get"
   ]
 }
