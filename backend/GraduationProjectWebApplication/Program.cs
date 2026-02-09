@@ -298,6 +298,8 @@ namespace GraduationProjectWebApplication
                 });
             });
 
+            /*============ To Get User Instance In a service ============*/
+            builder.Services.AddHttpContextAccessor();
 
 
             var app = builder.Build();

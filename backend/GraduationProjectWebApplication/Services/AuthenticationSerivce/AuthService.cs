@@ -28,8 +28,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly string _key;
         private readonly string _issuer;
-
-
         public AuthService(ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IConfiguration config,
@@ -46,7 +44,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
             _key = config["SECRET_KEY"];
             _issuer = config["ISSUER"];
-
         }
         public async Task<AuthResponse<TokenResponseDTO>?> LoginAsync(LoginDTO loginDTO)
         {
@@ -90,7 +87,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 IsSuccess = true,
             };
         }
-
         public async Task<AuthResponse<ApplicationUserDTO>?> RegisterAsync(RegisterDTO registerDTO)
         {
 
@@ -277,7 +273,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 }
             }
         }
-
         public async Task<AuthResponse<bool>?> ChangePasswordAsync(string userId, ChangePasswordDTO changePasswordDTO)
         {
             ApplicationUser? applicationUser = await _context.ApplicationUsers
@@ -316,13 +311,15 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
 
         }
-
         public async Task<AuthResponse<bool>?> ResetPasswordAsync(ResetPasswordDTO resetPasswordDTO)
         {
             AuthResponse<bool> authResponse;
 
-            var user = await _userManager.FindByEmailAsync(resetPasswordDTO.Email);
-            if (user == null)
+
+            // Don't depend on email
+            var userClaims = _httpContextAccessor.HttpContext?.User;
+
+            if (userClaims == null)
                 return authResponse = new AuthResponse<bool>()
                 {
                     IsSuccess = false,
@@ -330,11 +327,13 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     Result = false
                 };
 
+            string? userId = userClaims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
 
+            // Don't depend on email
             ResetPasswordToken? resetPasswordToken =
                 await _context.ResetPasswordTokens
-                .Where(t => t.UserId == user.Id &&
+                .Where(t => t.UserId == userId &&
                             !t.IsUsed &&
                             t.ExpiresAt > DateTime.UtcNow)
                 .OrderByDescending(t => t.ExpiresAt)
@@ -347,6 +346,16 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     IsSuccess = false,
                     ErrorMessage = "Invaild or expired OTP !",
                     Result = false,
+                };
+
+            var user = await _userManager.GetUserAsync(userClaims);
+
+            if (user == null)
+                return authResponse = new AuthResponse<bool>()
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Invalid user",
+                    Result = false
                 };
 
             var result = await _userManager
@@ -376,7 +385,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 Result = true,
             };
         }
-
         public async Task<AuthResponse<ResetPasswordTokenDTO>?> GenerateResetPasswordTokenAsync(string Email)
         {
             ApplicationUser? applicationUser = await _userManager.FindByEmailAsync(Email);
@@ -420,7 +428,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 }
             };
         }
-
         public async Task<TokenResponseDTO?> RefreshTokensAsync(TokenRequestDTO tokenRequestDTO)
         {
             RefreshToken? refreshToken = await _context.RefreshTokens
@@ -738,7 +745,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 }
             };
         }
-
         private bool UserNameUnique(string userName)
         {
             bool result = false;
@@ -821,8 +827,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             int otp = BitConverter.ToInt32(bytes, 0) % 1_000_000;
             return Math.Abs(otp).ToString("D6");
         }
-
-
         private static string HashOtp(string otp)
         {
             using var sha = SHA256.Create();

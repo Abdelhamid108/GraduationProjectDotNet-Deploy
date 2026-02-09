@@ -211,7 +211,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(httpEx, "FinalizeSentence: HTTP request to Gemini API failed");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>("Failed to communicate with sentence correction service."));
+                    ErrorResponse<string>($"Failed to communicate with sentence correction service, {httpEx.Message.ToString()}"));
             }
             catch (Exception ex)
             {
