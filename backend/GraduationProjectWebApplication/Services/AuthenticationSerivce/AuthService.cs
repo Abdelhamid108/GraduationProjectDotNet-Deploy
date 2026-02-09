@@ -630,16 +630,22 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 };
             }
 
-            string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
-                                               Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                               relative);
             string base64Image = string.Empty;
 
-            if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+
+            if (applicationUser.HasImage && !string.IsNullOrEmpty(applicationUser.ImagePath))
             {
-                base64Image = await _fileService.ConvertToBase64(imageFullPath);
+                string relative = applicationUser.ImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string imageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
+                                                   Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                                   relative);
+
+                if (!string.IsNullOrEmpty(applicationUser.ImagePath))
+                {
+                    base64Image = await _fileService.ConvertToBase64(imageFullPath);
+                }
             }
+            
 
             UserProfileDTO userProfileDTO = new UserProfileDTO()
             {
