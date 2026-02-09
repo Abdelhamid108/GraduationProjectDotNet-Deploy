@@ -257,7 +257,7 @@ namespace GraduationProjectWebApplication
 
                 options.AddFixedWindowLimiter("GeminiLimiter", limiter =>
                 {
-                    limiter.PermitLimit = 10;
+                    limiter.PermitLimit = 3;
                     limiter.Window = TimeSpan.FromMinutes(1);
                     limiter.QueueLimit = 0;
                 });

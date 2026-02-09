@@ -20,7 +20,10 @@ namespace GraduationProjectWebApplication.Controllers
     {
         private readonly HttpClient _httpClient;
         private readonly string? correctSentenceAPIKey;
+        private readonly string? correctSentenceBackUpAPIKey;
         private readonly string? generateAudioAPIKey;
+        private readonly string? generateAudioBackUpAPIKey;
+        private readonly string? textToAudioAPIKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -38,12 +41,14 @@ namespace GraduationProjectWebApplication.Controllers
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
 
             correctSentenceAPIKey = configuration["CORRECT_SENTENCE_KEY"];
+            correctSentenceBackUpAPIKey = configuration["CORRECT_SENTENCE_BACKUP_KEY"];
             generateAudioAPIKey = configuration["GENERATE_AUDIO_KEY"];
+            generateAudioBackUpAPIKey = configuration["GENERATE_AUDIO_BACKUP_KEY"];
+            textToAudioAPIKey = configuration["TEXT_TO_AUDIO_KEY"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
         }
-
 
 
         [HttpPost]
@@ -175,7 +180,15 @@ namespace GraduationProjectWebApplication.Controllers
                 string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
 
                 HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    string backupApiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceBackUpAPIKey}";
+                    response = await _httpClient.PostAsync(backupApiUrl, content);
+                }
+
                 response.EnsureSuccessStatusCode();
+
 
                 string responseBody = await response.Content.ReadAsStringAsync();
                 _logger.LogDebug("FinalizeSentence: Gemini API response received");
@@ -367,6 +380,12 @@ namespace GraduationProjectWebApplication.Controllers
             try
             {
                 var response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioAPIKey}", content);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioBackUpAPIKey}", content);
+                }
+
                 response.EnsureSuccessStatusCode();
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
@@ -417,7 +436,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
                 return StatusCode(
                    (int)HttpStatusCode.InternalServerError,
-                   ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+                   ErrorResponse<string>($"An unexpected error occurred."));
             }
         }
 
@@ -465,7 +484,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var finalizeContent = new StringContent(jsonFinalize, Encoding.UTF8, "application/json");
 
                 string finalizeUrl =
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={correctSentenceAPIKey}";
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={textToAudioAPIKey}";
 
                 var finalizeResponse = await _httpClient.PostAsync(finalizeUrl, finalizeContent);
                 finalizeResponse.EnsureSuccessStatusCode();
@@ -511,7 +530,7 @@ namespace GraduationProjectWebApplication.Controllers
                         new { text = $"Say this in a clear, friendly voice: {finalSentence}" }
                     }
                 }
-            },
+                },
                     generationConfig = new
                     {
                         responseModalities = new[] { "AUDIO" },
@@ -528,7 +547,7 @@ namespace GraduationProjectWebApplication.Controllers
                 var jsonAudio = JsonSerializer.Serialize(audioPayload);
                 var audioContent = new StringContent(jsonAudio, Encoding.UTF8, "application/json");
 
-                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={generateAudioAPIKey}", audioContent);
+                var audioResponse = await _httpClient.PostAsync($"{audioApiUrl}?key={textToAudioAPIKey}", audioContent);
                 audioResponse.EnsureSuccessStatusCode();
 
                 var audioJson = await audioResponse.Content.ReadAsStringAsync();

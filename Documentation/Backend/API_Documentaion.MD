@@ -5,402 +5,208 @@
 
 ## Table of Contents
 
-- [Authentication](#authentication)
-- [ArabicLanguageTranslator Controller](#arabiclanguagetranslator-controller)
-  - [Text to Sign](#text-to-sign)
-  - [Audio to Text](#audio-to-text)
-  - [Letters Keyboard](#letters-keyboard)
-- [Auth Controller](#auth-controller)
-  - [Register User](#register-user)
-  - [Login User](#login-user)
-  - [Refresh Tokens](#refresh-tokens)
-  - [Forgot Password](#forgot-password)
-  - [Reset Password](#reset-password)
-  - [Resend OTP](#resend-otp)
-  - [Verify OTP](#verify-otp)
-- [Dictionary Controller](#dictionary-controller)
-  - [Get All Dictionary Items](#get-all-dictionary-items)
-- [NLPService Controller](#nlpservice-controller)
-  - [Correct Sentence](#correct-sentence)
-  - [Text to Speech](#text-to-speech)
-  - [Sign to Text](#sign-to-text)
-- [UserProfiles Controller](#userprofiles-controller)
-  - [Get User Profile](#get-user-profile)
-  - [Update User Profile](#update-user-profile)
-  - [Update User Profile Picture](#update-user-profile-picture)
-- [UserRecords Controller](#userrecords-controller)
-  - [Get All User Records](#get-all-user-records)
-  - [Create User Record](#create-user-record)
-  - [Delete User Record](#delete-user-record)
-- [Data Models](#data-models)
+1. [Authentication](#authentication)
+2. [API Response Format](#api-response-format)
+3. [Endpoints](#endpoints)
+   - [Authentication & User Management](#authentication--user-management)
+   - [Sign Language Translation](#sign-language-translation)
+   - [Arabic Language Translation](#arabic-language-translation)
+   - [User History](#user-history)
 
 ---
 
 ## Authentication
 
-This API uses **Bearer Token Authentication** (JWT).
+This API uses **Bearer Token** authentication with JWT (JSON Web Tokens).
 
-**Security Scheme:** `Bearer`  
-**Type:** API Key  
-**Header Name:** `Authorization`  
-**Format:** `Bearer {your JWT token}`
+### How to Authenticate
 
-To authenticate requests, include the Authorization header:
+Include the JWT token in the `Authorization` header of your requests:
+
 ```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer {your_jwt_token}
 ```
+
+### Obtaining Tokens
+
+- Register a new user via `/api/Auth/register-user`
+- Login via `/api/Auth/login-user` to receive access and refresh tokens
+- Use `/api/Auth/refresh-tokens` to obtain new tokens when the access token expires
 
 ---
 
-## ArabicLanguageTranslator Controller
+## API Response Format
 
-### Text to Sign
-
-Converts Arabic text into sign language representations.
-
-**Endpoint:** `/api/ArabicLanguageTranslator/text-to-sign`  
-**Method:** `POST`  
-**Tag:** ArabicLanguageTranslator  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `application/json`
-
-**Schema:** [TextToSignDTO](#texttosigndto)
+All API responses follow a standardized format:
 
 ```json
 {
-  "text": "string"
-}
-```
-
-#### Example Request
-
-```bash
-curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/text-to-sign" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "مرحبا بك"
-  }'
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringListListAPIResponseDTO](#stringlistlistapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    ["string", "string"],
-    ["string"]
-  ],
   "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
+  "data": {},
   "errorMessage": null,
-  "data": [
-    ["sign_url_1", "sign_url_2"],
-    ["sign_url_3"]
-  ],
-  "success": true,
   "statusCode": 200
 }
 ```
+
+**Fields:**
+- `success` (boolean): Indicates if the request was successful
+- `data` (varies): The response payload (type varies by endpoint)
+- `errorMessage` (string|null): Error description if `success` is false
+- `statusCode` (integer): HTTP status code
 
 ---
 
-### Audio to Text
+## Endpoints
 
-Transcribes Arabic audio into text.
-
-**Endpoint:** `/api/ArabicLanguageTranslator/audio-to-text`  
-**Method:** `POST`  
-**Tag:** ArabicLanguageTranslator  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `application/json`
-
-**Schema:** [TranscriptionRequest](#transcriptionrequest)
-
-```json
-{
-  "audioData": "string",
-  "mimeType": "string"
-}
-```
-
-#### Example Request
-
-```bash
-curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/audio-to-text" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "audioData": "base64_encoded_audio_data",
-    "mimeType": "audio/wav"
-  }'
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": "string",
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": "هذا نص مُحَوَّل من الصوت",
-  "success": true,
-  "statusCode": 200
-}
-```
+### Authentication & User Management
 
 ---
 
-### Letters Keyboard
-
-Retrieves sign language representation for a specific letter.
-
-**Endpoint:** `/api/ArabicLanguageTranslator/letters-keyboard`  
-**Method:** `GET`  
-**Tag:** ArabicLanguageTranslator  
-**Authentication:** Required (Bearer Token)
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| letter | string | No | Arabic letter to get sign representation |
-
-#### Example Request
-
-```bash
-curl -X GET "https://api.example.com/api/ArabicLanguageTranslator/letters-keyboard?letter=أ" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": "string",
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": "https://example.com/signs/alef.mp4",
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-## Auth Controller
-
-### Register User
-
-Registers a new user account with profile information and optional profile image.
+#### 1. Register User
 
 **Endpoint:** `/api/Auth/register-user`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Not required  
 **Content-Type:** `multipart/form-data`
 
-**Required Fields:**
-- Email (string)
-- FullName (string)
-- UserName (string)
-- Password (string)
-- PhoneNumber (string)
+**Description:** Register a new user account with optional profile image.
 
-**Optional Fields:**
-- UserImage (binary file)
+**Request Parameters (Form Data):**
 
-#### Example Request
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Email | string | Yes | User's email address |
+| FullName | string | Yes | User's full name |
+| UserName | string | Yes | Unique username |
+| Password | string | Yes | User's password |
+| PhoneNumber | string | Yes | User's phone number |
+| UserImage | file (binary) | No | Profile image file |
+
+**Example Request (cURL):**
 
 ```bash
 curl -X POST "https://api.example.com/api/Auth/register-user" \
+  -H "Content-Type: multipart/form-data" \
   -F "Email=user@example.com" \
   -F "FullName=John Doe" \
   -F "UserName=johndoe" \
   -F "Password=SecurePass123!" \
-  -F "PhoneNumber=+201234567890" \
-  -F "UserImage=@/path/to/image.jpg"
+  -F "PhoneNumber=+1234567890" \
+  -F "UserImage=@profile.jpg"
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [ApplicationUserDTOAPIResponseDTO](#applicationuserdtoapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
+  "success": true,
   "data": {
-    "id": "string",
-    "userName": "string",
     "email": "string",
     "fullName": "string",
+    "userName": "string",
     "phoneNumber": "string",
     "userBase64Image": "string"
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+**Example Response:**
 
 ```json
 {
-  "errorMessage": null,
+  "success": true,
   "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "userName": "johndoe",
     "email": "user@example.com",
     "fullName": "John Doe",
-    "phoneNumber": "+201234567890",
+    "userName": "johndoe",
+    "phoneNumber": "+1234567890",
     "userBase64Image": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Login User
-
-Authenticates a user and returns JWT tokens.
+#### 2. Login User
 
 **Endpoint:** `/api/Auth/login-user`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [LoginDTO](#logindto)
+**Description:** Authenticate user and receive JWT tokens.
+
+**Request Body Schema:**
 
 ```json
 {
-  "emailOrUsername": "string",
+  "userName": "string",
   "password": "string"
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
 curl -X POST "https://api.example.com/api/Auth/login-user" \
   -H "Content-Type: application/json" \
   -d '{
-    "emailOrUsername": "johndoe",
+    "userName": "johndoe",
     "password": "SecurePass123!"
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [TokenResponseDTOAPIResponseDTO](#tokenresponsedtoapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
+  "success": true,
   "data": {
     "accessToken": "string",
     "refreshToken": "string",
-    "accessTokenExpires": "2026-02-09T12:00:00Z",
-    "refreshTokenExpires": "2026-03-09T12:00:00Z"
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+**Example Response:**
 
 ```json
 {
-  "errorMessage": null,
+  "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
-    "accessTokenExpires": "2026-02-09T13:00:00Z",
-    "refreshTokenExpires": "2026-03-09T12:00:00Z"
+    "refreshToken": "a1b2c3d4e5f6...",
+    "accessTokenExpires": "2024-01-01T13:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Refresh Tokens
-
-Refreshes expired access tokens using a valid refresh token.
+#### 3. Refresh Tokens
 
 **Endpoint:** `/api/Auth/refresh-tokens`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [TokenRequestDTO](#tokenrequestdto)
+**Description:** Obtain new access and refresh tokens using a valid refresh token.
+
+**Request Body Schema:**
 
 ```json
 {
@@ -408,69 +214,45 @@ Refreshes expired access tokens using a valid refresh token.
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
 curl -X POST "https://api.example.com/api/Auth/refresh-tokens" \
   -H "Content-Type: application/json" \
   -d '{
-    "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
+    "refreshToken": "a1b2c3d4e5f6..."
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [TokenResponseDTOAPIResponseDTO](#tokenresponsedtoapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
+  "success": true,
   "data": {
     "accessToken": "string",
     "refreshToken": "string",
-    "accessTokenExpires": "2026-02-09T12:00:00Z",
-    "refreshTokenExpires": "2026-03-09T12:00:00Z"
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z"
   },
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
   "errorMessage": null,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "bmV3IHJlZnJlc2ggdG9rZW4gaGVyZQ...",
-    "accessTokenExpires": "2026-02-09T14:00:00Z",
-    "refreshTokenExpires": "2026-03-09T13:00:00Z"
-  },
-  "success": true,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Forgot Password
+#### 4. Get Reset Password Token
 
-Initiates password reset process by sending OTP to user's email.
-
-**Endpoint:** `/api/Auth/forgot-password`  
+**Endpoint:** `/api/Auth/get-reset-password-token`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [ForgotPasswordDTO](#forgotpassworddto)
+**Description:** Request a password reset OTP to be sent to the user's email.
+
+**Request Body Schema:**
 
 ```json
 {
@@ -478,59 +260,51 @@ Initiates password reset process by sending OTP to user's email.
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
-curl -X POST "https://api.example.com/api/Auth/forgot-password" \
+curl -X POST "https://api.example.com/api/Auth/get-reset-password-token" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com"
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": "string",
   "success": true,
+  "data": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+**Example Response:**
 
 ```json
 {
-  "errorMessage": null,
-  "data": "OTP has been sent to your email",
   "success": true,
+  "data": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Reset Password
-
-Resets user password using OTP verification.
+#### 5. Reset Password
 
 **Endpoint:** `/api/Auth/reset-password`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [ResetPasswordDTO](#resetpassworddto)
+**Description:** Reset user password using the OTP sent via email.
+
+**Request Body Schema:**
 
 ```json
 {
@@ -540,7 +314,7 @@ Resets user password using OTP verification.
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
 curl -X POST "https://api.example.com/api/Auth/reset-password" \
@@ -552,457 +326,186 @@ curl -X POST "https://api.example.com/api/Auth/reset-password" \
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": "string",
   "success": true,
+  "data": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+
+#### 6. Change Password
+
+**Endpoint:** `/api/Auth/change-password`
+**Method:** `POST`
+**Tag:** Auth
+**Authentication:** Required (Bearer Token)
+**Content-Type:** `application/json`
+
+**Description:** Change the authenticated user's password.
+
+**Request Body Schema:**
 
 ```json
 {
-  "errorMessage": null,
-  "data": "Password has been reset successfully",
+  "currentPassword": "string",
+  "newPassword": "string"
+}
+
+---
+
+#### 7. Login with Google
+
+**Endpoint:** `/api/Auth/login-google`  
+**Method:** `GET`  
+**Tag:** Auth  
+**Authentication:** Not required
+
+**Description:** Initiate Google OAuth authentication flow.
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/Auth/login-google"
+```
+
+**Response:** Redirects to Google OAuth consent screen.
+
+---
+
+#### 8. Google Callback
+
+**Endpoint:** `/api/Auth/google-callback`  
+**Method:** `GET`  
+**Tag:** Auth  
+**Authentication:** Not required
+
+**Description:** Callback endpoint for Google OAuth. Returns JWT tokens after successful authentication.
+
+**Response Schema:**
+
+```json
+{
   "success": true,
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string",
+    "accessTokenExpires": "2024-01-01T12:00:00Z",
+    "refreshTokenExpires": "2024-01-08T12:00:00Z",
+    "isNewUser": true
+  },
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Resend OTP
+#### 9. Update User Image
 
-Resends OTP to user's email for verification.
-
-**Endpoint:** `/api/Auth/resend-otp`  
+**Endpoint:** `/api/Auth/update-user-image`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `multipart/form-data`
 
-#### Request Body
+**Description:** Update the authenticated user's profile image.
 
-**Content-Type:** `application/json`
+**Request Parameters (Form Data):**
 
-**Schema:** [ResendOtpDTO](#resendotpdto)
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| NewImge | file (binary) | Yes | New profile image file |
 
-```json
-{
-  "email": "string"
-}
-```
-
-#### Example Request
+**Example Request:**
 
 ```bash
-curl -X POST "https://api.example.com/api/Auth/resend-otp" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com"
-  }'
+curl -X POST "https://api.example.com/api/Auth/update-user-image" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: multipart/form-data" \
+  -F "NewImge=@new_profile.jpg"
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": "string",
   "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
+  "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "errorMessage": null,
-  "data": "OTP has been resent to your email",
-  "success": true,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Verify OTP
+#### 10. Logout
 
-Verifies OTP for email confirmation or password reset.
-
-**Endpoint:** `/api/Auth/verify-otp`  
+**Endpoint:** `/api/Auth/logout`  
 **Method:** `POST`  
 **Tag:** Auth  
-**Authentication:** Not Required
-
-#### Request Body
-
+**Authentication:** Required (Bearer Token)  
 **Content-Type:** `application/json`
 
-**Schema:** [ConfirmOTPDTO](#confirmotpdto)
+**Description:** Logout user and invalidate refresh token.
+
+**Request Body Schema:**
 
 ```json
 {
-  "email": "string",
-  "otp": "string"
+  "refreshToken": "string"
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
-curl -X POST "https://api.example.com/api/Auth/verify-otp" \
+curl -X POST "https://api.example.com/api/Auth/logout" \
+  -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
-    "otp": "123456"
+    "refreshToken": "a1b2c3d4e5f6..."
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": "string",
   "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
+  "data": true,
   "errorMessage": null,
-  "data": "OTP verified successfully",
-  "success": true,
   "statusCode": 200
 }
 ```
 
 ---
 
-## Dictionary Controller
+#### 11. Get User Profile
 
-### Get All Dictionary Items
-
-Retrieves all dictionary items or filters by letter.
-
-**Endpoint:** `/api/Dictionary`  
+**Endpoint:** `/api/Auth/user-profile`  
 **Method:** `GET`  
-**Tag:** Dictionary  
+**Tag:** Auth  
 **Authentication:** Required (Bearer Token)
 
-#### Query Parameters
+**Description:** Retrieve the authenticated user's profile information.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| letter | string | No | Filter dictionary items by starting letter |
-
-#### Example Request
+**Example Request:**
 
 ```bash
-curl -X GET "https://api.example.com/api/Dictionary?letter=أ" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+curl -X GET "https://api.example.com/api/Auth/user-profile" \
+  -H "Authorization: Bearer {token}"
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [DictionaryItemDTOListAPIResponseDTO](#dictionaryitemdtolistapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": [
-    {
-      "id": 0,
-      "arabicWord": "string",
-      "videoUrl": "string"
-    }
-  ],
   "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": [
-    {
-      "id": 1,
-      "arabicWord": "أسد",
-      "videoUrl": "https://example.com/signs/asad.mp4"
-    },
-    {
-      "id": 2,
-      "arabicWord": "أرنب",
-      "videoUrl": "https://example.com/signs/arnab.mp4"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-## NLPService Controller
-
-### Correct Sentence
-
-Provides grammar correction suggestions for Arabic text.
-
-**Endpoint:** `/api/NLPService/correct-sentence`  
-**Method:** `POST`  
-**Tag:** NLPService  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `application/json`
-
-**Schema:** [CorrectionRequest](#correctionrequest)
-
-```json
-{
-  "sentence": "string"
-}
-```
-
-#### Example Request
-
-```bash
-curl -X POST "https://api.example.com/api/NLPService/correct-sentence" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sentence": "هذا جمله بها أخطاء"
-  }'
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [SuggestionListAPIResponseDTO](#suggestionlistapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    {
-      "correctedSentence": "string"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": [
-    {
-      "correctedSentence": "هذه جملة بها أخطاء"
-    },
-    {
-      "correctedSentence": "هذا جملة فيها أخطاء"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-### Text to Speech
-
-Converts Arabic text to speech audio.
-
-**Endpoint:** `/api/NLPService/text-to-speech`  
-**Method:** `POST`  
-**Tag:** NLPService  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `application/json`
-
-**Schema:** [TTSRequest](#ttsrequest)
-
-```json
-{
-  "text": "string"
-}
-```
-
-#### Example Request
-
-```bash
-curl -X POST "https://api.example.com/api/NLPService/text-to-speech" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "مرحبا بك في التطبيق"
-  }'
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [TTSResponseAPIResponseDTO](#ttsresponseapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "audioData": "string",
-    "sampleRate": 0
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": {
-    "audioData": "base64_encoded_audio_data_here...",
-    "sampleRate": 22050
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-### Sign to Text
-
-Converts sign language video to Arabic text.
-
-**Endpoint:** `/api/NLPService/sign-to-text`  
-**Method:** `POST`  
-**Tag:** NLPService  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `application/json`
-
-**Schema:** [SignToTextRequest](#signtotextrequest)
-
-```json
-{
-  "videoData": "string"
-}
-```
-
-#### Example Request
-
-```bash
-curl -X POST "https://api.example.com/api/NLPService/sign-to-text" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "videoData": "base64_encoded_video_data"
-  }'
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [StringAPIResponseDTO](#stringapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": "string",
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": "مرحبا كيف حالك",
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-## UserProfiles Controller
-
-### Get User Profile
-
-Retrieves the authenticated user's profile information.
-
-**Endpoint:** `/api/UserProfiles`  
-**Method:** `GET`  
-**Tag:** UserProfiles  
-**Authentication:** Required (Bearer Token)
-
-#### Example Request
-
-```bash
-curl -X GET "https://api.example.com/api/UserProfiles" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [UserProfileDTOAPIResponseDTO](#userprofiledtoapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
   "data": {
     "fullName": "string",
     "email": "string",
@@ -1010,44 +513,41 @@ curl -X GET "https://api.example.com/api/UserProfiles" \
     "phoneNumber": "string",
     "userName": "string"
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+**Example Response:**
 
 ```json
 {
-  "errorMessage": null,
+  "success": true,
   "data": {
     "fullName": "John Doe",
     "email": "user@example.com",
     "userBase64Image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-    "phoneNumber": "+201234567890",
+    "phoneNumber": "+1234567890",
     "userName": "johndoe"
   },
-  "success": true,
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Update User Profile
+#### 12. Update User Profile
 
-Updates the authenticated user's profile information.
-
-**Endpoint:** `/api/UserProfiles`  
-**Method:** `PUT`  
-**Tag:** UserProfiles  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
+**Endpoint:** `/api/Auth/update-user-profile`  
+**Method:** `POST`  
+**Tag:** Auth  
+**Authentication:** Required (Bearer Token)  
 **Content-Type:** `application/json`
 
-**Schema:** [UpdateUserProfileDTO](#updateuserprofiledto)
+**Description:** Update the authenticated user's profile information.
+
+**Request Body Schema:**
 
 ```json
 {
@@ -1058,30 +558,25 @@ Updates the authenticated user's profile information.
 }
 ```
 
-#### Example Request
+**Example Request:**
 
 ```bash
-curl -X PUT "https://api.example.com/api/UserProfiles" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+curl -X POST "https://api.example.com/api/Auth/update-user-profile" \
+  -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
   -d '{
-    "fullName": "John Updated Doe",
-    "email": "newemail@example.com",
-    "phoneNumber": "+201234567890",
-    "userName": "johndoe_new"
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "phoneNumber": "+1234567891",
+    "userName": "janedoe"
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [UserProfileDTOAPIResponseDTO](#userprofiledtoapiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
+  "success": true,
   "data": {
     "fullName": "string",
     "email": "string",
@@ -1089,361 +584,154 @@ curl -X PUT "https://api.example.com/api/UserProfiles" \
     "phoneNumber": "string",
     "userName": "string"
   },
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
   "errorMessage": null,
-  "data": {
-    "fullName": "John Updated Doe",
-    "email": "newemail@example.com",
-    "userBase64Image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-    "phoneNumber": "+201234567890",
-    "userName": "johndoe_new"
-  },
-  "success": true,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Update User Profile Picture
-
-Updates the authenticated user's profile picture.
-
-**Endpoint:** `/api/UserProfiles/update-profile-picture`  
-**Method:** `PUT`  
-**Tag:** UserProfiles  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
-**Content-Type:** `multipart/form-data`
-
-**Required Fields:**
-- UserImage (binary file)
-
-#### Example Request
-
-```bash
-curl -X PUT "https://api.example.com/api/UserProfiles/update-profile-picture" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -F "UserImage=@/path/to/new-image.jpg"
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [UserProfileDTOAPIResponseDTO](#userprofiledtoapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "fullName": "string",
-    "email": "string",
-    "userBase64Image": "string",
-    "phoneNumber": "string",
-    "userName": "string"
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": {
-    "fullName": "John Doe",
-    "email": "user@example.com",
-    "userBase64Image": "data:image/jpeg;base64,NEW_BASE64_IMAGE_DATA...",
-    "phoneNumber": "+201234567890",
-    "userName": "johndoe"
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
+### Sign Language Translation
 
 ---
 
-## UserRecords Controller
+#### 13. Translate Sign Language to Text
 
-### Get All User Records
-
-Retrieves all sentence formation records for the authenticated user.
-
-**Endpoint:** `/api/UserRecords`  
-**Method:** `GET`  
-**Tag:** UserRecords  
-**Authentication:** Required (Bearer Token)
-
-#### Example Request
-
-```bash
-curl -X GET "https://api.example.com/api/UserRecords" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [UserRecordDTOListAPIResponseDTO](#userrecorddtolistapiresponsedto)
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    {
-      "id": 0,
-      "formedSentence": "string",
-      "formedAt": "2026-02-09T12:00:00Z"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": [
-    {
-      "id": 1,
-      "formedSentence": "مرحبا بك في التطبيق",
-      "formedAt": "2026-02-09T10:30:00Z"
-    },
-    {
-      "id": 2,
-      "formedSentence": "كيف حالك اليوم",
-      "formedAt": "2026-02-09T11:45:00Z"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-### Create User Record
-
-Creates a new sentence formation record for the authenticated user.
-
-**Endpoint:** `/api/UserRecords`  
+**Endpoint:** `/api/SignLanguageTranslator`  
 **Method:** `POST`  
-**Tag:** UserRecords  
-**Authentication:** Required (Bearer Token)
-
-#### Request Body
-
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [CreateUserRecordDTO](#createuserrecorddto)
+**Description:** Translate a sign language gesture from an image to Arabic text. The image is processed through a machine learning model to detect sign language letters.
+
+**Request Body Schema:**
 
 ```json
 {
-  "formedSentence": "string"
+  "imageData": "string"
 }
 ```
 
-#### Example Request
+**Fields:**
+- `imageData` (string): Base64-encoded image data with MIME type prefix (e.g., `data:image/jpeg;base64,...`)
+
+**Example Request:**
 
 ```bash
-curl -X POST "https://api.example.com/api/UserRecords" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+curl -X POST "https://api.example.com/api/SignLanguageTranslator" \
   -H "Content-Type: application/json" \
   -d '{
-    "formedSentence": "هذه جملة جديدة"
+    "imageData": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
   }'
 ```
 
-#### Response
-
-**Status:** `200 OK`  
-**Content-Type:** `application/json`
-
-**Schema:** [APIResponseDTO](#apiresponsedto)
+**Response Schema:**
 
 ```json
 {
-  "errorMessage": "string",
-  "data": null,
   "success": true,
+  "data": {
+    "translation": "string"
+  },
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
-#### Example Response
+**Example Response:**
 
 ```json
 {
-  "errorMessage": null,
-  "data": null,
   "success": true,
+  "data": {
+    "translation": "ا"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Note:** If no sign is detected or confidence is below threshold (0.71), the response will indicate:
+```json
+{
+  "success": true,
+  "data": {
+    "translation": "No sign detected."
+  },
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### Delete User Record
+#### 14. Finalize Sentence
 
-Deletes a specific sentence formation record.
+**Endpoint:** `/api/SignLanguageTranslator/finalize-sentence`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
 
-**Endpoint:** `/api/UserRecords/{id}`  
-**Method:** `DELETE`  
-**Tag:** UserRecords  
-**Authentication:** Required (Bearer Token)
+**Description:** Takes concatenated Arabic letters from sign language translation and formats them into a coherent sentence with proper spacing and spelling corrections using AI.
 
-#### Path Parameters
+**Request Body Schema:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | integer | Yes | Record ID to delete |
+```json
+{
+  "sentence": "string",
+}
+```
 
-#### Example Request
+**Fields:**
+- `sentence` (string): Concatenated Arabic letters without spaces
+
+**Example Request:**
 
 ```bash
-curl -X DELETE "https://api.example.com/api/UserRecords/1" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/finalize-sentence" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبابكم",
+  }'
 ```
 
-#### Response
+**Response Schema:**
 
-**Status:** `200 OK`  
+```json
+{
+  "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": "مرحبا بكم",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 15. Get Sentence Correction
+
+**Endpoint:** `/api/SignLanguageTranslator/correct-sentence`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
 **Content-Type:** `application/json`
 
-**Schema:** [APIResponseDTO](#apiresponsedto)
+**Description:** Get AI-powered suggestion to correct or improve an Arabic sentence.
 
-```json
-{
-  "errorMessage": "string",
-  "data": null,
-  "success": true,
-  "statusCode": 200
-}
-```
-
-#### Example Response
-
-```json
-{
-  "errorMessage": null,
-  "data": null,
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-## Data Models
-
-### APIResponseDTO
-
-Base response wrapper for API responses without specific data.
-
-```json
-{
-  "errorMessage": "string",
-  "data": null,
-  "success": true,
-  "statusCode": 200
-}
-```
-
-**Properties:**
-- `errorMessage` (string, nullable): Error message if request failed
-- `data` (null): No data payload
-- `success` (boolean): Indicates if request was successful
-- `statusCode` (HttpStatusCode): HTTP status code
-
----
-
-### ApplicationUserDTO
-
-User account information.
-
-```json
-{
-  "id": "string",
-  "userName": "string",
-  "email": "string",
-  "fullName": "string",
-  "phoneNumber": "string",
-  "userBase64Image": "string"
-}
-```
-
-**Properties:**
-- `id` (string, nullable): User unique identifier
-- `userName` (string, nullable): Username
-- `email` (string, nullable): Email address
-- `fullName` (string, nullable): Full name
-- `phoneNumber` (string, nullable): Phone number
-- `userBase64Image` (string, nullable): Base64 encoded profile image
-
----
-
-### ApplicationUserDTOAPIResponseDTO
-
-API response wrapper for ApplicationUserDTO.
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "id": "string",
-    "userName": "string",
-    "email": "string",
-    "fullName": "string",
-    "phoneNumber": "string",
-    "userBase64Image": "string"
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-### ConfirmOTPDTO
-
-OTP verification request.
-
-```json
-{
-  "email": "string",
-  "otp": "string"
-}
-```
-
-**Properties:**
-- `email` (string, nullable): User email address
-- `otp` (string, nullable): One-time password
-
----
-
-### CorrectionRequest
-
-Sentence correction request.
+**Request Body Schema:**
 
 ```json
 {
@@ -1451,298 +739,55 @@ Sentence correction request.
 }
 ```
 
-**Properties:**
-- `sentence` (string, nullable): Arabic sentence to correct
+**Example Request:**
 
----
-
-### CreateUserRecordDTO
-
-New user record creation request.
-
-```json
-{
-  "formedSentence": "string"
-}
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/suggestions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبا بكم"
+  }'
 ```
 
-**Properties:**
-- `formedSentence` (string, nullable): The formed sentence to save
-
----
-
-### DictionaryItemDTO
-
-Dictionary item with Arabic word and sign video.
+**Response Schema:**
 
 ```json
 {
-  "id": 0,
-  "arabicWord": "string",
-  "videoUrl": "string"
-}
-```
-
-**Properties:**
-- `id` (integer): Dictionary item ID
-- `arabicWord` (string, nullable): Arabic word
-- `videoUrl` (string, nullable): URL to sign language video
-
----
-
-### DictionaryItemDTOListAPIResponseDTO
-
-API response wrapper for list of DictionaryItemDTO.
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    {
-      "id": 0,
-      "arabicWord": "string",
-      "videoUrl": "string"
-    }
-  ],
   "success": true,
+  "data": {
+    "correctedSentence": "string"
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "correctedSentence": "مرحباً بكم"
+  },
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### ForgotPasswordDTO
+#### 16. Generate Audio from Sentence
 
-Password reset initiation request.
+**Endpoint:** `/api/SignLanguageTranslator/generate-audio`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
 
-```json
-{
-  "email": "string"
-}
-```
+**Description:** Generate audio (Text-to-Speech) for a given Arabic sentence.
 
-**Properties:**
-- `email` (string, nullable): User email address
-
----
-
-### HttpStatusCode
-
-HTTP status code enumeration.
-
-**Possible Values:**
-- 100 - Continue
-- 101 - Switching Protocols
-- 102 - Processing
-- 103 - Early Hints
-- 200 - OK
-- 201 - Created
-- 202 - Accepted
-- 203 - Non-Authoritative Information
-- 204 - No Content
-- 205 - Reset Content
-- 206 - Partial Content
-- 207 - Multi-Status
-- 208 - Already Reported
-- 226 - IM Used
-- 300 - Multiple Choices
-- 301 - Moved Permanently
-- 302 - Found
-- 303 - See Other
-- 304 - Not Modified
-- 305 - Use Proxy
-- 306 - Unused
-- 307 - Temporary Redirect
-- 308 - Permanent Redirect
-- 400 - Bad Request
-- 401 - Unauthorized
-- 402 - Payment Required
-- 403 - Forbidden
-- 404 - Not Found
-- 405 - Method Not Allowed
-- 406 - Not Acceptable
-- 407 - Proxy Authentication Required
-- 408 - Request Timeout
-- 409 - Conflict
-- 410 - Gone
-- 411 - Length Required
-- 412 - Precondition Failed
-- 413 - Request Entity Too Large
-- 414 - Request-URI Too Long
-- 415 - Unsupported Media Type
-- 416 - Requested Range Not Satisfiable
-- 417 - Expectation Failed
-- 421 - Misdirected Request
-- 422 - Unprocessable Entity
-- 423 - Locked
-- 424 - Failed Dependency
-- 426 - Upgrade Required
-- 428 - Precondition Required
-- 429 - Too Many Requests
-- 431 - Request Header Fields Too Large
-- 451 - Unavailable For Legal Reasons
-- 500 - Internal Server Error
-- 501 - Not Implemented
-- 502 - Bad Gateway
-- 503 - Service Unavailable
-- 504 - Gateway Timeout
-- 505 - HTTP Version Not Supported
-- 506 - Variant Also Negotiates
-- 507 - Insufficient Storage
-- 508 - Loop Detected
-- 510 - Not Extended
-- 511 - Network Authentication Required
-
----
-
-### LoginDTO
-
-User login credentials.
-
-```json
-{
-  "emailOrUsername": "string",
-  "password": "string"
-}
-```
-
-**Properties:**
-- `emailOrUsername` (string, nullable): Email or username
-- `password` (string, nullable): User password
-
----
-
-### ResendOtpDTO
-
-OTP resend request.
-
-```json
-{
-  "email": "string"
-}
-```
-
-**Properties:**
-- `email` (string, nullable): User email address
-
----
-
-### ResetPasswordDTO
-
-Password reset request with OTP.
-
-```json
-{
-  "email": "string",
-  "otp": "string",
-  "newPassword": "string"
-}
-```
-
-**Properties:**
-- `email` (string, nullable): User email address
-- `otp` (string, nullable): One-time password
-- `newPassword` (string, nullable): New password
-
----
-
-### SignToTextRequest
-
-Sign language to text conversion request.
-
-```json
-{
-  "videoData": "string"
-}
-```
-
-**Properties:**
-- `videoData` (string, nullable): Base64 encoded video data
-
----
-
-### StringAPIResponseDTO
-
-API response wrapper for string data.
-
-```json
-{
-  "errorMessage": "string",
-  "data": "string",
-  "success": true,
-  "statusCode": 200
-}
-```
-
-**Properties:**
-- `errorMessage` (string, nullable): Error message if request failed
-- `data` (string, nullable): Response string data
-- `success` (boolean): Indicates if request was successful
-- `statusCode` (HttpStatusCode): HTTP status code
-
----
-
-### StringListListAPIResponseDTO
-
-API response wrapper for nested string arrays.
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    ["string", "string"],
-    ["string"]
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
-**Properties:**
-- `errorMessage` (string, nullable): Error message if request failed
-- `data` (array of string arrays, nullable): Nested array of strings
-- `success` (boolean): Indicates if request was successful
-- `statusCode` (HttpStatusCode): HTTP status code
-
----
-
-### Suggestion
-
-Grammar correction suggestion.
-
-```json
-{
-  "correctedSentence": "string"
-}
-```
-
-**Properties:**
-- `correctedSentence` (string, nullable): Corrected sentence suggestion
-
----
-
-### SuggestionListAPIResponseDTO
-
-API response wrapper for list of Suggestions.
-
-```json
-{
-  "errorMessage": "string",
-  "data": [
-    {
-      "correctedSentence": "string"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
-### TextToSignDTO
-
-Text to sign language conversion request.
+**Request Body Schema:**
 
 ```json
 {
@@ -1750,70 +795,193 @@ Text to sign language conversion request.
 }
 ```
 
-**Properties:**
-- `text` (string, nullable): Arabic text to convert to sign language
+**Example Request:**
 
----
-
-### TokenRequestDTO
-
-Token refresh request.
-
-```json
-{
-  "refreshToken": "string"
-}
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/generate-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "مرحبا بكم"
+  }'
 ```
 
-**Properties:**
-- `refreshToken` (string, nullable): Refresh token
-
----
-
-### TokenResponseDTO
-
-Authentication token response.
+**Response Schema:**
 
 ```json
 {
-  "accessToken": "string",
-  "refreshToken": "string",
-  "accessTokenExpires": "2026-02-09T12:00:00Z",
-  "refreshTokenExpires": "2026-03-09T12:00:00Z"
-}
-```
-
-**Properties:**
-- `accessToken` (string, nullable): JWT access token
-- `refreshToken` (string, nullable): Refresh token
-- `accessTokenExpires` (datetime): Access token expiration timestamp
-- `refreshTokenExpires` (datetime): Refresh token expiration timestamp
-
----
-
-### TokenResponseDTOAPIResponseDTO
-
-API response wrapper for TokenResponseDTO.
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "accessToken": "string",
-    "refreshToken": "string",
-    "accessTokenExpires": "2026-02-09T12:00:00Z",
-    "refreshTokenExpires": "2026-03-09T12:00:00Z"
-  },
   "success": true,
+  "data": {
+    "audioData": "string",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Fields:**
+- `audioData` (string): Base64-encoded audio data
+- `sampleRate` (integer): Audio sample rate in Hz
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### TranscriptionRequest
+#### 17. Text to Audio (Combined)
 
-Audio transcription request.
+**Endpoint:** `/api/SignLanguageTranslator/text-to-audio`  
+**Method:** `POST`  
+**Tag:** SignLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Combines sentence finalization and audio generation in a single request. Takes concatenated letters, formats them into a proper sentence, and generates audio.
+
+**Request Body Schema:**
+
+```json
+{
+  "sentence": "string"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/SignLanguageTranslator/text-to-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "مرحبابكم"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "string",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "sampleRate": 24000
+  },
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+### Arabic Language Translation
+
+---
+
+#### 18. Text to Sign Language
+
+**Endpoint:** `/api/ArabicLanguageTranslator/text-to-sign`  
+**Method:** `POST`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Convert Arabic text to sign language images. Returns base64-encoded images for each letter, organized by words.
+
+**Request Body Schema:**
+
+```json
+{
+  "text": "string"
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/text-to-sign" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "مرحبا بكم"
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": [
+    [
+      "string"
+    ]
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Data Structure:**
+- Outer array: Each element represents a word
+- Inner array: Each element is a base64-encoded image representing a letter
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+    ],
+    [
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+    ]
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 19. Audio to Text
+
+**Endpoint:** `/api/ArabicLanguageTranslator/audio-to-text`  
+**Method:** `POST`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required  
+**Content-Type:** `application/json`
+
+**Description:** Transcribe Arabic speech from audio to text using AI speech recognition.
+
+**Request Body Schema:**
 
 ```json
 {
@@ -1822,87 +990,327 @@ Audio transcription request.
 }
 ```
 
-**Properties:**
-- `audioData` (string, nullable): Base64 encoded audio data
-- `mimeType` (string, nullable): Audio MIME type (e.g., "audio/wav")
+**Fields:**
+- `audioData` (string): Base64-encoded audio data
+- `mimeType` (string): MIME type of the audio (e.g., "audio/wav", "audio/mp3")
 
----
+**Example Request:**
 
-### TTSRequest
-
-Text-to-speech conversion request.
-
-```json
-{
-  "text": "string"
-}
+```bash
+curl -X POST "https://api.example.com/api/ArabicLanguageTranslator/audio-to-text" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audioData": "UklGRiQAAABXQVZFZm10IBAAAAABAAEA...",
+    "mimeType": "audio/wav"
+  }'
 ```
 
-**Properties:**
-- `text` (string, nullable): Arabic text to convert to speech
-
----
-
-### TTSResponse
-
-Text-to-speech conversion response.
+**Response Schema:**
 
 ```json
 {
-  "audioData": "string",
-  "sampleRate": 0
-}
-```
-
-**Properties:**
-- `audioData` (string, nullable): Base64 encoded audio data
-- `sampleRate` (integer): Audio sample rate in Hz
-
----
-
-### TTSResponseAPIResponseDTO
-
-API response wrapper for TTSResponse.
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "audioData": "string",
-    "sampleRate": 0
-  },
   "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": "مرحبا بكم في تطبيقنا",
+  "errorMessage": null,
   "statusCode": 200
 }
 ```
 
 ---
 
-### UpdateUserProfileDTO
+#### 20. Get Letter Image (Keyboard)
 
-User profile update request.
+**Endpoint:** `/api/ArabicLanguageTranslator/letters-keyboard`  
+**Method:** `GET`  
+**Tag:** ArabicLanguageTranslator  
+**Authentication:** Not required
+
+**Description:** Get the sign language image for a specific Arabic letter.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| letter | string | Yes | Single Arabic letter character |
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/ArabicLanguageTranslator/letters-keyboard?letter=م" \
+  -H "Content-Type: application/json"
+```
+
+**Response Schema:**
 
 ```json
 {
-  "fullName": "string",
-  "email": "string",
-  "phoneNumber": "string",
-  "userName": "string"
+  "success": true,
+  "data": "string",
+  "errorMessage": null,
+  "statusCode": 200
 }
 ```
 
-**Properties:**
-- `fullName` (string, nullable): Full name
-- `email` (string, nullable): Email address
-- `phoneNumber` (string, nullable): Phone number
-- `userName` (string, nullable): Username
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
 
 ---
 
+### User History
+
+---
+
+#### 21. Get User History
+
+**Endpoint:** `/api/UserHistory/get-user-history`  
+**Method:** `GET`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)
+
+**Description:** Retrieve all translation history records for the authenticated user.
+
+**Example Request:**
+
+```bash
+curl -X GET "https://api.example.com/api/UserHistory/get-user-history" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 0,
+      "formedSentence": "string",
+      "formedAt": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "formedSentence": "مرحبا بكم",
+      "formedAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "formedSentence": "كيف حالك",
+      "formedAt": "2024-01-15T11:45:00Z"
+    }
+  ],
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 22. Delete User History Record
+
+**Endpoint:** `/api/UserHistory/delete-user-history-record`  
+**Method:** `DELETE`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)  
+**Content-Type:** `application/json`
+
+**Description:** Delete a specific history record by ID.
+
+**Request Body Schema:**
+
+```json
+{
+  "id": 0
+}
+```
+
+**Example Request:**
+
+```bash
+curl -X DELETE "https://api.example.com/api/UserHistory/delete-user-history-record" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 1
+  }'
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+#### 23. Delete All User History
+
+**Endpoint:** `/api/UserHistory/delete-all-user-history`  
+**Method:** `DELETE`  
+**Tag:** UserHistory  
+**Authentication:** Required (Bearer Token)
+
+**Description:** Delete all history records for the authenticated user.
+
+**Example Request:**
+
+```bash
+curl -X DELETE "https://api.example.com/api/UserHistory/delete-all-user-history" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Response Schema:**
+
+```json
+{
+  "success": true,
+  "data": true,
+  "errorMessage": null,
+  "statusCode": 200
+}
+```
+
+---
+
+## Error Handling
+
+### Common Error Responses
+
+**400 Bad Request:**
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Invalid request data",
+  "statusCode": 400
+}
+```
+
+**401 Unauthorized:**
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Unauthorized access",
+  "statusCode": 401
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "An unexpected error occurred",
+  "statusCode": 500
+}
+```
+
+---
+
+## Rate Limiting
+
+The API implements strict rate limiting to ensure fair usage and system stability. If you exceed the limits below, you will receive a `429 Too Many Requests` response with the message:
+`{ "message": "Rate limit exceeded. Try again later." }`
+
+| Endpoint | Limiter Name | Quota / Policy |
+|----------|--------------|----------------|
+| `/api/Auth/register-user` | `RegisterLimiter` | 5 requests per 10 minutes |
+| `/api/Auth/login-user` | `LoginLimiter` | Token Bucket: 5 tokens initially, replenishes 5 tokens every 10 seconds |
+| `/api/Auth/refresh-tokens` | `RefreshTokenLimiter` | 10 requests per 1 minute |
+| `/api/Auth/get-reset-password-token` | `GetResetPasswordLimiter` | 3 requests per 1 hour |
+| `/api/Auth/reset-password` | `ResetPasswordLimiter` | 3 requests per 1 hour |
+| `/api/Auth/change-password` | `ChangePasswordLimiter` | 10 requests per 1 hour |
+| `/api/Auth/login-google` | `GoogleLoginLimiter` | 10 requests per 1 minute |
+| `/api/Auth/google-callback` | `GoogleCallbackLimiter` | 10 requests per 1 minute |
+| `/api/Auth/update-user-image` | `UpdateImageLimiter` | 10 requests per 10 minutes |
+| `/api/Auth/logout` | `LogoutLimiter` | 20 requests per 1 minute |
+| `/api/Auth/user-profile` (GET) | `UserProfileReadLimiter` | 100 requests per 10 minutes |
+| `/api/Auth/update-user-profile` | `UserProfileUpdateLimiter` | 10 requests per 10 minutes |
+| `/api/SignLanguageTranslator/finalize-sentence` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/correct-sentence` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/generate-audio` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/SignLanguageTranslator/text-to-audio` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/text-to-sign` | `ArabicLimiter` | 30 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/audio-to-text` | `GeminiLimiter` | 3 requests per 1 minute |
+| `/api/ArabicLanguageTranslator/letters-keyboard` | `ArabicLimiter` | 30 requests per 1 minute |
+
+
+---
+
+## HTTP Status Codes
+
+| Code | Description |
+|------|-------------|
+| 200 | OK - Request successful |
+| 400 | Bad Request - Invalid input |
+| 401 | Unauthorized - Authentication required or failed |
+| 404 | Not Found - Resource doesn't exist |
+| 429 | Too Many Requests - Rate limit exceeded |
+| 500 | Internal Server Error - Server-side error |
+| 502 | Bad Gateway - External API error (e.g., Gemini API) |
+
+---
+
+## Data Models Reference
+
+### ApplicationUserDTO
+```json
+{
+  "email": "string",
+  "fullName": "string",
+  "userName": "string",
+  "phoneNumber": "string",
+  "userBase64Image": "string"
+}
+```
+
+### TokenResponseDTO
+```json
+{
+  "accessToken": "string",
+  "refreshToken": "string",
+  "accessTokenExpires": "2024-01-01T12:00:00Z",
+  "refreshTokenExpires": "2024-01-08T12:00:00Z"
+}
+```
+
 ### UserProfileDTO
-
-User profile information.
-
 ```json
 {
   "fullName": "string",
@@ -1913,106 +1321,27 @@ User profile information.
 }
 ```
 
-**Properties:**
-- `fullName` (string, nullable): Full name
-- `email` (string, nullable): Email address
-- `userBase64Image` (string, nullable): Base64 encoded profile image
-- `phoneNumber` (string, nullable): Phone number
-- `userName` (string, nullable): Username
-
----
-
-### UserProfileDTOAPIResponseDTO
-
-API response wrapper for UserProfileDTO.
-
-```json
-{
-  "errorMessage": "string",
-  "data": {
-    "fullName": "string",
-    "email": "string",
-    "userBase64Image": "string",
-    "phoneNumber": "string",
-    "userName": "string"
-  },
-  "success": true,
-  "statusCode": 200
-}
-```
-
----
-
 ### UserRecordDTO
-
-User sentence formation record.
-
 ```json
 {
   "id": 0,
   "formedSentence": "string",
-  "formedAt": "2026-02-09T12:00:00Z"
+  "formedAt": "2024-01-01T12:00:00Z"
 }
 ```
 
-**Properties:**
-- `id` (integer): Record ID
-- `formedSentence` (string, nullable): The formed sentence
-- `formedAt` (datetime): Timestamp when sentence was created
-
----
-
-### UserRecordDTOListAPIResponseDTO
-
-API response wrapper for list of UserRecordDTO.
-
+### TTSResponse
 ```json
 {
-  "errorMessage": "string",
-  "data": [
-    {
-      "id": 0,
-      "formedSentence": "string",
-      "formedAt": "2026-02-09T12:00:00Z"
-    }
-  ],
-  "success": true,
-  "statusCode": 200
+  "audioData": "string",
+  "sampleRate": 24000
 }
 ```
 
----
-
-## Error Handling
-
-All API endpoints return responses in a consistent format with the following structure:
-
+### Suggestion
 ```json
 {
-  "errorMessage": "Error description if failed",
-  "data": "Response data or null",
-  "success": true/false,
-  "statusCode": 200
-}
-```
-
-### Common Status Codes
-
-- **200 OK**: Request succeeded
-- **400 Bad Request**: Invalid request parameters or body
-- **401 Unauthorized**: Missing or invalid authentication token
-- **403 Forbidden**: User doesn't have permission
-- **404 Not Found**: Resource not found
-- **500 Internal Server Error**: Server-side error
-
-### Error Response Example
-
-```json
-{
-  "errorMessage": "Invalid credentials",
-  "data": null,
-  "success": false,
-  "statusCode": 401
+  "correctedSentence": "string"
 }
 ```
 
@@ -2020,9 +1349,29 @@ All API endpoints return responses in a consistent format with the following str
 
 ## Notes
 
-- All timestamps are in ISO 8601 format (UTC)
-- Base64 encoded data should be prefixed appropriately (e.g., `data:image/jpeg;base64,` for images)
-- Phone numbers should include country code (e.g., +20 for Egypt)
-- All text fields accept Arabic and English characters unless specified otherwise
-- File uploads use multipart/form-data encoding
-- Maximum file size limits may apply (check with API administrator)
+1. **Base64 Image Format**: All images (profile pictures, sign language images) are returned as base64-encoded strings with MIME type prefix: `data:image/[type];base64,[data]`
+
+2. **Date-Time Format**: All timestamps follow ISO 8601 format: `YYYY-MM-DDTHH:mm:ssZ`
+
+3. **Authentication Flow**:
+   - Register or Login to obtain tokens
+   - Include access token in `Authorization` header for protected endpoints
+   - Use refresh token to obtain new access tokens when they expire
+
+4. **Sign Language Translation Workflow**:
+   - Capture image → POST to `/api/SignLanguageTranslator` → Receive letter
+   - Collect multiple letters → POST to `/api/SignLanguageTranslator/finalize-sentence` → Receive formatted sentence
+   - Optional: POST to `/api/SignLanguageTranslator/generate-audio` → Receive audio
+
+5. **Arabic to Sign Translation**:
+   - Type Arabic text → POST to `/api/ArabicLanguageTranslator/text-to-sign` → Receive sign images
+   - Or record audio → POST to `/api/ArabicLanguageTranslator/audio-to-text` → Convert to text → POST to text-to-sign
+
+---
+
+## Support
+
+For issues or questions about the API, please contact the development team or refer to the application documentation.
+
+**API Version:** v1  
+**Last Updated:** 2026
