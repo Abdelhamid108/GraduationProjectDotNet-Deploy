@@ -1,5 +1,0 @@
-# This directory is used to store generated test reports
-# Reports are automatically generated when running the test suite
-# 
-# Report naming convention: report_YYYYMMDD_HHMMSS.json
-# Latest report symlink: report_latest.json
