@@ -116,6 +116,7 @@ TestResults/
 *.bak
 *.tmp
 *.orig
+backend/API_Test/reports/*
 
 # ============================
 # 🔒 SECURITY
