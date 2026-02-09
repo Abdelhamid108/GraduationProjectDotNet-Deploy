@@ -197,15 +197,39 @@ run_single_test() {
     local curl_exit=$?
     
     if [[ $curl_exit -ne 0 ]]; then
-        log_test_fail "$name" "curl error: ${response}"
+        log_test_fail "$name" "curl error: ${response}" "$payload" ""
         add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" 0 0 "curl error: ${response}" "$response" "$auth_used"
         return 1
     fi
     
-    # Parse response (last two lines are http_code and time)
-    local time_total=$(echo "$response" | tail -n1)
-    local http_code=$(echo "$response" | tail -n2 | head -n1)
-    local body=$(echo "$response" | sed '$d' | sed '$d')
+    # Parse response (format depends on binary vs text)
+    # For binary: only http_code and time_total (2 lines)
+    # For text: body + http_code + time_total (3+ lines)
+    local time_total http_code body
+    local line_count=$(echo "$response" | wc -l)
+    
+    if [[ "$is_binary" == "true" ]]; then
+        # Binary response: output is just "http_code\ntime_total"
+        time_total=$(echo "$response" | tail -n1)
+        http_code=$(echo "$response" | head -n1)
+        body="[binary data]"
+    else
+        # Text response: output is "body\nhttp_code\ntime_total"
+        if [[ $line_count -ge 2 ]]; then
+            time_total=$(echo "$response" | tail -n1)
+            http_code=$(echo "$response" | tail -n2 | head -n1)
+            body=$(echo "$response" | sed '$d' | sed '$d')
+        else
+            # Response has unexpected format
+            time_total="0"
+            http_code="000"
+            body="$response"
+        fi
+    fi
+    
+    # Validate http_code is numeric (strip any non-numeric chars)
+    http_code=$(echo "$http_code" | tr -dc '0-9')
+    [[ -z "$http_code" ]] && http_code="000"
     
     # Convert time to milliseconds
     local latency_ms=$(echo "$time_total * 1000" | bc 2>/dev/null | cut -d. -f1 || echo "0")
@@ -214,7 +238,7 @@ run_single_test() {
     # Validate status code
     if ! assert_status_code "$expected_status" "$http_code"; then
         local error=$(get_last_assertion_error)
-        log_test_fail "$name" "$error"
+        log_test_fail "$name" "$error" "$payload" "$body"
         add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error" "$body" "$auth_used"
         return 1
     fi
@@ -224,7 +248,7 @@ run_single_test() {
         for field in $expected_fields; do
             if ! assert_json_field "$body" ".$field"; then
                 local error=$(get_last_assertion_error)
-                log_test_fail "$name" "$error"
+                log_test_fail "$name" "$error" "$payload" "$body"
                 add_rest_result "$id" "$name" "$method" "$path" "FAILED" "$expected_status" "$http_code" "$latency_ms" "$error" "$body" "$auth_used"
                 return 1
             fi
@@ -241,8 +265,17 @@ run_single_test() {
         fi
     fi
     
-    log_test_pass "$name" "$latency_ms"
-    add_rest_result "$id" "$name" "$method" "$path" "PASSED" "$expected_status" "$http_code" "$latency_ms" "" "" "$auth_used"
+    log_test_pass "$name" "$latency_ms" "$payload" "$body"
+    add_rest_result "$id" "$name" "$method" "$path" "PASSED" "$expected_status" "$http_code" "$latency_ms" "" "$body" "$auth_used"
+    
+    # Apply rate limiting delay if configured
+    local throttle_delay=$(echo "$endpoint" | jq -r '.rate_limit.throttle_delay_ms // 0')
+    if [[ "$throttle_delay" -gt 0 ]] && [[ "$DRY_RUN" != "true" ]]; then
+        local delay_seconds=$((throttle_delay / 1000))
+        log_debug "Rate limit throttle: waiting ${delay_seconds}s before next request"
+        sleep "$delay_seconds"
+    fi
+    
     return 0
 }
 

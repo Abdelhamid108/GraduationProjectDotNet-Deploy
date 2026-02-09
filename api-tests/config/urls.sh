@@ -99,19 +99,24 @@ get_ws_url() {
 url_encode() {
     local string="${1:-}"
     local encoded=""
-    local i char
+    local length=${#string}
+    local i=0
     
-    for (( i=0; i<${#string}; i++ )); do
-        char="${string:i:1}"
+    # Use printf with %s to safely handle the string, then process byte-by-byte
+    # This handles multi-byte UTF-8 characters (like Arabic) correctly
+    while IFS= read -r -n1 -d '' char || [[ -n "$char" ]]; do
         case "$char" in
             [a-zA-Z0-9.~_-])
                 encoded+="$char"
                 ;;
             *)
-                encoded+=$(printf '%%%02X' "'$char")
+                # For multi-byte chars, encode each byte separately
+                while IFS= read -r -n2 hex; do
+                    [[ -n "$hex" ]] && encoded+="%${hex}"
+                done < <(printf '%s' "$char" | xxd -p -u | fold -w2)
                 ;;
         esac
-    done
+    done < <(printf '%s' "$string")
     
     echo "$encoded"
 }

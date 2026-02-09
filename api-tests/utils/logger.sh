@@ -128,21 +128,49 @@ log_success() {
 log_test_pass() {
     local test_name="$1"
     local latency="${2:-}"
+    local request_body="${3:-}"
+    local response_body="${4:-}"
     
     local msg="${COLOR_GREEN}✓${COLOR_RESET} ${test_name}"
     [[ -n "$latency" ]] && msg+=" ${COLOR_GRAY}(${latency}ms)${COLOR_RESET}"
     
     echo -e "$msg"
+    
+    # Show request body if provided and verbose mode is on
+    if [[ -n "$request_body" ]] && [[ "${VERBOSE:-false}" == "true" || "${SHOW_ALL_BODIES:-false}" == "true" ]]; then
+        echo -e "  ${COLOR_GRAY}Request Body:${COLOR_RESET}"
+        printf "  ${COLOR_CYAN}%s${COLOR_RESET}\n" "$(echo "$request_body" | head -c 500)"
+    fi
+    
+    # Show response body if provided and verbose mode is on
+    if [[ -n "$response_body" ]] && [[ "${VERBOSE:-false}" == "true" || "${SHOW_ALL_BODIES:-false}" == "true" ]]; then
+        echo -e "  ${COLOR_GRAY}Response Body:${COLOR_RESET}"
+        printf "  ${COLOR_GREEN}%s${COLOR_RESET}\n" "$(echo "$response_body" | head -c 500)"
+    fi
 }
 
 log_test_fail() {
     local test_name="$1"
     local error="${2:-}"
+    local request_body="${3:-}"
+    local response_body="${4:-}"
     
     local msg="${COLOR_RED}✗${COLOR_RESET} ${test_name}"
     [[ -n "$error" ]] && msg+=" ${COLOR_RED}— ${error}${COLOR_RESET}"
     
     echo -e "$msg"
+    
+    # Always show request body for failed tests
+    if [[ -n "$request_body" ]]; then
+        echo -e "  ${COLOR_GRAY}Request Body:${COLOR_RESET}"
+        printf "  ${COLOR_YELLOW}%s${COLOR_RESET}\n" "$(echo "$request_body" | head -c 500)"
+    fi
+    
+    # Always show response body for failed tests
+    if [[ -n "$response_body" ]]; then
+        echo -e "  ${COLOR_GRAY}Response Body:${COLOR_RESET}"
+        printf "  ${COLOR_RED}%s${COLOR_RESET}\n" "$(echo "$response_body" | head -c 500)"
+    fi
 }
 
 log_test_skip() {

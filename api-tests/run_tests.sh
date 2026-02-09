@@ -42,6 +42,7 @@ REST_ONLY=false
 WS_ONLY=false
 VERBOSE=false
 SKIP_AUTH=false
+export SHOW_ALL_BODIES=false
 
 #------------------------------------------------------------------------------
 # show_help
@@ -69,6 +70,9 @@ OPTIONS:
 
     --verbose         Enable detailed output
                       Shows request/response details
+
+    --show-bodies     Show request and response bodies for ALL tests
+                      (Failed tests always show bodies regardless)
 
     --skip-auth       Skip authentication tests
                       Uses ACCESS_TOKEN from environment if set
@@ -124,6 +128,10 @@ parse_args() {
             --verbose)
                 VERBOSE=true
                 export LOG_LEVEL="DEBUG"
+                shift
+                ;;
+            --show-bodies)
+                export SHOW_ALL_BODIES=true
                 shift
                 ;;
             --skip-auth)
