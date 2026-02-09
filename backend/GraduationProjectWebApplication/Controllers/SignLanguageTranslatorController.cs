@@ -44,6 +44,8 @@ namespace GraduationProjectWebApplication.Controllers
             _logger = logger;
         }
 
+
+
         [HttpPost]
         public async Task<ActionResult<APIResponseDTO<string>>> TranslateSign([FromBody] FrameData frameData)
         {
@@ -222,7 +224,7 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        [HttpPost("CorrectSentence")]
+        [HttpPost("correct-sentence")]
         [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<CorrectedResponse>>> CorrectSentence([FromBody] SentenceData sentenceData)
         {
@@ -320,7 +322,7 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
-        [HttpPost("GenerateAudio")]
+        [HttpPost("generate-audio")]
         [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {

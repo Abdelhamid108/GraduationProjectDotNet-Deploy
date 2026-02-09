@@ -2,6 +2,6 @@
 {
     public class UpdateUserImgeResponse
     {
-        public string NewUserImagePath { get; set; } = string.Empty;
+        public string NewUserBase64Image { get; set; } = string.Empty;
     }
 }

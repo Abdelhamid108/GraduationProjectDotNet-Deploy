@@ -188,7 +188,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 UserName = applicationUser.UserName,
                                 Email = applicationUser.Email,
                                 PhoneNumber = applicationUser.PhoneNumber,
-                                ImagePath = Base64Image
+                                Base64UserImage = Base64Image
                             };
 
                             return new AuthResponse<ApplicationUserDTO>()
@@ -249,7 +249,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                                 UserName = applicationUser.UserName,
                                 Email = applicationUser.Email,
                                 PhoneNumber = applicationUser.PhoneNumber,
-                                ImagePath = null
+                                Base64UserImage = null
                             };
 
 
@@ -316,31 +316,31 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             AuthResponse<bool> authResponse;
 
 
-            // Don't depend on email
-            var userClaims = _httpContextAccessor.HttpContext?.User;
+            //var userClaims = _httpContextAccessor.HttpContext?.User;
 
-            if (userClaims == null)
-                return authResponse = new AuthResponse<bool>()
-                {
-                    IsSuccess = false,
-                    ErrorMessage = "Invalid user",
-                    Result = false
-                };
+            //if (userClaims == null)
+            //    return authResponse = new AuthResponse<bool>()
+            //    {
+            //        IsSuccess = false,
+            //        ErrorMessage = "Invalid user",
+            //        Result = false
+            //    };
 
-            string? userId = userClaims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-
-            // Don't depend on email
-            ResetPasswordToken? resetPasswordToken =
-                await _context.ResetPasswordTokens
-                .Where(t => t.UserId == userId &&
-                            !t.IsUsed &&
-                            t.ExpiresAt > DateTime.UtcNow)
-                .OrderByDescending(t => t.ExpiresAt)
-                .FirstOrDefaultAsync();
+            //string? userId = userClaims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
 
-            if (resetPasswordToken == null || resetPasswordToken.OtpHash != HashOtp(resetPasswordDTO.OTP))
+            var validTokens = await _context.ResetPasswordTokens
+             .Where(t => !t.IsUsed && t.ExpiresAt > DateTime.UtcNow)
+             .OrderByDescending(t => t.ExpiresAt)
+             .Take(20)
+             .ToListAsync();
+
+
+            var resetPasswordToken = validTokens
+            .FirstOrDefault(t => VerifyOtp(resetPasswordDTO.OTP, t.OtpHash));
+
+
+            if (resetPasswordToken == null)
                 return new AuthResponse<bool>()
                 {
                     IsSuccess = false,
@@ -348,7 +348,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                     Result = false,
                 };
 
-            var user = await _userManager.GetUserAsync(userClaims);
+            var user = await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.Id == resetPasswordToken.UserId);
 
             if (user == null)
                 return authResponse = new AuthResponse<bool>()
@@ -646,7 +646,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 UserName = applicationUser.UserName,
                 Email = applicationUser.Email,
                 PhoneNumber = applicationUser.PhoneNumber,
-                ImagePath = base64Image,
+                UserBase64Image = base64Image,
                 FullName = applicationUser.FullName,
             };
 
@@ -737,7 +737,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 IsSuccess = true,
                 Result = new UserProfileDTO()
                 {
-                    ImagePath = base64Image,
+                    UserBase64Image = base64Image,
                     Email = applicationUser.Email,
                     UserName = applicationUser.UserName,
                     FullName = applicationUser.FullName,
@@ -834,6 +834,10 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
             return Convert.ToBase64String(sha.ComputeHash(bytes));
         }
 
+        private bool VerifyOtp(string plainOtp, string storedOtpHash)
+        {
+            return HashOtp(plainOtp) == storedOtpHash;
+        }
 
 
     }
