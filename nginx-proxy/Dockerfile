@@ -3,7 +3,7 @@ FROM nginx:alpine
 
 # Copy a custom Nginx configuration file from the host into the container
 # this file will be placed in the /etc/nginx/conf.d/ directory, where Nginx automatically includes it
-COPY ./nginx-proxy.conf /etc/nginx/conf.d/
+COPY ./nginx-proxy.conf.template /etc/nginx/templates/nginx-proxy.conf.template
 
 # Copy test html pages into container  
 COPY ./public /usr/share/nginx/html
