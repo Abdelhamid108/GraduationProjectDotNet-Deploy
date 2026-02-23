@@ -198,7 +198,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           from: "Ema2a CI/CD <${{ secrets.MAIL_USERNAME }}>"
           to: ${{ secrets.TARGET_EMAIL }}
-          subject: 📊 Ema2a Pipeline Test Results (${{ steps.test_results.outputs.pass_rate }})
+          subject: Ema2a Pipeline Test Results (${{ steps.test_results.outputs.pass_rate }})
           body: |
             Test execution for Ema2a has completed.
 
