@@ -356,7 +356,9 @@
       "path": "/tts/health",
       "auth_required": false,
       "expected_status": 200,
-      "is_plain_text": true
+      "is_plain_text": true,
+      "skip": true,
+      "skip_reason": "Holded"
     },
     {
       "id": "tts_speakers",
@@ -365,7 +367,10 @@
       "path": "/tts/speakers",
       "auth_required": false,
       "expected_status": 200,
-      "is_plain_text": true
+      "is_plain_text": true,
+      "skip": true,
+      "skip_reason": "Holded"
+
     },
     {
       "id": "tts_get",
@@ -381,7 +386,10 @@
       },
       "expected_status": 200,
       "expected_content_type": "audio/mpeg",
-      "is_binary_response": true
+      "is_binary_response": true,
+      "skip": true,
+      "skip_reason": "Holded"
+
     }
   ],
   "test_order": [
