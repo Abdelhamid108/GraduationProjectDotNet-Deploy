@@ -172,21 +172,37 @@ jobs:
 
       - name: Upload Test Artifacts to Azure Blob Storage
         if: always()
+        id: upload_blob  
         uses: azure/CLI@v2
         with:
           azcliversion: latest
           inlineScript: |
             REPORT_PATH=${{ steps.test_results.outputs.report_file }}
-            FILE_NAME=$(basename $REPORT_PATH)
+            FILE_NAME=$(basename "$REPORT_PATH")
 
             echo "Uploading test report: $FILE_NAME"
-
+            
+            # 1. Upload to Azure Blob Storage (Private)
             az storage blob upload \
               --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
               --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
               --file $REPORT_PATH \
               --name "reports/$FILE_NAME" \
               --auth-mode login
+
+              # 2. Create User Delegation SAS Token (Valid for 24 Hours)
+              EXPIRY=$(date -u -d '24 hours' +%Y-%m-%dT%H:%MZ)
+              SAS_URL=$(az storage blob generate-sas \
+                 --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+                 --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
+                 --name "reports/$FILE_NAME" \
+                 --permissions r \
+                 --expiry $EXPIRY \
+                 --as-user \
+                 --full-uri -otsv \
+                 --auth-mode login)
+
+              echo "sas_url=$SAS_URL" >> $GITHUB_OUTPUT  
 
       - name: Send Notification Email
         if: always()
@@ -209,6 +225,11 @@ jobs:
             📈 Pass Rate: ${{ steps.test_results.outputs.pass_rate }}
 
             The full JSON artifact has been uploaded to Azure Blob Storage.
+
+            🔗 Secure Artifact Access (Expires in 24h)
+            ${{ steps.upload_blob.outputs.sas_url }}
+
+            Note Access is restricted. Link is generated dynamically for security.
 
       - name: Enforce Quality Gate (Pass/Fail Threshold)
         run: |
