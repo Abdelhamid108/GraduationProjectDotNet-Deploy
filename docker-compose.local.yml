@@ -26,7 +26,7 @@ services:
           cpus: '2'
           memory: 512M
         reservations:
-          memory: 1G
+          memory: 512M
 
   nginx:
     build:
@@ -34,12 +34,17 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./nginx-proxy/public:/usr/share/nginx/html
-      - ./Dev:/etc/letsencrypt/live/emaaha.ddns.net:ro
-      - ./Dev:/etc/letsencrypt/archive/emaaha.ddns.net:ro
+      - ${CERT_PATH:-./Dev}:/etc/letsencrypt/live/emaaha.ddns.net:ro
+      - ${ARCHIVE_PATH:-./Dev}:/etc/letsencrypt/archive/emaaha.ddns.net:ro
     ports:
       - "8080:80"   # Changed to avoid conflict with system services
       - "8443:443"
     restart: always
+    environment:
+      CERT_PATH: ${CERT_PATH:-./Dev}
+      ARCHIVE_PATH: ${ARCHIVE_PATH:-./Dev}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5001}
+      BACKEND_HOST: ${BACKEND_HOST:-backend:5001}
     depends_on:
       - backend
     networks:
