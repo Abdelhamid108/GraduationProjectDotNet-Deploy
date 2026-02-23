@@ -40,7 +40,7 @@ services:
   # Frontend Web Server Service (Nginx)
   nginx:
     image: abdelhameed208/graduationproject-nginx:latest
-    volumes:
+#    volumes:
       # Binds the host directory './frontend/public' to the NGINX web root '/usr/share/nginx/html'.
       # This allows for serving static frontend files and potentially live-updating them on the host.
       # - ./nginx-proxy/public:/usr/share/nginx/html
