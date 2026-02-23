@@ -140,7 +140,7 @@ jobs:
 
       - name: Execute API Tests
         run: |
-          cd ./backend/API_TEST
+          cd ./backend/API_Test
           chmod +x run_tests.sh
           # Use '|| true' to prevent pipeline crash, ensuring reports are always collected
           ./run_tests.sh --verbose --base-url http://localhost || true
@@ -149,7 +149,7 @@ jobs:
         id: test_results
         run: |
           # Resolve symlink to get the timestamped report file
-          LATEST_REPORT=$(readlink -f "./backend/API_TEST/reports/report_latest.json")
+          LATEST_REPORT=$(readlink -f "./backend/API_Test/reports/report_latest.json")
           
           # Extract metrics using jq
           TOTAL=$(jq -r '.summary.total' $LATEST_REPORT)
