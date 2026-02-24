@@ -1,86 +1,191 @@
 # GitHub Actions Pipeline Documentation
-**Version:** 1.0.0
+**Version:** 2.0.0
 
-This document details the CI/CD pipeline configuration defined in `.github/workflows/main.yml`. The pipeline automates the build, test, and deployment process for the application stack using GitHub Actions.
+This document describes the CI/CD workflow defined in `.github/workflows/main.yml`. The pipeline now performs **conditional image builds**, **ephemeral integration testing**, **artifact archival to Azure Blob Storage**, **email notification**, and **deployment to Azure Container Apps**.
 
 ## 1. Pipeline Overview
 
-The pipeline is triggered on pushes to `DEV` and `main` branches, but only if changes are detected in specific paths (`backend/**`, `nginx-proxy/**`, `docker-compose.yml`). It can also be triggered manually via the **Actions** tab with an option to force a full rebuild.
+The workflow (`Ema2a-Pipeline`) is triggered by:
+
+1. Pushes to `DEV` and `main` branches.
+2. Path changes in:
+   - `backend/**`
+   - `nginx-proxy/**`
+   - `docker-compose.yml`
+3. Manual run (`workflow_dispatch`) with optional force rebuild.
 
 ### Key Features
-*   **Change Detection**: Uses `dorny/paths-filter` to detect changes in specific directories.
-*   **Dynamic Versioning**: Tags Docker images based on the git commit count and short SHA (e.g., `v1.0-15-a1b2c3d`).
-*   **Efficient Builds**: Only builds and pushes images for services that have changed.
-*   **Secure Deployment**: Uses GitHub Secrets for sensitive data (SSH keys, creating `.env` file).
 
-## 2. Configuration & Inputs
+- **Change Detection** with `dorny/paths-filter` to build only changed services.
+- **Immutable Traceable Tags** based on per-path commit count + short SHA (e.g., `v1.0-25-a1b2c3d`).
+- **Ephemeral Integration Test Environment** using `docker compose up -d` on the CI runner.
+- **Automated API Test Execution** (REST + WebSocket) using `backend/API_Test/run_tests.sh`.
+- **Azure Artifact Storage** for JSON test reports using private blob upload + SAS URL generation.
+- **Automated Email Notification** including pass/fail metrics and temporary secure artifact link.
+- **Quality Gate** that aborts deployment when failed tests exceed threshold.
+- **Azure Container Apps Deployment** gated by successful build + test.
 
-### Manual Trigger Inputs (`workflow_dispatch`)
-When running the workflow manually, you can specify:
+## 2. Trigger & Configuration
+
+### Branch/Path Trigger Rules
+
+The workflow runs on push to:
+- `DEV`
+- `main`
+
+Only when one or more of these paths changed:
+- `backend/**`
+- `nginx-proxy/**`
+- `docker-compose.yml`
+
+### Manual Trigger Input (`workflow_dispatch`)
 
 | Input | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `FiRST-RUN` | Boolean | `false` | If set to `true`, forces a rebuild and redeploy of ALL components, ignoring change detection. |
+| `FiRST-RUN` | Boolean | `false` | Forces building all images regardless of path filters. |
 
-### Environment Variables
+### Global Environment Variables
+
 | Variable | Value | Description |
 | :--- | :--- | :--- |
-| `REGISTRY` | `abdelhameed208` | Docker Hub username/registry. |
-| `BACKEND_IMAGE` | `graduationproject-backend` | Name of the backend image. |
-| `WEB_SERVER_IMAGE` | `graduationproject-nginx` | Name of the frontend/proxy image. |
+| `REGISTRY` | `abdelhameed208` | Docker registry/namespace. |
+| `BACKEND_IMAGE` | `graduationproject-backend` | Backend image name. |
+| `WEB_SERVER_IMAGE` | `graduationproject-nginx` | Nginx/webserver image name. |
 
-### GitHub Secrets
-The pipeline relies on the following secrets configured in the repository settings:
+## 3. Required GitHub Secrets
 
-| Secret | Description |
-| :--- | :--- |
-| `DOCKER_USERNAME` | Docker Hub username. |
-| `DOCKER_PASSWORD` | Docker Hub password/token. |
-| `EMA2A_SSH_HOST` | IP address of the target deployment server. |
-| `EMA2A_SSH_USER` | SSH username (e.g., `ubuntu`). |
-| `EMA2A_PRIVATE_KEY` | SSH private key for authentication. |
-| `EMA2A_ENV_FILE_CONTENT` | Full content of the `.env` file to be generated on the server. |
+### Docker Hub
 
-## 3. Pipeline Jobs
+- `DOCKER_USERNAME`
+- `DOCKER_PASSWORD`
+
+### Azure (Deployment + Artifacts)
+
+- `AZURE_CREDENTIALS`
+- `AZURE_STORAGE_ACCOUNT`
+- `AZURE_STORAGE_CONTAINER`
+
+### Email Notification
+
+- `MAIL_ACCOUNT`
+- `MAIL_PASSWORD`
+- `MAIL_USERNAME`
+- `TARGET_EMAIL`
+
+### App Runtime Config
+
+- `EMA2A_ENV_FILE_CONTENT` (full `.env` content used in test environment)
+
+## 4. Pipeline Jobs
+
+The pipeline has 3 jobs executed in this order:
+
+1. `build-push-images`
+2. `test`
+3. `deploy`
+
+---
 
 ### Job 1: Build & Push (`build-push-images`)
-**Purpose**: Builds Docker images and pushes them to Docker Hub.
 
-1.  **Checkout Code**: Fetches the full history (`fetch-depth: 0`) to allow for correct version counting.
-2.  **Check Changes**: Identifies which components have changed using `dorny/paths-filter`.
-3.  **Login to Docker Hub**: Authenticates using provided secrets.
-4.  **Build Backend** (Conditional):
-    *   Run if `backend` changed OR `FiRST-RUN` is true.
-    *   Calculates version tag: `v1.0-<CommitCount>-<ShortSHA>`.
-    *   Builds and pushes `graduationproject-backend`.
-5.  **Build Web Server** (Conditional):
-    *   Run if `nginx-proxy` changed OR `FiRST-RUN` is true.
-    *   Calculates version tag.
-    *   Builds and pushes `graduationproject-nginx`.
+**Purpose:** Build and push only changed Docker images.
 
-### Job 2: Deploy (`deploy`)
-**Purpose**: Updates the running application on the server.
-**Condition**: Runs only if `build-push-images` completes successfully.
+**Runner:** `ubuntu-24.04`
 
-1.  **Generate `.env`**: Creates the `.env` file from the `EMA2A_ENV_FILE_CONTENT` secret.
-2.  **Ensure App Folder**: Connects via SSH to create the target directory.
-3.  **Copy Files**: Uses `scp` to copy `docker-compose.yml`, `.env`, and `Dev` folder to the server.
-4.  **Execute Deployment**:
-    *   Connects via SSH.
-    *   Runs `docker compose pull` to fetch new images.
-    *   Runs `docker compose up -d --remove-orphans` to restart updated services.
-    *   Runs `docker image prune -f` to clean up old images.
+#### Steps
 
-## 4. Troubleshooting
+1. Checkout repository with full history (`fetch-depth: 0`).
+2. Detect changed paths with `dorny/paths-filter`.
+3. Login to Docker Hub only if needed.
+4. Build backend image conditionally:
+   - Tag format: `v1.0-<commitCount>-<shortSha>`
+   - Pushes both immutable tag and `latest`.
+5. Build webserver image conditionally with same tag strategy.
+6. Export image tags as job outputs:
+   - `backend_tag`
+   - `webserver_tag`
 
-### "No changes detected"
-*   **Cause**: You pushed a change but not in the monitored paths (`backend/`, `nginx-proxy/`, `docker-compose.yml`).
-*   **Fix**: If you need to force a deploy, run the workflow manually and check the **"Set to true to force build all images"** box.
+---
 
-### "Permission denied (publickey)" during Deploy
-*   **Cause**: The `EMA2A_PRIVATE_KEY` secret is incorrect or does not match the public key on the server (`~/.ssh/authorized_keys`).
-*   **Fix**: Verify the SSH key pair and update the GitHub Secret.
+### Job 2: Integration Testing & Artifact Storage (`test`)
 
-### "Docker login failed"
-*   **Cause**: `DOCKER_USERNAME` or `DOCKER_PASSWORD` secrets are invalid.
-*   **Fix**: Update the secrets in GitHub repository settings.
+**Purpose:** Validate functionality before deployment and preserve test evidence.
+
+**Runner:** `ubuntu-24.04`
+
+**Dependency:** `needs: build-push-images`
+
+#### Steps
+
+1. Checkout repository.
+2. Create `.env` from secret (`EMA2A_ENV_FILE_CONTENT`).
+3. Provision ephemeral stack via `docker compose up -d`.
+4. Wait for service startup (`sleep 120`).
+5. Install test dependencies (`curl`, `jq`, `websocat`).
+6. Execute API tests:
+   - Runs `backend/API_Test/run_tests.sh --verbose --base-url http://localhost`
+   - Uses `|| true` so report generation/collection is not skipped on failures.
+7. Parse JSON report (`report_latest.json`) and export summary metrics.
+8. Login to Azure.
+9. Upload report to Azure Blob Storage.
+10. Generate 24h user delegation SAS URL for secure artifact access.
+11. Send email notification with:
+    - pass/fail totals
+    - pass rate
+    - temporary report URL
+12. Enforce quality gate:
+    - `ALLOWED_FAILURES=10`
+    - pipeline fails if `failed > 10`
+
+---
+
+### Job 3: Deployment (`deploy`)
+
+**Purpose:** Deploy newly built immutable image tags to Azure Container Apps.
+
+**Runner:** `ubuntu-24.04`
+
+**Dependencies:** `needs: [build-push-images, test]`
+
+**Environment Gate:** `Production` (supports required reviewers/approval in GitHub Environments)
+
+#### Steps
+
+1. Authenticate to Azure.
+2. Deploy backend image to container app `ema2a` (only if backend tag exists).
+3. Deploy webserver image to container app `ema2a-webserver` (only if webserver tag exists).
+
+## 5. Quality & Release Rules
+
+- Deployment happens **only** when build and test jobs succeed.
+- If test failures exceed threshold (`> 10`), deployment is aborted.
+- Deploy job uses immutable tags from the current run outputs.
+- Manual approval can be enforced through `environment: Production` configuration.
+
+## 6. Troubleshooting
+
+### Workflow did not run on push
+- Verify branch is `DEV` or `main`.
+- Verify changed files are inside monitored paths.
+- For forced full run, trigger manually and set `FiRST-RUN=true`.
+
+### Docker login failure
+- Check `DOCKER_USERNAME` / `DOCKER_PASSWORD` secrets.
+
+### Tests executed but deployment blocked
+- Check **Quality Gate** step output.
+- If failed tests exceed 10, deployment is intentionally stopped.
+
+### Azure Blob upload failure
+- Verify `AZURE_CREDENTIALS`, `AZURE_STORAGE_ACCOUNT`, and `AZURE_STORAGE_CONTAINER`.
+- Ensure the service principal has storage data plane permissions.
+
+### Email notification failure
+- Verify SMTP credentials and sender/recipient secrets:
+  - `MAIL_ACCOUNT`, `MAIL_PASSWORD`, `MAIL_USERNAME`, `TARGET_EMAIL`.
+
+### Azure deployment failure
+- Verify target Container Apps exist:
+  - `ema2a`
+  - `ema2a-webserver`
+- Verify resource group is `Ema2a` and credentials have deploy permissions.
