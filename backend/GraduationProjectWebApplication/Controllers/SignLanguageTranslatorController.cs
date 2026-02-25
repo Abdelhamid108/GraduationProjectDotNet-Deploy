@@ -3,6 +3,7 @@ using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
@@ -25,6 +26,7 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly string? generateAudioBackUpAPIKey;
         private readonly string? textToAudioAPIKey;
         private readonly string? textToAudioStep2APIKey;
+        private readonly string? azureKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -47,6 +49,7 @@ namespace GraduationProjectWebApplication.Controllers
             generateAudioBackUpAPIKey = configuration["GENERATE_AUDIO_BACKUP_KEY"];
             textToAudioAPIKey = configuration["TEXT_TO_AUDIO_KEY"];
             textToAudioStep2APIKey = configuration["TEXT_TO_AUDIO_STEP_2_KEY"];
+            azureKey = configuration["AZURE_KEY"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
@@ -605,5 +608,92 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
+
+        [HttpPost("azure-tts")]
+        public async Task<ActionResult> AzureTTS([FromBody] TTSRequest request, [FromQuery] string format = "mp3")
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request?.Text))
+                {
+                    _logger.LogWarning("AzureTTS: Missing 'text' field");
+                    return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
+                }
+
+                format = format?.ToLower();
+
+                if (format != "mp3" && format != "base64")
+                {
+                    return BadRequest(ErrorResponse<TTSResponse>(
+                        "Invalid format. Allowed values are 'mp3' or 'base64'."));
+                }
+
+                _logger.LogInformation("AzureTTS: Generating audio for text - {Text}", request.Text);
+
+
+                const string ApiUrl = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
+
+                var ssmlBody = $@"
+                                <speak version='1.0' xml:lang='ar-EG'>
+                                    <voice name='ar-EG-SalmaNeural'>
+                                        {System.Security.SecurityElement.Escape(request.Text)}
+                                    </voice>
+                                </speak>";
+
+                var content = new StringContent(ssmlBody, Encoding.UTF8, "application/ssml+xml");
+
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                requestMessage.Headers.Add("Ocp-Apim-Subscription-Key", azureKey);
+                requestMessage.Headers.Add("X-Microsoft-OutputFormat", "audio-16khz-32kbitrate-mono-mp3");
+                requestMessage.Headers.Add("User-Agent", "dotnet-api");
+                requestMessage.Content = content;
+
+
+                try
+                {
+                    var response = await _httpClient.SendAsync(requestMessage);
+                    response.EnsureSuccessStatusCode();
+
+
+                    var audioBytes = await response.Content.ReadAsByteArrayAsync();
+
+                    if (format.ToLower() == "base64")
+                    {
+                        var base64Audio = Convert.ToBase64String(audioBytes);
+
+
+                        var result = new TTSResponse
+                        {
+                            AudioData = base64Audio,
+                            SampleRate = 16000
+                        };
+
+                        return Ok(SuccessResponse(result));
+
+                    }
+                    else
+                    {
+                        return File(audioBytes, "audio/mpeg", "speech.mp3");
+                    }
+
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    _logger.LogError(httpEx, "AzureTTS: Error calling Azure API");
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<string>($"Error calling Azure API: {httpEx.Message}"));
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AzureTTS: Unexpected error occurred");
+                return StatusCode(
+                   (int)HttpStatusCode.InternalServerError,
+                   ErrorResponse<string>($"An unexpected error occurred."));
+            }
+        }
     }
 }
