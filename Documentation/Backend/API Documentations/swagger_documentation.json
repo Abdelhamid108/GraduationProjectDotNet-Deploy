@@ -675,106 +675,20 @@
         }
       }
     },
-    "/api/SignLanguageTranslator": {
-      "post": {
-        "tags": [
-          "SignLanguageTranslator"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FrameData"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FrameData"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/FrameData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/SignLanguageTranslator/finalize-sentence": {
       "post": {
         "tags": [
           "SignLanguageTranslator"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SentenceData"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SentenceData"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SentenceData"
-              }
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "frontend"
             }
           }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StringAPIResponseDTO"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/SignLanguageTranslator/correct-sentence": {
-      "post": {
-        "tags": [
-          "SignLanguageTranslator"
         ],
         "requestBody": {
           "content": {
@@ -801,17 +715,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/CorrectedResponseAPIResponseDTO"
+                  "$ref": "#/components/schemas/StringAPIResponseDTO"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CorrectedResponseAPIResponseDTO"
+                  "$ref": "#/components/schemas/StringAPIResponseDTO"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CorrectedResponseAPIResponseDTO"
+                  "$ref": "#/components/schemas/StringAPIResponseDTO"
                 }
               }
             }
@@ -867,50 +781,43 @@
         }
       }
     },
-    "/api/SignLanguageTranslator/text-to-audio": {
+    "/api/SignLanguageTranslator/text-to-speech/hardware": {
       "post": {
         "tags": [
           "SignLanguageTranslator"
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "mp3"
+            }
+          }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SentenceData"
+                "$ref": "#/components/schemas/TTSRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/SentenceData"
+                "$ref": "#/components/schemas/TTSRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/SentenceData"
+                "$ref": "#/components/schemas/TTSRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TTSResponseAPIResponseDTO"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TTSResponseAPIResponseDTO"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TTSResponseAPIResponseDTO"
-                }
-              }
-            }
+            "description": "OK"
           }
         }
       }
@@ -1102,34 +1009,6 @@
         },
         "additionalProperties": false
       },
-      "CorrectedResponse": {
-        "type": "object",
-        "properties": {
-          "suggestion": {
-            "$ref": "#/components/schemas/Suggestion"
-          }
-        },
-        "additionalProperties": false
-      },
-      "CorrectedResponseAPIResponseDTO": {
-        "type": "object",
-        "properties": {
-          "errorMessage": {
-            "type": "string",
-            "nullable": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/CorrectedResponse"
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "statusCode": {
-            "$ref": "#/components/schemas/HttpStatusCode"
-          }
-        },
-        "additionalProperties": false
-      },
       "DeleteUserRecordDTO": {
         "type": "object",
         "properties": {
@@ -1168,16 +1047,6 @@
           },
           "statusCode": {
             "$ref": "#/components/schemas/HttpStatusCode"
-          }
-        },
-        "additionalProperties": false
-      },
-      "FrameData": {
-        "type": "object",
-        "properties": {
-          "imageData": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -1339,16 +1208,6 @@
           },
           "statusCode": {
             "$ref": "#/components/schemas/HttpStatusCode"
-          }
-        },
-        "additionalProperties": false
-      },
-      "Suggestion": {
-        "type": "object",
-        "properties": {
-          "correctedSentence": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
