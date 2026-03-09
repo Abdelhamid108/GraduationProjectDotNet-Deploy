@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using System.Collections;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -29,7 +30,22 @@ namespace GraduationProjectWebApplication
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            builder.Logging.AddConsole();
+
+
+            /*==================== Serilog Configurations ===================*/
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug() // log levels: Debug, Information, Warning, Error
+                .Enrich.FromLogContext() // include contextual info
+                .WriteTo.Console() // log to console
+                .WriteTo.File(
+                    "logs/log-.txt",          // path with rolling date
+                    rollingInterval: RollingInterval.Day, // new file every day
+                    retainedFileCountLimit: 7, // keep 7 days of logs
+                    outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+                )
+                .CreateLogger();
+
+            builder.Host.UseSerilog();
 
             /*==================== Env Variables ===================*/
             Env.TraversePath().Load();
