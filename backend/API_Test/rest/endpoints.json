@@ -304,6 +304,8 @@
       "payload": {
         "sentence": "مرحبا بكم"
       },
+      "skip": true,
+      "skip_reason": "Deleted",
       "expected_status": 200,
       "rate_limit": {
         "max_requests_per_minute": 3,
@@ -399,14 +401,10 @@
     "auth_refresh_tokens",
     "auth_google_login",
     "auth_google_callback",
-    "arabic_text_to_sign",
     "arabic_letters_keyboard",
     "sign_finalize_sentence",
     "sign_generate_audio",
     "sign_text_to_audio",
-    "history_get",
-    "tts_health",
-    "tts_speakers",
-    "tts_get"
+    "history_get"
   ]
 }
