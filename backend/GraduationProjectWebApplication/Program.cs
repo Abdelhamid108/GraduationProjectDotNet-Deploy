@@ -288,17 +288,17 @@ namespace GraduationProjectWebApplication
             });
 
 
-            /*=================== Private-CORS ===================*/
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowPrivateCORS", policy =>
-                {
-                    policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
-                });
-            });
+            ///*=================== Private-CORS ===================*/
+            //builder.Services.AddCors(options =>
+            //{
+            //    options.AddPolicy("AllowPrivateCORS", policy =>
+            //    {
+            //        policy.WithOrigins("http://127.0.0.1:5500", "http://localhost:5500")
+            //              .AllowAnyHeader()
+            //              .AllowAnyMethod()
+            //              .AllowCredentials();
+            //    });
+            //});
 
             /*=================== Public-CORS ===================*/
             builder.Services.AddCors(options =>
@@ -368,11 +368,8 @@ namespace GraduationProjectWebApplication
 
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-                endpoints.MapHub<SignHub>("/signHub");
-            });
+            app.MapControllers();
+            app.MapHub<SignHub>("/signHub");
 
             app.Run();
         }
