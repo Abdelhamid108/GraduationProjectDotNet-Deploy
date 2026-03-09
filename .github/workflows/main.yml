@@ -1,4 +1,10 @@
 name: Ema2a-Pipeline
+
+# ------------------------------------------------------------------------------
+# TRIGGER CONFIGURATION
+# Defines when the pipeline should run: on specific branch pushes, 
+# file changes, or triggered manually via the GitHub Actions UI.
+# ------------------------------------------------------------------------------
 on:
   push:
     branches:
@@ -11,32 +17,42 @@ on:
   workflow_dispatch:
     inputs:
       FiRST-RUN:
-        description: 'Set to true to force build all images'
+        description: 'Set to true to force build all images ignoring path filters'
         required: false
         default: false
         type: boolean
 
+# ------------------------------------------------------------------------------
+# GLOBAL ENVIRONMENT VARIABLES
+# ------------------------------------------------------------------------------
 env:
   REGISTRY: 'abdelhameed208'
   BACKEND_IMAGE: 'graduationproject-backend'
   WEB_SERVER_IMAGE: 'graduationproject-nginx'
 
 jobs:
-  # ====================================================
+  # ============================================================================
   # JOB 1: BUILD & PUSH
-  # ====================================================
+  # Builds Docker images conditionally based on changed paths and pushes them
+  # to Docker Hub with immutable, traceable tags.
+  # ============================================================================
   build-push-images:
     runs-on: ubuntu-24.04
+    outputs:
+      backend_tag: ${{ steps.build_backend.outputs.tag }}
+      webserver_tag: ${{ steps.build_webserver.outputs.tag }}
     steps:
-      - name: download-code
-        uses: actions/checkout@v6.0.2  # Use latest stable checkout version
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
-      - name: check what changed
+      # Optimizes pipeline duration by detecting which microservices actually changed
+      - name: Detect File Changes
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.ref_name }}
           filters: |
             backend:
               - 'backend/**'
@@ -45,39 +61,44 @@ jobs:
             docker-compose:
               - 'docker-compose.yml'
 
-      - name: sign to docker hub
+      - name: Authenticate to Docker Hub
         if: |
-          steps.changes.outputs.backend == 'true' || 
-          steps.changes.outputs.web-server == 'true' || 
+          steps.changes.outputs.backend == 'true' ||
+          steps.changes.outputs.web-server == 'true' ||
           inputs.FiRST-RUN == true
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # --- BACKEND ---
-      - name: build and push backend image 
+      # --- BACKEND BUILD ---
+      - name: Build and Push Backend Image
+        id: build_backend
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
-        run: | 
+        run: |
+          # Generate an immutable tag using commit count and short SHA for traceability
           BACKEND_COUNT=$(git rev-list --count HEAD backend/ || echo "0")
           BACKEND_SHORT_SHA=$(git rev-parse --short HEAD)
-          BACKEND_TAG="v1.0-${BACKEND_COUNT}-${BACKEND_SHORT_SHA}"  
-          echo "Calculated tag: $BACKEND_TAG"
+          BACKEND_TAG="v1.0-${BACKEND_COUNT}-${BACKEND_SHORT_SHA}"
 
           docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ./backend
           docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG
-          
+
+          # Push 'latest' tag as a secondary reference
           docker tag ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-      
-      # --- WEB SERVER ---
-      - name: build and push WEB_SERVER images 
+
+          # Export the unique tag to be used in the deployment job
+          echo "tag=$BACKEND_TAG" >> $GITHUB_OUTPUT
+
+      # --- WEB SERVER BUILD ---
+      - name: Build and Push Web Server Image
+        id: build_webserver
         if: steps.changes.outputs.web-server == 'true' || inputs.FiRST-RUN == true
-        run: | 
+        run: |
           WEB_SERVER_COUNT=$(git rev-list --count HEAD nginx-proxy/ || echo "0")
           WEB_SERVER_SHORT_SHA=$(git rev-parse --short HEAD)
-          WEB_SERVER_TAG="v1.0-${WEB_SERVER_COUNT}-${WEB_SERVER_SHORT_SHA}"  
-          echo "Calculated tag: $WEB_SERVER_TAG"
+          WEB_SERVER_TAG="v1.0-${WEB_SERVER_COUNT}-${WEB_SERVER_SHORT_SHA}"
 
           docker build -t ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ./nginx-proxy
           docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG
@@ -85,58 +106,175 @@ jobs:
           docker tag ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
 
-  # ====================================================
-  # JOB 2: DEPLOY
-  # ====================================================
+          echo "tag=$WEB_SERVER_TAG" >> $GITHUB_OUTPUT
+
+
+  # ============================================================================
+  # JOB 2: INTEGRATION TESTING & ARTIFACT STORAGE
+  # Spins up an ephemeral environment, runs tests, uploads artifacts to Azure, 
+  # notifies stakeholders, and enforces a Quality Gate.
+  # ============================================================================
+  test:
+    runs-on: ubuntu-24.04
+    needs: build-push-images
+    if: success()
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Provision Ephemeral Test Environment
+        run: |
+          echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" >> .env
+          docker compose up -d
+          # Wait for services to fully initialize
+          sleep 120
+
+      - name: Install Testing Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+          # Install websocat for WebSocket testing
+          wget -qO /tmp/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl
+          chmod +x /tmp/websocat && sudo mv /tmp/websocat /usr/local/bin/
+
+      - name: Execute API Tests
+        run: |
+          cd ./backend/API_Test
+          chmod +x run_tests.sh
+          # Use '|| true' to prevent pipeline crash, ensuring reports are always collected
+          ./run_tests.sh --verbose --base-url http://localhost || true
+
+      - name: Parse Test Report JSON
+        id: test_results
+        run: |
+          # Resolve symlink to get the timestamped report file
+          LATEST_REPORT=$(readlink -f "./backend/API_Test/reports/report_latest.json")
+          
+          # Extract metrics using jq
+          TOTAL=$(jq -r '.summary.total' $LATEST_REPORT)
+          PASSED=$(jq -r '.summary.passed' $LATEST_REPORT)
+          FAILED=$(jq -r '.summary.failed' $LATEST_REPORT)
+          PASS_RATE=$(jq -r '.summary.pass_rate' $LATEST_REPORT)
+
+          # Export metrics for subsequent steps
+          echo "report_file=$LATEST_REPORT" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "pass_rate=$PASS_RATE" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Azure
+        if: always()
+        uses: Azure/login@v2
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+
+      - name: Upload Test Artifacts to Azure Blob Storage
+        if: always()
+        id: upload_blob  
+        uses: azure/CLI@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            REPORT_PATH=${{ steps.test_results.outputs.report_file }}
+            FILE_NAME=$(basename "$REPORT_PATH")
+
+            echo "Uploading test report: $FILE_NAME"
+            
+            # 1. Upload to Azure Blob Storage (Private)
+            az storage blob upload \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+              --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
+              --file $REPORT_PATH \
+              --name "reports/$FILE_NAME" \
+              --auth-mode login
+
+              # 2. Create User Delegation SAS Token (Valid for 24 Hours)
+              EXPIRY=$(date -u -d '24 hours' +%Y-%m-%dT%H:%MZ)
+              SAS_URL=$(az storage blob generate-sas \
+                 --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+                 --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
+                 --name "reports/$FILE_NAME" \
+                 --permissions r \
+                 --expiry $EXPIRY \
+                 --as-user \
+                 --full-uri -otsv \
+                 --auth-mode login)
+
+              echo "sas_url=$SAS_URL" >> $GITHUB_OUTPUT  
+
+      - name: Send Notification Email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.MAIL_ACCOUNT }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: "Ema2a CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          to: ${{ secrets.TARGET_EMAIL }}
+          subject: Ema2a Pipeline Test Results (${{ steps.test_results.outputs.pass_rate }})
+          body: |
+            Test execution for Ema2a has completed.
+
+            Test Summary:
+            ✅ Passed: ${{ steps.test_results.outputs.passed }}
+            ❌ Failed: ${{ steps.test_results.outputs.failed }}
+            🔄 Total: ${{ steps.test_results.outputs.total }}
+            📈 Pass Rate: ${{ steps.test_results.outputs.pass_rate }}
+
+            The full JSON artifact has been uploaded to Azure Blob Storage.
+
+            🔗 Secure Artifact Access (Expires in 24h)
+            ${{ steps.upload_blob.outputs.sas_url }}
+
+            Note Access is restricted. Link is generated dynamically for security.
+
+      - name: Enforce Quality Gate (Pass/Fail Threshold)
+        run: |
+          FAILED_TESTS=${{ steps.test_results.outputs.failed }}
+          ALLOWED_FAILURES=10 
+          
+          if [ "$FAILED_TESTS" -gt "$ALLOWED_FAILURES" ]; then
+            echo "❌ Pipeline failed! ($FAILED_TESTS) tests failed. Deployment aborted."
+            exit 1
+          else
+            echo "✅ Quality gate passed! Proceeding to Deployment."
+            exit 0
+          fi
+
+
+  # ============================================================================
+  # JOB 3: DEPLOYMENT
+  # Deploys the immutable image tags to Azure Container Apps. 
+  # Requires manual approval via GitHub Environments.
+  # ============================================================================
   deploy:
     runs-on: ubuntu-24.04
-    needs: build-push-images       # CRITICAL: Wait for build to finish
-    if: success() 
+    # Strict dependency mapping: Deploy only if Build and Test succeed
+    needs: [build-push-images, test]
+    environment: Production
+    if: success()
     steps:
-      - name: checkout_code
-        uses: actions/checkout@v6.0.2
-
-      - name: generate-env-file
-        run: |
-          # Generate .env file from GitHub Secret
-          echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" > .env
-          ls -la
-
-      # 1. Ensure target directory exists
-      - name: ensure app folder created 
-        uses: appleboy/ssh-action@v1.0.3 
+      - name: Authenticate to Azure
+        uses: Azure/login@v2
         with:
-          host: ${{ secrets.EMA2A_SSH_HOST }}
-          username: ${{ secrets.EMA2A_SSH_USER }}
-          key: ${{ secrets.EMA2A_PRIVATE_KEY }}
-          script: |
-            mkdir -p /home/${{ secrets.EMA2A_SSH_USER }}/app
-            
-      # 2. Copy files to server
-      - name: copy files using scp
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EMA2A_SSH_HOST }}
-          username: ${{ secrets.EMA2A_SSH_USER }}
-          key: ${{ secrets.EMA2A_PRIVATE_KEY }} 
-          source: "docker-compose.yml,.env,Dev"
-          target: "/home/${{ secrets.EMA2A_SSH_USER }}/app/"
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
-      # 3. Execute Deployment
-      - name: deploy 
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy Backend to Azure Container Apps
+        if: needs.build-push-images.outputs.backend_tag != ''
+        uses: Azure/container-apps-deploy-action@v2
         with:
-          host: ${{ secrets.EMA2A_SSH_HOST }}
-          username: ${{ secrets.EMA2A_SSH_USER }}
-          key: ${{ secrets.EMA2A_PRIVATE_KEY }}
-          script: |
-            cd /home/${{ secrets.EMA2A_SSH_USER }}/app/
-            
-            # Pull new images
-            docker compose pull
-            
-            # Restart containers (recreate only what changed)
-            docker compose up -d --remove-orphans
-            
-            # Cleanup unused images to save disk space
-            docker image prune -f
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-push-images.outputs.backend_tag }}
+          containerAppName: ema2a
+          resourceGroup: Ema2a
+
+      - name: Deploy Web Server to Azure Container Apps
+        if: needs.build-push-images.outputs.webserver_tag != ''
+        uses: Azure/container-apps-deploy-action@v2
+        with:
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:${{ needs.build-push-images.outputs.webserver_tag }}
+          containerAppName: ema2a-webserver
+          resourceGroup: Ema2a

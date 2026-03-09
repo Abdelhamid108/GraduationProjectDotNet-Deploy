@@ -1,0 +1,76 @@
+server {
+    listen 80;
+    server_name ema2a.ddns.net www.ema2a.ddns.net;
+
+    # Root directory for your frontend build files
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 1. ACME Challenge (Optional if using Azure Managed Certs, but good for local/manual tests)
+    location /.well-known/acme-challenge/ {
+        root /usr/share/nginx/html;
+    }
+
+    # 2. Frontend Routing (SPA Support)
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # 3. API Proxying
+    location /api/ {
+        # CORS Preflight Handling
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*' always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+
+        proxy_pass ${BACKEND_URL};
+        
+        # Identity Headers
+        proxy_set_header Host ${BACKEND_HOST};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+
+        # Connection Upgrades (Crucial for performance/stability)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # SNI support for Azure-to-Azure communication
+        proxy_ssl_server_name on;
+    }
+
+    # 4. WebSockets (SignHub)
+    location /signHub {
+        proxy_pass ${BACKEND_URL};
+        
+        # Standard WebSocket Headers
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        proxy_set_header Host ${BACKEND_HOST};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable buffering for real-time data
+        proxy_buffering off;
+
+        # Long timeouts for persistent connections
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+
+        
+        # SNI support for Azure-to-Azure communication
+        proxy_ssl_server_name on;
+
+    }
+}
