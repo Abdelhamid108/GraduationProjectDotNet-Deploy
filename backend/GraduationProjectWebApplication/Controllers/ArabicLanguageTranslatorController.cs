@@ -135,21 +135,27 @@ namespace GraduationProjectWebApplication.Controllers
                 // Recommended for high-speed, high-accuracy audio tasks in 2026
                 const string activeModel = "gemini-3-flash-preview";
 
-                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{activeModel}:generateContent?key={generateTextFromAudioAPIKey}"; 
                 string jsonPayload = JsonConvert.SerializeObject(requestPayload);
                 var httpContent = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 _logger.LogInformation("Sending request to Gemini API.");
 
-                HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, httpContent);
+                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{activeModel}:generateContent";
 
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+                httpRequest.Headers.Add("x-goog-api-key", generateTextFromAudioAPIKey);
+                httpRequest.Content = httpContent;
+
+                HttpResponseMessage response = await _httpClient.SendAsync(httpRequest);
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     _logger.LogWarning("Gemini API rate limit hit. Retrying request...");
 
-                    apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{activeModel}:generateContent?key={generateTextFromAudioBackupAPIKey}";
+                    var retryRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+                    retryRequest.Headers.Add("x-goog-api-key", generateTextFromAudioBackupAPIKey);
+                    retryRequest.Content = httpContent;
 
-                    response = await _httpClient.PostAsync(apiUrl, httpContent);
+                    response = await _httpClient.SendAsync(retryRequest);
                 }
 
                 _logger.LogInformation("Gemini API responded with status code: {StatusCode}", response.StatusCode);

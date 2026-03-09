@@ -125,15 +125,24 @@ namespace GraduationProjectWebApplication.Controllers
                     backupApiKey = hardwareCorrectSentenceBackUpKey;
                 }
 
-                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={mainApiKey}";
+                string apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-                HttpResponseMessage response = await _httpClient.PostAsync(apiUrl, content);
+                var request = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+
+                request.Headers.Add("x-goog-api-key", mainApiKey);
+                request.Content = content;
+
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     _logger.LogWarning("FinalizeSentence: Rate limit exceeded for primary API key, switching to backup key");
-                    string backupApiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={backupApiKey}";
-                    response = await _httpClient.PostAsync(backupApiUrl, content);
+                    var backupRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+
+                    backupRequest.Headers.Add("x-goog-api-key", backupApiKey);
+                    backupRequest.Content = content;
+
+                    response = await _httpClient.SendAsync(backupRequest);
                 }
 
                 response.EnsureSuccessStatusCode();
@@ -232,12 +241,25 @@ namespace GraduationProjectWebApplication.Controllers
 
                 try
                 {
-                    var response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioAPIKey}", content);
+
+
+                    var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+
+                    geminiRequest.Headers.Add("x-goog-api-key", generateAudioAPIKey);
+                    geminiRequest.Content = content;
+
+                    HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
+
 
                     if (response.StatusCode == HttpStatusCode.TooManyRequests)
                     {
                         _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
-                        response = await _httpClient.PostAsync($"{ApiUrl}?key={generateAudioBackUpAPIKey}", content);
+                        var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+
+                        backupRequest.Headers.Add("x-goog-api-key", generateAudioBackUpAPIKey);
+                        backupRequest.Content = content;
+
+                        response = await _httpClient.SendAsync(backupRequest);
                     }
 
                     response.EnsureSuccessStatusCode();
