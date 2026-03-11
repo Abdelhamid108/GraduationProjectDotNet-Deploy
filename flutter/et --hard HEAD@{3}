@@ -1,0 +1,13 @@
+[33m98a0047[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: commit (merge): update: all new changes
+[33m285db54[m HEAD@{1}: rebase (abort): returning to refs/heads/main
+[33md544e9f[m HEAD@{2}: pull origin main --rebase (start): checkout d544e9fec4cbc0b7f59bb5dc5d3685d59ede4bdc
+[33m285db54[m HEAD@{3}: commit: update: all new changes
+[33m8bbbffd[m HEAD@{4}: commit (merge): resolve conflict in main.dart
+[33m9b75820[m HEAD@{5}: commit: update project
+[33md416c66[m HEAD@{6}: commit: Update splash screen UI and add shared widgets
+[33md138a15[m[33m ([m[1;31morigin/Flutter_App[m[33m, [m[1;32mFlutter_App[m[33m)[m HEAD@{7}: checkout: moving from Flutter_App to main
+[33md138a15[m[33m ([m[1;31morigin/Flutter_App[m[33m, [m[1;32mFlutter_App[m[33m)[m HEAD@{8}: checkout: moving from Flutter_App to Flutter_App
+[33md138a15[m[33m ([m[1;31morigin/Flutter_App[m[33m, [m[1;32mFlutter_App[m[33m)[m HEAD@{9}: checkout: moving from Flutter_App to Flutter_App
+[33md138a15[m[33m ([m[1;31morigin/Flutter_App[m[33m, [m[1;32mFlutter_App[m[33m)[m HEAD@{10}: checkout: moving from main to Flutter_App
+[33md138a15[m[33m ([m[1;31morigin/Flutter_App[m[33m, [m[1;32mFlutter_App[m[33m)[m HEAD@{11}: commit: Update project: delete old loading screen, add splash screen assets
+[33m3c7bb4d[m HEAD@{12}: commit (initial): initial commit
