@@ -20,129 +20,155 @@ namespace GraduationProjectWebApplication.Controllers
 
         private readonly IAuthService _authService;
         private readonly IEmailService _emailService;
-        public AuthController(IAuthService authService, IEmailService emailService)
+        private readonly ILogger<AuthController> _logger;
+        public AuthController(IAuthService authService, IEmailService emailService, ILogger<AuthController> logger)
         {
             _authService = authService;
             _emailService = emailService;
+            _logger = logger;
         }
 
         [HttpPost("register-user")]
         [EnableRateLimiting("RegisterLimiter")]
-        public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync(RegisterDTO registerDTO)
+        public async Task<ActionResult<APIResponseDTO<ApplicationUserDTO>>> RegisterAsync([FromForm] RegisterDTO registerDTO)
         {
-            AuthResponse<ApplicationUserDTO>? authResponse = new AuthResponse<ApplicationUserDTO>();
+            _logger.LogInformation("Register endpoint called.");
+
+            AuthResponse<ApplicationUserDTO>? authResponse;
 
             try
             {
                 if (registerDTO == null)
                 {
+                    _logger.LogWarning("Register failed: RegisterDTO is null.");
                     return BadRequest(ErrorResponse<ApplicationUserDTO>("Null DTO"));
                 }
-                else
+
+                _logger.LogInformation("Attempting to register user with username: {Username}", registerDTO.UserName);
+
+                authResponse = await _authService.RegisterAsync(registerDTO);
+
+                if (authResponse == null)
                 {
-                    authResponse = await _authService.RegisterAsync(registerDTO);
+                    _logger.LogError("AuthService returned null response during registration.");
 
-                    if (authResponse != null)
-                    {
-                        if (!authResponse.IsSuccess)
-                        {
-                            return BadRequest(ErrorResponse<ApplicationUserDTO>(authResponse.ErrorMessage));
-                        }
-                        else
-                        {
-                            return Ok(SuccessResponse<ApplicationUserDTO>(authResponse.Result));
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"An unexpected error occurred");
-
-                        return StatusCode(
-                            (int)HttpStatusCode.InternalServerError,
-                            ErrorResponse<ApplicationUserDTO>($"An unexpected error occurred"));
-                    }
-
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<ApplicationUserDTO>("An unexpected error occurred"));
                 }
+
+                if (!authResponse.IsSuccess)
+                {
+                    _logger.LogWarning("User registration failed for username: {Username}. Reason: {Reason}",
+                        registerDTO.UserName,
+                        authResponse.ErrorMessage);
+
+                    return BadRequest(ErrorResponse<ApplicationUserDTO>(authResponse.ErrorMessage));
+                }
+
+                _logger.LogInformation("User registered successfully. Username: {Username}", registerDTO.UserName);
+
+                return Ok(SuccessResponse<ApplicationUserDTO>(authResponse.Result));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during user registration for username: {Username}",
+                    registerDTO?.UserName);
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<ApplicationUserDTO>($"An unexpected error occurred: {ex.Message}"));
             }
-
         }
-
 
         [HttpPost("login-user")]
         [EnableRateLimiting("LoginLimiter")]
-        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync(LoginDTO loginDTO)
+        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> LoginAsync([FromBody] LoginDTO loginDTO)
         {
-            AuthResponse<TokenResponseDTO>? authResponse = new AuthResponse<TokenResponseDTO>();
+            _logger.LogInformation("Login endpoint called.");
+
+            AuthResponse<TokenResponseDTO>? authResponse;
+
             try
             {
                 if (loginDTO == null)
                 {
-                    return BadRequest(ErrorResponse<TokenResponseDTO>("Invaild Credentials"));
+                    _logger.LogWarning("Login failed: LoginDTO is null.");
+                    return BadRequest(ErrorResponse<TokenResponseDTO>("Invalid Credentials"));
                 }
-                else
+
+                _logger.LogInformation("Login attempt for username: {Username}", loginDTO.UserName);
+
+                authResponse = await _authService.LoginAsync(loginDTO);
+
+                if (authResponse == null)
                 {
-                    authResponse = await _authService.LoginAsync(loginDTO);
+                    _logger.LogError("AuthService returned null response during login.");
 
-                    if (authResponse != null)
-                    {
-                        if (authResponse.IsSuccess == false)
-                        {
-
-                            Console.WriteLine($"\n\n\n ==============================Login Hit {loginDTO.UserName} , {loginDTO.Password}===================== \n\n\n");
-
-                            return BadRequest(ErrorResponse<TokenResponseDTO>(authResponse.ErrorMessage));
-                        }
-                        else
-                        {
-                            return Ok(SuccessResponse<TokenResponseDTO>(authResponse.Result));
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"An unexpected error occurred");
-
-                        return StatusCode(
-                            (int)HttpStatusCode.InternalServerError,
-                            ErrorResponse<bool>($"An unexpected error occurred"));
-                    }
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<TokenResponseDTO>("An unexpected error occurred"));
                 }
 
+                if (!authResponse.IsSuccess)
+                {
+                    _logger.LogWarning("Login failed for username: {Username}. Reason: {Reason}",
+                        loginDTO.UserName,
+                        authResponse.ErrorMessage);
+
+                    return BadRequest(ErrorResponse<TokenResponseDTO>(authResponse.ErrorMessage));
+                }
+
+                _logger.LogInformation("Login successful for username: {Username}", loginDTO.UserName);
+
+                return Ok(SuccessResponse<TokenResponseDTO>(authResponse.Result));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during login for username: {Username}",
+                    loginDTO?.UserName);
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
             }
-
         }
 
         [HttpPost("refresh-tokens")]
         [EnableRateLimiting("RefreshTokenLimiter")]
-        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens(TokenRequestDTO tokenRequestDTO)
+        public async Task<ActionResult<APIResponseDTO<TokenResponseDTO>>> RefreshTokens([FromBody] TokenRequestDTO tokenRequestDTO)
         {
+            _logger.LogInformation("RefreshTokens endpoint called.");
+
             try
             {
+                if (tokenRequestDTO == null)
+                {
+                    _logger.LogWarning("RefreshTokens failed: TokenRequestDTO is null.");
+                    return BadRequest(ErrorResponse<TokenResponseDTO>("Invalid request."));
+                }
+
+                _logger.LogInformation("Attempting to refresh tokens.");
+
                 TokenResponseDTO? tokenResponse = await _authService.RefreshTokensAsync(tokenRequestDTO);
 
-                if (tokenResponse == null || tokenResponse.RefreshToken == null || tokenResponse.AccessToken == null)
-                    return Unauthorized(ErrorResponse<TokenResponseDTO>("Invaild Refresh Token !"));
+                if (tokenResponse == null ||
+                    string.IsNullOrEmpty(tokenResponse.RefreshToken) ||
+                    string.IsNullOrEmpty(tokenResponse.AccessToken))
+                {
+                    _logger.LogWarning("Invalid refresh token attempt.");
+
+                    return Unauthorized(
+                        ErrorResponse<TokenResponseDTO>("Invalid Refresh Token!"));
+                }
+
+                _logger.LogInformation("Tokens refreshed successfully.");
 
                 return Ok(SuccessResponse<TokenResponseDTO>(tokenResponse));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during token refresh.");
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -152,119 +178,142 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpPost("get-reset-password-token")]
         [EnableRateLimiting("GetResetPasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken(string Email)
+        public async Task<ActionResult<APIResponseDTO<bool>>> GetResetPasswordToken([FromBody] GetResetPasswordTokenByEmailDTO tokenByEmailDTO)
         {
+            _logger.LogInformation("GetResetPasswordToken endpoint called.");
 
-            if (string.IsNullOrEmpty(Email))
-                return BadRequest(ErrorResponse<ResetPasswordToken>("Invaild Email"));
+            if (tokenByEmailDTO == null || string.IsNullOrEmpty(tokenByEmailDTO.Email))
+            {
+                _logger.LogWarning("Invalid request: Email is missing.");
+                return BadRequest(ErrorResponse<bool>("Invalid Email"));
+            }
 
             try
             {
-                AuthResponse<ResetPasswordTokenDTO>? authResponse = new AuthResponse<ResetPasswordTokenDTO>();
+                _logger.LogInformation("Generating reset password token for email: {Email}", tokenByEmailDTO.Email);
 
-                authResponse = await _authService.GenerateResetPasswordTokenAsync(Email);
+                AuthResponse<ResetPasswordTokenDTO>? authResponse =
+                    await _authService.GenerateResetPasswordTokenAsync(tokenByEmailDTO.Email);
 
-                if (authResponse != null)
+                if (authResponse == null)
                 {
-                    if (!authResponse.IsSuccess) return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
-
-                    ResetPasswordTokenDTO? resetPasswordToken = authResponse.Result;
-
-
-                    MailData mailData = new MailData()
-                    {
-                        EmailToId = Email,
-                        EmailToName = resetPasswordToken.UserName,
-                        EmailSubject = "Reset Your Password",
-                        EmailBody = $@"
-                        Hello {resetPasswordToken.UserName},
-
-                        You recently requested to reset your password.
-
-                        Here is your password reset OTP:
-
-                        {resetPasswordToken.Otp}
-
-                        This token will expire in 10 minutes and can only be used once.
-
-                        To complete the password reset, copy this token and paste it into the reset form in the app or website.
-
-                        If you did not request this, please ignore this message.
-
-                        Thanks,  
-                        Ema2a Team"
-                    };
-
-                    bool result = await _emailService.SendMailAsync(mailData);
-
-                    if (!result)
-                    {
-                        Console.WriteLine($"An unexpected error occurred");
-
-                        return StatusCode(
-                            (int)HttpStatusCode.InternalServerError,
-                            ErrorResponse<bool>($"An unexpected error occurred"));
-                    }
-
-                    return Ok(SuccessResponse<bool>(true));
-                }
-                else
-                {
-                    Console.WriteLine($"An unexpected error occurred");
+                    _logger.LogError("AuthService returned null while generating reset password token.");
 
                     return StatusCode(
                         (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<bool>($"An unexpected error occurred"));
+                        ErrorResponse<bool>("An unexpected error occurred"));
                 }
 
+                if (!authResponse.IsSuccess)
+                {
+                    _logger.LogWarning("Failed to generate reset token for email: {Email}. Reason: {Reason}",
+                        tokenByEmailDTO.Email,
+                        authResponse.ErrorMessage);
 
+                    return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
+                }
+
+                ResetPasswordTokenDTO? resetPasswordToken = authResponse.Result;
+
+                _logger.LogInformation("Reset password token generated successfully for email: {Email}", tokenByEmailDTO.Email);
+
+                MailData mailData = new MailData()
+                {
+                    EmailToId = tokenByEmailDTO.Email,
+                    EmailToName = resetPasswordToken.UserName,
+                    EmailSubject = "Reset Your Password",
+                    EmailBody = $@"
+                    Hello {resetPasswordToken.UserName},
+
+                    You recently requested to reset your password.
+
+                    Here is your password reset OTP:
+
+                    {resetPasswordToken.Otp}
+
+                    This token will expire in 10 minutes and can only be used once.
+
+                    To complete the password reset, copy this token and paste it into the reset form in the app or website.
+
+                    If you did not request this, please ignore this message.
+
+                    Thanks,  
+                    Ema2a Team"
+                };
+
+                _logger.LogInformation("Sending reset password email to: {Email}", tokenByEmailDTO.Email);
+
+                bool result = await _emailService.SendMailAsync(mailData);
+
+                if (!result)
+                {
+                    _logger.LogError("Failed to send reset password email to: {Email}", tokenByEmailDTO.Email);
+
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<bool>("Failed to send reset email."));
+                }
+
+                _logger.LogInformation("Reset password email sent successfully to: {Email}", tokenByEmailDTO.Email);
+
+                return Ok(SuccessResponse<bool>(true));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred while generating reset password token for email: {Email}",
+                    tokenByEmailDTO?.Email);
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<ResetPasswordToken>($"An unexpected error occurred: {ex.Message}"));
+                    ErrorResponse<bool>($"An unexpected error occurred: {ex.Message}"));
             }
-
         }
 
         [HttpPost("reset-password")]
         [EnableRateLimiting("ResetPasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword(ResetPasswordDTO resetPasswordDTO)
+        public async Task<ActionResult<APIResponseDTO<bool>>> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDTO)
         {
+            _logger.LogInformation("ResetPassword endpoint called.");
+
             try
             {
-                if ( String.IsNullOrEmpty(resetPasswordDTO.NewPassword) || resetPasswordDTO.OTP == null)
-                    return BadRequest(ErrorResponse<bool>("Invaild token or password"));
-
-                AuthResponse<bool>? authResponse = new AuthResponse<bool>();
-
-
-                authResponse = await _authService.ResetPasswordAsync(resetPasswordDTO);
-
-                if(authResponse != null)
+                if (resetPasswordDTO == null ||
+                    string.IsNullOrEmpty(resetPasswordDTO.NewPassword) ||
+                    resetPasswordDTO.OTP == null)
                 {
-                    if (!authResponse.IsSuccess)
-                        return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
-
-                    return Ok(SuccessResponse<bool>(authResponse.Result));
-
+                    _logger.LogWarning("Invalid reset password request: missing password or OTP.");
+                    return BadRequest(ErrorResponse<bool>("Invalid token or password"));
                 }
-                else
+
+                _logger.LogInformation("Attempting to reset password.");
+
+                AuthResponse<bool>? authResponse =
+                    await _authService.ResetPasswordAsync(resetPasswordDTO);
+
+                if (authResponse == null)
                 {
-                    Console.WriteLine($"An unexpected error occurred");
+                    _logger.LogError("AuthService returned null during password reset.");
 
                     return StatusCode(
                         (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<ResetPasswordToken>($"An unexpected error occurred"));
-
+                        ErrorResponse<bool>("An unexpected error occurred"));
                 }
+
+                if (!authResponse.IsSuccess)
+                {
+                    _logger.LogWarning("Password reset failed. Reason: {Reason}",
+                        authResponse.ErrorMessage);
+
+                    return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
+                }
+
+                _logger.LogInformation("Password reset successful.");
+
+                return Ok(SuccessResponse<bool>(authResponse.Result));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during password reset.");
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -275,70 +324,131 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("change-password")]
         [EnableRateLimiting("ChangePasswordLimiter")]
-        public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromForm] ChangePasswordDTO changePasswordDTO)
+        public async Task<ActionResult<APIResponseDTO<bool>>> ChangePassword([FromBody] ChangePasswordDTO changePasswordDTO)
         {
+            _logger.LogInformation("ChangePassword endpoint called.");
+
             try
             {
                 string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                AuthResponse<bool>? authResponse = new AuthResponse<bool>();
-
-
-                authResponse = await _authService.ChangePasswordAsync(userId, changePasswordDTO);
-
-                if(authResponse != null)
+                if (string.IsNullOrEmpty(userId))
                 {
-                    if (!authResponse.IsSuccess)
-                    {
-                        return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
-                    }
-
-                    return Ok(SuccessResponse<bool>(authResponse.Result));
+                    _logger.LogWarning("Unauthorized request: UserId not found in token.");
+                    return Unauthorized(ErrorResponse<bool>("Unauthorized"));
                 }
-                else
+
+                if (changePasswordDTO == null)
                 {
-                    Console.WriteLine($"An unexpected error occurred");
+                    _logger.LogWarning("Invalid request: ChangePasswordDTO is null.");
+                    return BadRequest(ErrorResponse<bool>("Invalid request."));
+                }
+
+                _logger.LogInformation("User {UserId} attempting to change password.", userId);
+
+                AuthResponse<bool>? authResponse =
+                    await _authService.ChangePasswordAsync(userId, changePasswordDTO);
+
+                if (authResponse == null)
+                {
+                    _logger.LogError("AuthService returned null during ChangePassword for UserId: {UserId}", userId);
 
                     return StatusCode(
                         (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<ResetPasswordToken>($"An unexpected error occurred"));
+                        ErrorResponse<bool>("An unexpected error occurred"));
                 }
+
+                if (!authResponse.IsSuccess)
+                {
+                    _logger.LogWarning("ChangePassword failed for UserId: {UserId}. Reason: {Reason}",
+                        userId,
+                        authResponse.ErrorMessage);
+
+                    return BadRequest(ErrorResponse<bool>(authResponse.ErrorMessage));
+                }
+
+                _logger.LogInformation("Password changed successfully for UserId: {UserId}", userId);
+
+                return Ok(SuccessResponse<bool>(authResponse.Result));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during ChangePassword for UserId: {UserId}",
+                    User?.FindFirstValue(ClaimTypes.NameIdentifier));
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
             }
         }
-    
+
         [HttpGet("login-google")]
         [EnableRateLimiting("GoogleLoginLimiter")]
         public IActionResult LoginWithGoogle()
         {
-            var redirectUrl = Url.Action("GoogleCallback", "Auth");
-            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
-            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+            _logger.LogInformation("LoginWithGoogle endpoint called.");
+
+            try
+            {
+                var redirectUrl = Url.Action("GoogleCallback", "Auth");
+
+                if (string.IsNullOrEmpty(redirectUrl))
+                {
+                    _logger.LogError("Failed to generate Google callback URL.");
+
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<string>("Failed to initiate Google login."));
+                }
+
+                _logger.LogInformation("Redirecting to Google authentication. Callback URL: {RedirectUrl}", redirectUrl);
+
+                var properties = new AuthenticationProperties
+                {
+                    RedirectUri = redirectUrl
+                };
+
+                return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error occurred while initiating Google login.");
+
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
         }
 
         [HttpGet("google-callback")]
         [EnableRateLimiting("GoogleCallbackLimiter")]
         public async Task<ActionResult<APIResponseDTO<ExternalLoginResponseDTO>>> GoogleCallback()
         {
+            _logger.LogInformation("GoogleCallback endpoint called.");
+
             try
             {
-                // Use "External" instead of CookieAuthenticationDefaults.AuthenticationScheme
                 var result = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
-                if (!result.Succeeded)
-                    return Unauthorized("External authentication failed.");
 
-                var claims = result.Principal.Identities.FirstOrDefault()?.Claims;
+                if (!result.Succeeded)
+                {
+                    _logger.LogWarning("External authentication failed.");
+                    return Unauthorized(ErrorResponse<string>("External authentication failed."));
+                }
+
+                var claims = result.Principal?.Identities.FirstOrDefault()?.Claims;
                 var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
                 var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
                 var googleId = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
                 var phoneNumber = claims?.FirstOrDefault(c => c.Type == ClaimTypes.MobilePhone)?.Value;
+
+                if (string.IsNullOrEmpty(googleId))
+                {
+                    _logger.LogError("Google ID claim not found in external login.");
+                    return BadRequest(ErrorResponse<string>("External login failed: missing Google ID."));
+                }
+
+                _logger.LogInformation("External login claims retrieved. Email: {Email}, Name: {Name}", email, name);
 
                 var loginDto = new ExternalLoginDTO
                 {
@@ -350,19 +460,24 @@ namespace GraduationProjectWebApplication.Controllers
                 };
 
                 ExternalLoginResponseDTO response = await _authService.ExternalLoginAsync(loginDto);
+
                 if (response == null)
+                {
+                    _logger.LogError("JWT token not issued for external login.");
                     return BadRequest(ErrorResponse<string>("JWT token not issued"));
+                }
 
-                // Optional: Clear the external cookie
+                _logger.LogInformation("External login successful for Google ID: {GoogleId}", googleId);
+
+                // Clear the external cookie
                 await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                _logger.LogDebug("External authentication cookie cleared.");
 
-
-                return Ok(SuccessResponse<ExternalLoginResponseDTO>(response)); // You can also redirect to your frontend with the token in query string
+                return Ok(SuccessResponse<ExternalLoginResponseDTO>(response));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
-
+                _logger.LogError(ex, "Unexpected error occurred during Google external login.");
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<ExternalLoginResponseDTO>($"An unexpected error occurred: {ex.Message}"));
@@ -372,36 +487,49 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("update-user-image")]
         [EnableRateLimiting("UpdateImageLimiter")]
-        public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage( IFormFile newImge)
+        public async Task<ActionResult<APIResponseDTO<string>>> ChangeUserImage([FromForm] ChangeUserImageDTO changeUserImageDTO)
         {
+            _logger.LogInformation("ChangeUserImage endpoint called.");
+
             try
             {
-                if(newImge == null)
+                if (changeUserImageDTO == null || changeUserImageDTO.NewImge == null)
+                {
+                    _logger.LogWarning("No image provided in ChangeUserImage request.");
                     return BadRequest(ErrorResponse<string>("No Image Provided"));
+                }
 
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                if(userId == null)
+                if (string.IsNullOrEmpty(userId))
                 {
-                    Console.WriteLine($"An unexpected error occurred: Failed to get user credentails");
-
+                    _logger.LogError("Failed to get user credentials from claims.");
                     return StatusCode(
                         (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<string>($"An unexpected error occurred: Failed to get user credentails"));
+                        ErrorResponse<string>("An unexpected error occurred: Failed to get user credentials"));
                 }
 
-                var response = await _authService.UpdateUserImage(userId, newImge);
+                _logger.LogInformation("Updating user image for UserId: {UserId}", userId);
 
-                if(!response.IsSuccess)
+                var response = await _authService.UpdateUserImage(userId, changeUserImageDTO.NewImge);
+
+                if (!response.IsSuccess)
+                {
+                    _logger.LogWarning("Failed to update user image for UserId: {UserId}. Reason: {Reason}",
+                        userId,
+                        response.ErrorMessage);
+
                     return BadRequest(ErrorResponse<string>(response.ErrorMessage));
+                }
+
+                _logger.LogInformation("User image updated successfully for UserId: {UserId}", userId);
 
                 return Ok(SuccessResponse<string>(response.Result));
-
-
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred while updating user image for UserId: {UserId}",
+                    User?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -412,23 +540,45 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("logout")]
         [EnableRateLimiting("LogoutLimiter")]
-        public async Task<IActionResult> Logout(TokenRequestDTO tokenRequestDTO)
+        public async Task<IActionResult> Logout([FromBody] TokenRequestDTO tokenRequestDTO)
         {
+            _logger.LogInformation("Logout endpoint called.");
+
             try
             {
-                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Logout failed: UserId not found in claims.");
+                    return Unauthorized(ErrorResponse<string>("Unauthorized"));
+                }
+
+                if (tokenRequestDTO == null || string.IsNullOrEmpty(tokenRequestDTO.RefreshToken))
+                {
+                    _logger.LogWarning("Logout failed: RefreshToken not provided.");
+                    return BadRequest(ErrorResponse<string>("Invalid request."));
+                }
+
+                _logger.LogInformation("Attempting to logout UserId: {UserId}", userId);
 
                 bool result = await _authService.LogoutAsync(tokenRequestDTO.RefreshToken, userId);
 
-                if(result)
+                if (result)
+                {
+                    _logger.LogInformation("UserId {UserId} logged out successfully.", userId);
                     return Ok(SuccessResponse<bool>(true));
-
-                return BadRequest(ErrorResponse<string>("Error"));
-
+                }
+                else
+                {
+                    _logger.LogWarning("Logout failed for UserId {UserId}. Refresh token may be invalid.", userId);
+                    return BadRequest(ErrorResponse<string>("Error logging out."));
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred during logout for UserId: {UserId}",
+                    User?.FindFirstValue(ClaimTypes.NameIdentifier));
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -439,24 +589,48 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpGet("user-profile")]
         [EnableRateLimiting("UserProfileReadLimiter")]
-        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile()
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserProfile()
         {
+            _logger.LogInformation("UserProfile endpoint called.");
+
             try
             {
-                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("UserProfile request failed: UserId not found in claims.");
+                    return Unauthorized(ErrorResponse<string>("Unauthorized"));
+                }
+
+                _logger.LogInformation("Fetching profile for UserId: {UserId}", userId);
 
                 AuthResponse<UserProfileDTO>? response = await _authService.GetUserProfile(userId);
 
+                if (response == null)
+                {
+                    _logger.LogError("AuthService returned null while fetching profile for UserId: {UserId}", userId);
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<string>("An unexpected error occurred"));
+                }
+
                 if (!response.IsSuccess)
                 {
+                    _logger.LogWarning("Failed to fetch profile for UserId: {UserId}. Reason: {Reason}",
+                        userId, response.ErrorMessage);
+
                     return BadRequest(ErrorResponse<string>(response.ErrorMessage));
                 }
+
+                _logger.LogInformation("Profile fetched successfully for UserId: {UserId}", userId);
 
                 return Ok(SuccessResponse<UserProfileDTO>(response.Result));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred while fetching profile for UserId: {UserId}",
+                    User?.FindFirstValue(ClaimTypes.NameIdentifier));
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -467,26 +641,54 @@ namespace GraduationProjectWebApplication.Controllers
         [Authorize]
         [HttpPost("update-user-profile")]
         [EnableRateLimiting("UserProfileUpdateLimiter")]
-        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UserPorfile(UpdateUserProfileDTO UpdateuserProfileDTO)
+        public async Task<ActionResult<APIResponseDTO<UserProfileDTO>>> UpdateUserProfile([FromBody] UpdateUserProfileDTO updateUserProfileDTO)
         {
+            _logger.LogInformation("UpdateUserProfile endpoint called.");
+
             try
             {
-                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                AuthResponse<UserProfileDTO>? response = await _authService.UpdateUserProfile(userId, UpdateuserProfileDTO);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("UpdateUserProfile failed: UserId not found in claims.");
+                    return Unauthorized(ErrorResponse<string>("Unauthorized"));
+                }
+
+                if (updateUserProfileDTO == null)
+                {
+                    _logger.LogWarning("UpdateUserProfile failed: Request body is null.");
+                    return BadRequest(ErrorResponse<string>("Invalid request."));
+                }
+
+                _logger.LogInformation("Updating profile for UserId: {UserId}", userId);
+
+                AuthResponse<UserProfileDTO>? response = await _authService.UpdateUserProfile(userId, updateUserProfileDTO);
+
+                if (response == null)
+                {
+                    _logger.LogError("AuthService returned null while updating profile for UserId: {UserId}", userId);
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<string>("An unexpected error occurred"));
+                }
 
                 if (!response.IsSuccess)
                 {
+                    _logger.LogWarning("Failed to update profile for UserId: {UserId}. Reason: {Reason}",
+                        userId, response.ErrorMessage);
+
                     return BadRequest(ErrorResponse<string>(response.ErrorMessage));
                 }
 
+                _logger.LogInformation("Profile updated successfully for UserId: {UserId}", userId);
+
                 return Ok(SuccessResponse<UserProfileDTO>(response.Result));
-
-
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error occurred while updating profile for UserId: {UserId}",
+                    User?.FindFirstValue(ClaimTypes.NameIdentifier));
 
                 return StatusCode(
                     (int)HttpStatusCode.InternalServerError,
@@ -497,20 +699,10 @@ namespace GraduationProjectWebApplication.Controllers
         // For testing 
 
         [Authorize]
-        [HttpGet("TestAuthentication")]
+        [HttpGet("test-authentication")]
         public IActionResult YouAreAuthenticated()
         {
             return Ok("You Are Authenticated");
         }
-
-        // For testing 
-
-
-        //[Authorize(Roles = "Admin")]
-        //[HttpGet("TestAuthorization")]
-        //public IActionResult YouAreAtuhorized()
-        //{
-        //    return Ok("You Are an admin");
-        //}
     }
 }

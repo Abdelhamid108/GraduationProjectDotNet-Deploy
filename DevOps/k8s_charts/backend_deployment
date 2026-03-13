@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: backend_deployment
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      name: backend_pod
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: ema2a_backend
+          image: abdelhameed208/graduationproject-backend:latest
+          envFrom:
+            - configMapRef:
+                name: ema2a_backend_configs
+          ports:
+            - containerPort: 5001

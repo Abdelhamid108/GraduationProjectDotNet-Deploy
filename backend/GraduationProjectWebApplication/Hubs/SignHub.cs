@@ -21,7 +21,6 @@ namespace GraduationProjectWebApplication.Hubs
             {
                 await Clients.Caller.SendAsync("ReceiveTranslation", "Frame received at " + DateTime.Now.ToLongTimeString());
 
-                Console.WriteLine("\n================================= HUB CONNECTED =============================\n");
 
                 if (string.IsNullOrEmpty(frameData.ImageData))
                 {
