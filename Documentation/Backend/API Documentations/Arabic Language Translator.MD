@@ -46,7 +46,8 @@ On success, `data` carries the endpoint-specific payload. On failure, `data` is 
 | Method | Endpoint | Rate Limited | Purpose |
 |--------|----------|:---:|---------|
 | `POST` | `/api/ArabicLanguageTranslator/text-to-sign` | Yes (ArabicLimiter) | Convert an Arabic text string into grouped sign language gesture images |
-| `POST` | `/api/ArabicLanguageTranslator/audio-to-text` | Yes (GeminiLimiter) | Transcribe Arabic speech audio into text |
+| `POST` | `/api/ArabicLanguageTranslator/audio-to-text` | Yes (GeminiLimiter) | Transcribe Arabic speech audio into text using Gemini AI |
+| `POST` | `/api/ArabicLanguageTranslator/azure-audio-to-text` | Yes (GeminiLimiter) | Transcribe Arabic speech audio into text using Azure Speech Service |
 | `GET` | `/api/ArabicLanguageTranslator/letters-keyboard` | Yes (ArabicLimiter) | Retrieve the sign language gesture image for a single Arabic letter |
 
 ---
@@ -359,3 +360,156 @@ Returned when the letter exists in the dictionary but its image file is missing 
 | `200` | Success | `data` contains a `data:image/png;base64,...` string for the requested letter. |
 | `400` | Bad Request | `letter` parameter is missing, or the letter is not in the sign language dictionary. |
 | `500` | Internal Server Error | Image file is missing from the server, or an unexpected error occurred. |
+---
+
+## Endpoint 4 — Azure Audio to Text
+
+### Description
+
+Accepts a base64-encoded audio clip and its MIME type, converts the audio to 16kHz 16-bit mono WAV internally, then forwards it to the **Azure Speech Service** to transcribe Egyptian Arabic (`ar-EG`) speech into text. Unlike Endpoint 2 which uses Gemini AI, this endpoint uses Microsoft Azure Cognitive Services and supports any browser-recorded audio format (WebM, OGG, etc.) — the server handles the conversion automatically.
+
+> **Note:** Audio conversion is handled differently per OS — NAudio + Windows Media Foundation on Windows, FFmpeg on Linux. No client-side conversion is required.
+
+### Request
+
+```
+POST https://ema2a.mooo.com/api/ArabicLanguageTranslator/azure-audio-to-text
+```
+
+#### Headers
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `Content-Type` | string | ✅ | Must be `application/json` |
+
+#### Request Body — `TranscriptionRequest`
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `audioData` | string | ✅ | Base64-encoded audio data to be transcribed. Maximum size: 14,000,000 characters (base64). |
+| `mimeType` | string | ✅ | MIME type of the recorded audio. Accepted values: `audio/webm`, `audio/webm;codecs=opus`, `audio/ogg;codecs=opus`. |
+
+#### Example Request Body
+
+```json
+{
+  "audioData": "GkXfo59ChoEBQveBAULygQRC...",
+  "mimeType": "audio/webm;codecs=opus"
+}
+```
+
+---
+
+### Response
+
+#### Success — `200 OK`
+
+Returns the transcribed Arabic text as a plain string in `data`.
+
+```json
+{
+  "success": true,
+  "data": "مرحبا كيف حالك",
+  "errorMessage": "",
+  "statusCode": 200
+}
+```
+
+#### Error — `400 Bad Request`
+
+Returned in three cases: missing fields, payload too large, or invalid base64.
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Audio data or MIME type not provided.",
+  "statusCode": 400
+}
+```
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Audio data exceeds the maximum allowed size.",
+  "statusCode": 400
+}
+```
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "AudioData is not valid base64-encoded content.",
+  "statusCode": 400
+}
+```
+
+#### Error — `422 Unprocessable Entity`
+
+Returned when Azure successfully processed the audio but could not recognize any speech — for example, if the audio is silent, contains only background noise, or the language does not match `ar-EG`.
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Speech recognition was not successful: InitialSilenceTimeout",
+  "statusCode": 422
+}
+```
+
+Possible `RecognitionStatus` values from Azure:
+
+| Status | Meaning |
+|--------|---------|
+| `NoMatch` | Speech detected but no words matched the target language |
+| `InitialSilenceTimeout` | Audio starts with silence; no speech detected before timeout |
+| `BabbleTimeout` | Audio starts with noise; no speech detected before timeout |
+| `Error` | Azure internal recognition error |
+
+#### Error — `502 Bad Gateway`
+
+Returned when the HTTP request to the Azure Speech REST API fails (e.g. invalid key, wrong region, network error).
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "Azure Speech API error: Unauthorized",
+  "statusCode": 502
+}
+```
+
+#### Error — `500 Internal Server Error`
+
+Returned when audio conversion fails or an unexpected exception is thrown.
+
+```json
+{
+  "success": false,
+  "data": null,
+  "errorMessage": "An unexpected error occurred: <details>",
+  "statusCode": 500
+}
+```
+
+#### All Possible Responses
+
+| HTTP Code | Status | Description |
+|:---------:|--------|-------------|
+| `200` | Success | `data` contains the transcribed Arabic text as a plain string. |
+| `400` | Bad Request | `audioData` or `mimeType` is missing, payload exceeds size limit, or `audioData` is not valid base64. |
+| `422` | Unprocessable Entity | Azure processed the audio but returned no transcription (silence, noise, or wrong language). |
+| `502` | Bad Gateway | The HTTP request to the Azure Speech REST API failed (auth error, network error, or service unavailable). |
+| `500` | Internal Server Error | Audio conversion failed or an unexpected exception occurred. |
+
+---
+
+### Implementation Notes
+
+- The server always converts incoming audio to **16kHz 16-bit mono WAV** before sending to Azure. This is required because the Azure Speech REST API only reliably accepts WAV PCM — other formats (including WebM) are silently accepted but not transcribed.
+- The `Content-Type` header sent to Azure is exactly `audio/wav; codecs=audio/pcm; samplerate=16000` as required by the Azure docs. This value must be set with `TryAddWithoutValidation` to bypass .NET's strict header validation.
+- Language is fixed to `ar-EG` (Egyptian Arabic).
+- The Azure region is `eastus` — the STT endpoint is `https://eastus.stt.speech.microsoft.com`.
+- The API key is loaded from the `HARDWARE_TTS_KEY` environment variable.
