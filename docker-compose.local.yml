@@ -15,10 +15,10 @@ services:
       database:
         condition: service_healthy
     env_file:
-      - ./.env
+      - ./backend/.env
     environment:
       - ASPNETCORE_URLS=http://+:5001
-      - DEFAULT_CONNECTION=Server=database,1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
+      - DEFAULT_CONNECTION=Server=database,1433;Database=${DB_NAME:-SignLanguageTranslator};User Id=${DB_USER:-sa};Password=${DB_ADMIN_PASS:-YourSuperStrong!Passw0rd123};Trust Server Certificate=True
       - ASPNETCORE_ENVIRONMENT=Development
     deploy:
       resources:
@@ -26,7 +26,7 @@ services:
           cpus: '2'
           memory: 512M
         reservations:
-          memory: 1G
+          memory: 256M
 
   nginx:
     build:
@@ -49,8 +49,8 @@ services:
     image: mcr.microsoft.com/mssql/server:2025-latest
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${DB_ADMIN_PASS}
-      - DB_USER=${DB_USER}
+      - MSSQL_SA_PASSWORD=${DB_ADMIN_PASS:-YourSuperStrong!Passw0rd123}
+      - DB_USER=${DB_USER:-sa}
     volumes:
       - db_local:/var/opt/mssql
     networks:
@@ -59,7 +59,7 @@ services:
     ports:
       - "1433:1433"  # Expose for debugging
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER} -P ${DB_ADMIN_PASS} -C -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER:-sa} -P ${DB_ADMIN_PASS:-YourSuperStrong!Passw0rd123} -C -Q 'SELECT 1' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

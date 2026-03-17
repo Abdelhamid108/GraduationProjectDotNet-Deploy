@@ -949,7 +949,7 @@ Returns audio as base64-encoded PCM/WAV data and sample rate.
 
 #### Arabic Language Translator Controller
 
-This controller provides endpoints for text-to-sign translation, audio-to-text transcription, and retrieving sign images for the Arabic alphabet.
+This controller provides endpoints for text-to-sign translation, Gemini and Azure audio-to-text transcription, and retrieving sign images for the Arabic alphabet.
 
 #### 1. Text-to-Sign Translation
 
@@ -1010,8 +1010,74 @@ This controller provides endpoints for text-to-sign translation, audio-to-text t
 
 - **Endpoint:** `/audio-to-text`
     
-- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/audio-to-text`
 
+#### 3. Audio-to-Text Transcription (Azure Speech)
+
+- **Endpoint:** `/audio-to-text-azure`
+
+- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/audio-to-text-azure`
+
+- **Method:** `POST`
+
+- **Description:** Transcribes base64-encoded PCM audio into Arabic text using Azure Speech SDK.
+
+- **Required Environment Variables:**
+
+    - `HARDWARE_TTS_KEY` (used as Azure Speech key)
+    - `ENDPOINT` (Azure Speech endpoint URL)
+
+- **Request Body (`TranscriptionRequest`):**
+
+    ```
+    {
+      "audioData": "VGhlIGF1ZGlvIGRhdGEgYW4gYmFzZTY0IGZvcm1hdA==",
+      "mimeType": "audio/l16;rate=16000"
+    }
+
+    ```
+
+- **Success Response (200 OK):** `APIResponseDTO<string>`
+
+    ```
+    {
+      "errorMessage": "",
+      "data": "هذا هو النص المترجم من الصوت",
+      "success": true,
+      "statusCode": 200
+    }
+
+    ```
+
+- **Possible Error Responses:** `APIResponseDTO<string>`
+
+    ```
+    {
+      "errorMessage": "Audio data or MIME type not provided.",
+      "data": null,
+      "success": false,
+      "statusCode": 400
+    }
+    ```
+
+    ```
+    {
+      "errorMessage": "Missing Azure Speech configuration. Set HARDWARE_TTS_KEY and ENDPOINT.",
+      "data": null,
+      "success": false,
+      "statusCode": 500
+    }
+    ```
+
+    ```
+    {
+      "errorMessage": "Azure Speech could not recognize speech from the provided audio.",
+      "data": null,
+      "success": false,
+      "statusCode": 422
+    }
+    ```
+- **Route:** `https://34.18.112.76/api/ArabicLanguageTranslator/audio-to-text`
+#### 4. Get Single Letter Sign Image
 - **Method:** `POST`
     
 - **Description:** Transcribes audio data into Arabic text using a language model.

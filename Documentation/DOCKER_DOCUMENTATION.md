@@ -23,13 +23,15 @@ The `docker-compose.yml` file defines the services, networks, and volumes.
 | `database` | `mcr.microsoft.com/mssql/server:2025-latest`   | None (Internal)     | `local`                  | None         |
 
 ### Environment Variables
-Configuration is injected via environment variables, primarily from the `.env` file.
+Configuration is injected via environment variables. In local development (`docker-compose.local.yml`), `backend/.env` is used as the env file.
 
 | Service    | Variable                  | Description                                      | Value / Source |
 | :--------- | :------------------------ | :----------------------------------------------- | :------------- |
 | `backend`  | `ASPNETCORE_URLS`         | URLs the app listens on.                         | `http://+:5001`|
 | `backend`  | `DEFAULT_CONNECTION`      | SQL Connection String.                           | Constructed from DB vars.|
 | `backend`  | `ASPNETCORE_ENVIRONMENT`  | Runtime environment mode.                        | `Development`  |
+| `backend`  | `HARDWARE_TTS_KEY`        | Azure Speech key for hardware/audio endpoints.   | `backend/.env` |
+| `backend`  | `ENDPOINT`                | Azure Speech endpoint URL for STT recognition.   | `backend/.env` |
 | `nginx`    | `CERT_PATH`               | Path to SSL certificates on host.                | `${CERT_PATH:-./Dev}`|
 | `database` | `MSSQL_SA_PASSWORD`       | System Administrator password.                   | `${DB_ADMIN_PASS}`|
 | `database` | `ACCEPT_EULA`             | Acceptance of MS SQL License.                    | `Y`            |
@@ -117,4 +119,3 @@ docker compose up -d backend
 | `docker system prune -a` | Remove all unused images, containers, and networks. |
 | `docker volume prune` | Remove all unused volumes (WARNING: Data Loss). |
 | `docker stats` | Live view of container resource usage (CPU/RAM). |
-
