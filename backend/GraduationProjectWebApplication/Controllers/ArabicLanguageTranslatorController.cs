@@ -276,7 +276,6 @@ namespace GraduationProjectWebApplication.Controllers
 
 
         [HttpPost("azure-audio-to-text")]
-        [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> AzureAudioToText([FromBody] TranscriptionRequest request)
         {
             _logger.LogInformation("AzureAudioToText called. AudioData length: {A}, MimeType: {M}",
