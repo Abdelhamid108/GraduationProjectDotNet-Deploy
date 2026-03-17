@@ -10,6 +10,7 @@ using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -342,9 +343,20 @@ namespace GraduationProjectWebApplication
             }
 
             /*=================== Middleware Pipeline ===================*/
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+                KnownNetworks = { },
+                KnownProxies = { }
+            });
+
             app.UseStaticFiles();
             app.UseRouting();
             app.UseCors("AllowPublicCORS");
+
+
+
             app.UseAuthentication();
 
             /* ---- Rate Limiter (MUST come here) ---- */
