@@ -125,6 +125,9 @@ namespace GraduationProjectWebApplication
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
                 options.CallbackPath = "/api/signin-google";
+
+                options.SignInScheme = IdentityConstants.ExternalScheme; // Ensures it uses Identity's external cookie
+                options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always; // Forces the Secure flag
             });
 
             /*=================== Swagger ===================*/
