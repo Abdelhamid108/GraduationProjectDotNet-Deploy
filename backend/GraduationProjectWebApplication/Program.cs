@@ -20,6 +20,8 @@ using Serilog;
 using System.Collections;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+
 
 namespace GraduationProjectWebApplication
 {
@@ -321,6 +323,21 @@ namespace GraduationProjectWebApplication
 
             var app = builder.Build();
 
+
+            /* ===== Forwarded Headers (ADD HERE) ===== */
+            var options = new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                                   ForwardedHeaders.XForwardedProto |
+                                   ForwardedHeaders.XForwardedHost
+            };
+
+            options.KnownNetworks.Clear();
+            options.KnownProxies.Clear();
+
+            app.UseForwardedHeaders(options);
+
+
             /*=================== DB Migrations + Roles ===================*/
             using (var scope = app.Services.CreateScope())
             {
@@ -344,13 +361,7 @@ namespace GraduationProjectWebApplication
 
             /*=================== Middleware Pipeline ===================*/
 
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-                // ??? ?????? ???? ??????? ??? ?? Nginx ????? ?????? (mooo.com) ??????????? (https) ???? ????
-                KnownNetworks = { },
-                KnownProxies = { }
-            });
+         
 
             app.UseStaticFiles();
             app.UseRouting();
