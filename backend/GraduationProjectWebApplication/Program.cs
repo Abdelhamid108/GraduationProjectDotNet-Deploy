@@ -122,7 +122,7 @@ namespace GraduationProjectWebApplication
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
-                options.CallbackPath = "/signin-google";
+                options.CallbackPath = "/api/signin-google";
             });
 
             /*=================== Swagger ===================*/
@@ -347,6 +347,7 @@ namespace GraduationProjectWebApplication
             app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+                // ??? ?????? ???? ??????? ??? ?? Nginx ????? ?????? (mooo.com) ??????????? (https) ???? ????
                 KnownNetworks = { },
                 KnownProxies = { }
             });
