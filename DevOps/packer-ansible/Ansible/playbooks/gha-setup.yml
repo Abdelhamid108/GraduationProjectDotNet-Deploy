@@ -3,6 +3,7 @@
 - name: Setup Server Environment Fot GitHub actions ssh connections 
   hosts: all
   gather_facts: no
+  become: true 
   roles:
     # This role responsible for creating a deploy user and setuping the ssh connection
-    - github_actions_ssh_setup
+    - ../roles/github_actions_ssh_setup

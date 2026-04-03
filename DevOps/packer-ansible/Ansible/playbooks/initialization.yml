@@ -4,6 +4,7 @@
    # It targets 'all' hosts (masters and workers).
    hosts: all
    gather_facts: no
+   become: true   
    roles:
      # It executes tasks like 'apt update' and installing 'git', 'vim', etc.
-     - initialization
+     - ../roles/initialization
