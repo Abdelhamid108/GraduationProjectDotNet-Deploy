@@ -9,10 +9,6 @@ services:
       # Maps host port 5001 to container port 5001.
       # This exposes the backend service running inside the container on port 5001 to the host machine.
       - "5001:5001"
-      #    volumes:
-      # Binds the host directory './Models' to the container directory '/app/Models'.
-      # This allows for persistent storage and live updates of model files without rebuilding the image.
-      #- ./AIModels:/app/AIModels
     restart: always
       # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
       # This ensures the backend service remains available after a reboot or crash.
@@ -20,9 +16,9 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 512M      # Hard limit
+          memory: '256M'      # Hard limit
         reservations:
-          memory: 512M       # Soft limit
+          memory: '128M'       # Soft limit
     networks:
       - local
       - api_network
@@ -38,18 +34,13 @@ services:
   
 
   # Frontend Web Server Service (Nginx)
-  nginx:
-    image: abdelhameed208/graduationproject-nginx:latest
-#    volumes:
-      # Binds the host directory './frontend/public' to the NGINX web root '/usr/share/nginx/html'.
-      # This allows for serving static frontend files and potentially live-updating them on the host.
-      # - ./nginx-proxy/public:/usr/share/nginx/html
-
-      # Read-only bind mounts for SSL/TLS certificates from Let's Encrypt.
-      # These volumes provide the frontend (NGINX) with the necessary SSL certificates to enable HTTPS.
-      # The ':ro' flag mounts them in read-only mode for security.
-      # - ${CERT_PATH:-./Dev}:/etc/letsencrypt/live/emaaha.ddns.net:ro
-      #- ${ARCHIVE_PATH:-./Dev}:/etc/letsencrypt/archive/emaaha.ddns.net:ro
+  frontend:
+    image: abdelhameed208/graduationproject-frontend:latest
+    build:
+      context: .
+      args:
+        # This passes the variable from your host's .env to the Dockerfile ARG
+        - VITE_BASE_URI=${VITE_BASE_URI}
     environment:
       CERT_PATH: ${CERT_PATH:-./Dev}
       ARCHIVE_PATH: ${ARCHIVE_PATH:-./Dev}
@@ -57,9 +48,16 @@ services:
       BACKEND_HOST: ${BACKEND_HOST:-backend:5001}
     ports:
       # Maps host port 80 to container port 80. Used for HTTP traffic and likely HTTP->HTTPS redirection.
-      - "80:80"
+      - "80:8080"
       # Maps host port 443 to container port 443. Used for HTTPS (secure) traffic.
-      - "443:443"
+      #  - "443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: '128M'     # Hard limit
+        reservations:
+          memory: '64M'       # Soft limit
     restart: always
       # Policy: The container will always restart if it stops.
       # This ensures the web server, a critical entry point, is always available.
