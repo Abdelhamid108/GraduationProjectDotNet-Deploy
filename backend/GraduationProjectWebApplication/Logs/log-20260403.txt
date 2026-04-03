@@ -1148,3 +1148,418 @@ System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport 
 [2026-04-03 17:39:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.1026ms - processed: 0 items - remaining: 2 items
 [2026-04-03 17:39:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
 [2026-04-03 17:39:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0027ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:39:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:39:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0017ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:39:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:39:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0016ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0015ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0031ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.0019ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0026ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0023ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:40:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:40:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0018ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0025ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0019ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.002ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.002ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0017ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:41:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:41:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0947ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0019ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:42:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:42:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0022ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0046ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0016ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.0042ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0028ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:43:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:43:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0018ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0012ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:44:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:44:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0012ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.0011ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:16 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:16 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:26 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:26 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:36 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:36 DBG] Ending HttpMessageHandler cleanup cycle after 0.0015ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:46 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:46 DBG] Ending HttpMessageHandler cleanup cycle after 0.0014ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:45:56 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:45:56 DBG] Ending HttpMessageHandler cleanup cycle after 0.0013ms - processed: 0 items - remaining: 2 items
+[2026-04-03 17:46:06 DBG] Starting HttpMessageHandler cleanup cycle with 2 items
+[2026-04-03 17:46:06 DBG] Ending HttpMessageHandler cleanup cycle after 0.5262ms - processed: 2 items - remaining: 0 items
+[2026-04-03 18:03:28 DBG] An 'IServiceProvider' was created for internal use by Entity Framework.
+[2026-04-03 18:03:28 DBG] The index {'UserId'} was not created on entity type 'IdentityUserRole<string>' as the properties are already covered by the index {'UserId', 'RoleId'}.
+[2026-04-03 18:03:28 DBG] The index {'UserId'} was not created on entity type 'IdentityUserToken<string>' as the properties are already covered by the index {'UserId', 'LoginProvider', 'Name'}.
+[2026-04-03 18:03:29 DBG] Entity Framework Core 8.0.19 initialized 'ApplicationDbContext' using provider 'Microsoft.EntityFrameworkCore.SqlServer:8.0.19' with options: None
+[2026-04-03 18:03:29 DBG] Creating DbConnection.
+[2026-04-03 18:03:29 DBG] Created DbConnection. (33ms).
+[2026-04-03 18:03:29 DBG] Migrating using database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Creating DbCommand for 'ExecuteNonQuery'.
+[2026-04-03 18:03:29 DBG] Created DbCommand for 'ExecuteNonQuery' (3ms).
+[2026-04-03 18:03:29 DBG] Initialized DbCommand for 'ExecuteNonQuery' (7ms).
+[2026-04-03 18:03:29 DBG] Executing DbCommand [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[2026-04-03 18:03:29 INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[2026-04-03 18:03:29 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (3ms).
+[2026-04-03 18:03:29 DBG] Creating DbCommand for 'ExecuteScalar'.
+[2026-04-03 18:03:29 DBG] Created DbCommand for 'ExecuteScalar' (1ms).
+[2026-04-03 18:03:29 DBG] Initialized DbCommand for 'ExecuteScalar' (2ms).
+[2026-04-03 18:03:29 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Executing DbCommand [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-03 18:03:29 INF] Executed DbCommand (10ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-03 18:03:29 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (0ms).
+[2026-04-03 18:03:29 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Creating DbCommand for 'ExecuteNonQuery'.
+[2026-04-03 18:03:29 DBG] Created DbCommand for 'ExecuteNonQuery' (0ms).
+[2026-04-03 18:03:29 DBG] Initialized DbCommand for 'ExecuteNonQuery' (1ms).
+[2026-04-03 18:03:29 DBG] Executing DbCommand [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[2026-04-03 18:03:29 INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+[2026-04-03 18:03:29 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (0ms).
+[2026-04-03 18:03:29 DBG] Creating DbCommand for 'ExecuteScalar'.
+[2026-04-03 18:03:29 DBG] Created DbCommand for 'ExecuteScalar' (0ms).
+[2026-04-03 18:03:29 DBG] Initialized DbCommand for 'ExecuteScalar' (1ms).
+[2026-04-03 18:03:29 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Executing DbCommand [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-03 18:03:29 INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+[2026-04-03 18:03:29 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (0ms).
+[2026-04-03 18:03:29 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Creating DbCommand for 'ExecuteReader'.
+[2026-04-03 18:03:29 DBG] Created DbCommand for 'ExecuteReader' (0ms).
+[2026-04-03 18:03:29 DBG] Initialized DbCommand for 'ExecuteReader' (1ms).
+[2026-04-03 18:03:29 DBG] Executing DbCommand [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+[2026-04-03 18:03:29 INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+[2026-04-03 18:03:29 DBG] Closing data reader to 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] A data reader for 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' is being disposed after spending 2ms reading results.
+[2026-04-03 18:03:29 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:29 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (1ms).
+[2026-04-03 18:03:29 INF] No migrations were applied. The database is already up to date.
+[2026-04-03 18:03:30 DBG] Compiling query expression: 
+'DbSet<IdentityRole>()
+    .FirstOrDefault(r => r.NormalizedName == __normalizedName_0)'
+[2026-04-03 18:03:30 DBG] Generated query execution expression: 
+'queryContext => ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync<IdentityRole>(
+    asyncEnumerable: new SingleQueryingEnumerable<IdentityRole>(
+        (RelationalQueryContext)queryContext, 
+        RelationalCommandCache.QueryExpression(
+            Projection Mapping:
+                EmptyProjectionMember -> Dictionary<IProperty, int> { [Property: IdentityRole.Id (string) Required PK AfterSave:Throw, 0], [Property: IdentityRole.ConcurrencyStamp (string) Concurrency, 1], [Property: IdentityRole.Name (string) MaxLength(256), 2], [Property: IdentityRole.NormalizedName (string) Index MaxLength(256), 3] }
+            SELECT TOP(1) a.Id, a.ConcurrencyStamp, a.Name, a.NormalizedName
+            FROM AspNetRoles AS a
+            WHERE a.NormalizedName == @__normalizedName_0), 
+        null, 
+        Func<QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator, IdentityRole>, 
+        GraduationProjectWebApplication.Data.ApplicationDbContext, 
+        False, 
+        False, 
+        True
+    ), 
+    cancellationToken: queryContext.CancellationToken)'
+[2026-04-03 18:03:30 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Creating DbCommand for 'ExecuteReader'.
+[2026-04-03 18:03:30 DBG] Created DbCommand for 'ExecuteReader' (1ms).
+[2026-04-03 18:03:30 DBG] Initialized DbCommand for 'ExecuteReader' (3ms).
+[2026-04-03 18:03:30 DBG] Executing DbCommand [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+[2026-04-03 18:03:30 INF] Executed DbCommand (71ms) [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+[2026-04-03 18:03:30 DBG] Context 'ApplicationDbContext' started tracking 'IdentityRole' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+[2026-04-03 18:03:30 DBG] Closing data reader to 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] A data reader for 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' is being disposed after spending 44ms reading results.
+[2026-04-03 18:03:30 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (1ms).
+[2026-04-03 18:03:30 DBG] Opening connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Opened connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Creating DbCommand for 'ExecuteReader'.
+[2026-04-03 18:03:30 DBG] Created DbCommand for 'ExecuteReader' (1ms).
+[2026-04-03 18:03:30 DBG] Initialized DbCommand for 'ExecuteReader' (2ms).
+[2026-04-03 18:03:30 DBG] Executing DbCommand [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+[2026-04-03 18:03:30 INF] Executed DbCommand (2ms) [Parameters=[@__normalizedName_0='?' (Size = 256)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [a].[Id], [a].[ConcurrencyStamp], [a].[Name], [a].[NormalizedName]
+FROM [AspNetRoles] AS [a]
+WHERE [a].[NormalizedName] = @__normalizedName_0
+[2026-04-03 18:03:30 DBG] Context 'ApplicationDbContext' started tracking 'IdentityRole' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+[2026-04-03 18:03:30 DBG] Closing data reader to 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] A data reader for 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' is being disposed after spending 2ms reading results.
+[2026-04-03 18:03:30 DBG] Closing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Closed connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS' (0ms).
+[2026-04-03 18:03:30 DBG] 'ApplicationDbContext' disposed.
+[2026-04-03 18:03:30 DBG] Disposing connection to database 'SignLanguageTranslator' on server 'DESKTOP-6MVPAPL\SQLEXPRESS'.
+[2026-04-03 18:03:30 DBG] Disposed connection to database '' on server '' (1ms).
+[2026-04-03 18:03:30 DBG] Registered model binder providers, in the following order: ["Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BinderTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ServicesModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.HeaderModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FloatingPointTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.EnumTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DateTimeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.TryParseModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CancellationTokenModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ByteArrayModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormFileModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormCollectionModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.KeyValuePairModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DictionaryModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ArrayModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CollectionModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ComplexObjectModelBinderProvider"]
+[2026-04-03 18:03:30 DBG] Registered SignalR Protocol: json, implemented by Microsoft.AspNetCore.SignalR.Protocol.JsonHubProtocol.
+[2026-04-03 18:03:30 DBG] Hosting starting
+[2026-04-03 18:03:30 INF] User profile is available. Using 'C:\Users\marwan\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[2026-04-03 18:03:30 DBG] Reading data from file 'C:\Users\marwan\AppData\Local\ASP.NET\DataProtection-Keys\key-22cd4f15-0b0e-4159-90df-bac132f25d42.xml'.
+[2026-04-03 18:03:30 DBG] Reading data from file 'C:\Users\marwan\AppData\Local\ASP.NET\DataProtection-Keys\key-a10c733d-0490-4a54-91bf-f109694be134.xml'.
+[2026-04-03 18:03:30 DBG] Reading data from file 'C:\Users\marwan\AppData\Local\ASP.NET\DataProtection-Keys\key-bd9ec32e-be9a-4b7e-8c15-4ead5db9cfda.xml'.
+[2026-04-03 18:03:30 DBG] Reading data from file 'C:\Users\marwan\AppData\Local\ASP.NET\DataProtection-Keys\key-c0524cee-c6c3-4c4a-8ab9-e9d343732ae5.xml'.
+[2026-04-03 18:03:30 DBG] Found key {22cd4f15-0b0e-4159-90df-bac132f25d42}.
+[2026-04-03 18:03:30 DBG] Found key {a10c733d-0490-4a54-91bf-f109694be134}.
+[2026-04-03 18:03:30 DBG] Found key {bd9ec32e-be9a-4b7e-8c15-4ead5db9cfda}.
+[2026-04-03 18:03:30 DBG] Found key {c0524cee-c6c3-4c4a-8ab9-e9d343732ae5}.
+[2026-04-03 18:03:30 DBG] Considering key {bd9ec32e-be9a-4b7e-8c15-4ead5db9cfda} with expiration date 2026-04-22 17:18:51Z as default key.
+[2026-04-03 18:03:30 DBG] Forwarded activator type request from Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+[2026-04-03 18:03:30 DBG] Decrypting secret element using Windows DPAPI.
+[2026-04-03 18:03:30 DBG] Forwarded activator type request from Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+[2026-04-03 18:03:30 DBG] Opening CNG algorithm 'AES' from provider 'null' with chaining mode CBC.
+[2026-04-03 18:03:30 DBG] Opening CNG algorithm 'SHA256' from provider 'null' with HMAC.
+[2026-04-03 18:03:30 DBG] Using key {bd9ec32e-be9a-4b7e-8c15-4ead5db9cfda} as the default key.
+[2026-04-03 18:03:30 DBG] Key ring with default key {bd9ec32e-be9a-4b7e-8c15-4ead5db9cfda} was loaded during application startup.
+[2026-04-03 18:03:30 DBG] Middleware loaded
+[2026-04-03 18:03:30 DBG] Middleware loaded. Script /_framework/aspnetcore-browser-refresh.js (16547 B).
+[2026-04-03 18:03:30 DBG] Middleware loaded. Script /_framework/blazor-hotreload.js (799 B).
+[2026-04-03 18:03:30 DBG] Middleware loaded: DOTNET_MODIFIABLE_ASSEMBLIES=debug, __ASPNETCORE_BROWSER_TOOLS=true
+[2026-04-03 18:03:30 INF] Now listening on: https://localhost:5001
+[2026-04-03 18:03:30 INF] Now listening on: http://localhost:5062
+[2026-04-03 18:03:30 DBG] Loaded hosting startup assembly GraduationProjectWebApplication
+[2026-04-03 18:03:30 DBG] Loaded hosting startup assembly Microsoft.WebTools.ApiEndpointDiscovery
+[2026-04-03 18:03:30 DBG] Loaded hosting startup assembly Microsoft.AspNetCore.Watch.BrowserRefresh
+[2026-04-03 18:03:30 DBG] Loaded hosting startup assembly Microsoft.WebTools.BrowserLink.Net
+[2026-04-03 18:03:30 INF] Application started. Press Ctrl+C to shut down.
+[2026-04-03 18:03:30 INF] Hosting environment: Development
+[2026-04-03 18:03:30 INF] Content root path: D:\engineering\GraduationProject\backend\GraduationProjectWebApplication
+[2026-04-03 18:03:30 DBG] Hosting started
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT80" accepted.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT80" started.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT81" accepted.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT81" started.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT80" received FIN.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT81" received FIN.
+[2026-04-03 18:03:30 DBG] Failed to authenticate HTTPS connection.
+System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ProcessAuthenticationWithTelemetryAsync(Boolean isAsync, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+[2026-04-03 18:03:30 DBG] Failed to authenticate HTTPS connection.
+System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ProcessAuthenticationWithTelemetryAsync(Boolean isAsync, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Https.Internal.HttpsConnectionMiddleware.OnConnectionAsync(ConnectionContext context)
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT80" stopped.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT81" stopped.
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT80" sending FIN because: "The Socket transport's send loop completed gracefully."
+[2026-04-03 18:03:30 DBG] Connection id "0HNKHJA6DIT81" sending FIN because: "The Socket transport's send loop completed gracefully."
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" accepted.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" started.
+[2026-04-03 18:03:31 DBG] Connection 0HNKHJA6DIT82 established using the following protocol: "Tls12"
+[2026-04-03 18:03:31 INF] Request starting HTTP/2 GET https://localhost:5001/swagger/index.html - null null
+[2026-04-03 18:03:31 DBG] Wildcard detected, all requests with hosts will be allowed.
+[2026-04-03 18:03:31 DBG] Response markup is scheduled to include Browser Link script injection.
+[2026-04-03 18:03:31 DBG] Response markup is scheduled to include browser refresh script injection.
+[2026-04-03 18:03:31 DBG] Response markup was updated to include Browser Link script injection.
+[2026-04-03 18:03:31 DBG] Response markup was updated to include browser refresh script injection.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" received FIN.
+[2026-04-03 18:03:31 INF] Request finished HTTP/2 GET https://localhost:5001/swagger/index.html - 200 null text/html;charset=utf-8 152.0911ms
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" is closed. The last processed stream ID was 1.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" sending FIN because: "The Socket transport's send loop completed gracefully."
+[2026-04-03 18:03:31 DBG] The connection queue processing loop for 0HNKHJA6DIT82 completed.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT82" stopped.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT83" accepted.
+[2026-04-03 18:03:31 DBG] Connection id "0HNKHJA6DIT83" started.
+[2026-04-03 18:03:31 DBG] Connection 0HNKHJA6DIT83 established using the following protocol: "Tls12"
+[2026-04-03 18:03:31 INF] Request starting HTTP/2 GET https://localhost:5001/_vs/browserLink - null null
+[2026-04-03 18:03:31 INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
+[2026-04-03 18:03:31 DBG] Script injected: /_framework/aspnetcore-browser-refresh.js
+[2026-04-03 18:03:31 INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16547 application/javascript; charset=utf-8 15.4171ms
+[2026-04-03 18:03:31 INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 37.8062ms
+[2026-04-03 18:03:31 INF] Request starting HTTP/2 GET https://localhost:5001/swagger/v1/swagger.json - null null
+[2026-04-03 18:03:31 INF] Request finished HTTP/2 GET https://localhost:5001/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 25.0628ms
+[2026-04-03 18:03:35 DBG] Connection id "0HNKHJA6DIT83" received FIN.
+[2026-04-03 18:03:35 DBG] Connection id "0HNKHJA6DIT83" is closed. The last processed stream ID was 5.
+[2026-04-03 18:03:35 DBG] The connection queue processing loop for 0HNKHJA6DIT83 completed.
+[2026-04-03 18:03:35 DBG] Connection id "0HNKHJA6DIT83" sending FIN because: "The Socket transport's send loop completed gracefully."
+[2026-04-03 18:03:35 DBG] Connection id "0HNKHJA6DIT83" stopped.
+[2026-04-03 18:03:51 DBG] Connection id "0HNKHJA6DIT84" accepted.
+[2026-04-03 18:03:51 DBG] Connection id "0HNKHJA6DIT84" started.
+[2026-04-03 18:03:51 DBG] Connection 0HNKHJA6DIT84 established using the following protocol: "Tls12"
+[2026-04-03 18:03:51 INF] Request starting HTTP/2 POST https://localhost:5001/api/SignLanguageTranslator/generate-local-tts?format=mp3 - application/json 139
+[2026-04-03 18:03:51 DBG] POST requests are not supported
+[2026-04-03 18:03:51 DBG] POST requests are not supported
+[2026-04-03 18:03:51 DBG] 1 candidate(s) found for the request path '/api/SignLanguageTranslator/generate-local-tts'
+[2026-04-03 18:03:51 DBG] Endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)' with route pattern 'api/SignLanguageTranslator/generate-local-tts' is valid for the request path '/api/SignLanguageTranslator/generate-local-tts'
+[2026-04-03 18:03:51 DBG] Request matched endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:03:51 DBG] The request has an origin header: 'https://localhost:5001'.
+[2026-04-03 18:03:51 INF] CORS policy execution successful.
+[2026-04-03 18:03:51 DBG] AuthenticationScheme: Bearer was not authenticated.
+[2026-04-03 18:03:51 INF] Executing endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:03:51 INF] Route matched with {action = "GenerateLocalTts", controller = "SignLanguageTranslator"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult] GenerateLocalTts(GraduationProjectWebApplication.Models.DTOs.TTSRequest, System.String) on controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication).
+[2026-04-03 18:03:51 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2026-04-03 18:03:51 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2026-04-03 18:03:51 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)"]
+[2026-04-03 18:03:51 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2026-04-03 18:03:51 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2026-04-03 18:03:51 DBG] Executing controller factory for controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication)
+[2026-04-03 18:03:52 DBG] Executed controller factory for controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication)
+[2026-04-03 18:03:52 DBG] Attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' ...
+[2026-04-03 18:03:52 DBG] Attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' using the name '' in request data ...
+[2026-04-03 18:03:52 DBG] Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+[2026-04-03 18:03:52 DBG] Connection id "0HNKHJA6DIT84", Request id "0HNKHJA6DIT84:00000001": started reading request body.
+[2026-04-03 18:03:52 DBG] Connection id "0HNKHJA6DIT84", Request id "0HNKHJA6DIT84:00000001": done reading request body.
+[2026-04-03 18:03:52 DBG] JSON input formatter succeeded, deserializing to type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'
+[2026-04-03 18:03:52 DBG] Done attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:03:52 DBG] Done attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:03:52 DBG] Attempting to validate the bound parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' ...
+[2026-04-03 18:03:52 DBG] Done attempting to validate the bound parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:03:52 DBG] Attempting to bind parameter 'format' of type 'System.String' ...
+[2026-04-03 18:03:52 DBG] Attempting to bind parameter 'format' of type 'System.String' using the name 'format' in request data ...
+[2026-04-03 18:03:52 DBG] Done attempting to bind parameter 'format' of type 'System.String'.
+[2026-04-03 18:03:52 DBG] Done attempting to bind parameter 'format' of type 'System.String'.
+[2026-04-03 18:03:52 DBG] Attempting to validate the bound parameter 'format' of type 'System.String' ...
+[2026-04-03 18:03:52 DBG] Done attempting to validate the bound parameter 'format' of type 'System.String'.
+[2026-04-03 18:03:52 DBG] List of registered output formatters, in the following order: ["Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter"]
+[2026-04-03 18:03:52 DBG] No information found on request to perform content negotiation.
+[2026-04-03 18:03:52 DBG] Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+[2026-04-03 18:03:52 DBG] Attempting to select the first formatter in the output formatters list which can write the result.
+[2026-04-03 18:03:52 DBG] Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+[2026-04-03 18:03:52 INF] Executing ObjectResult, writing value of type '<>f__AnonymousType9`2[[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+[2026-04-03 18:03:52 INF] Executed action GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication) in 651.9502ms
+[2026-04-03 18:03:52 INF] Executed endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:03:52 INF] Request finished HTTP/2 POST https://localhost:5001/api/SignLanguageTranslator/generate-local-tts?format=mp3 - 500 null application/json; charset=utf-8 820.1319ms
+[2026-04-03 18:04:12 INF] Request starting HTTP/2 GET https://localhost:5001/swagger/index.html - null null
+[2026-04-03 18:04:12 DBG] Response markup is scheduled to include Browser Link script injection.
+[2026-04-03 18:04:12 DBG] Response markup is scheduled to include browser refresh script injection.
+[2026-04-03 18:04:12 DBG] Response markup was updated to include Browser Link script injection.
+[2026-04-03 18:04:12 DBG] Response markup was updated to include browser refresh script injection.
+[2026-04-03 18:04:12 INF] Request finished HTTP/2 GET https://localhost:5001/swagger/index.html - 200 null text/html;charset=utf-8 14.959ms
+[2026-04-03 18:04:12 INF] Request starting HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - null null
+[2026-04-03 18:04:12 INF] Request starting HTTP/2 GET https://localhost:5001/_vs/browserLink - null null
+[2026-04-03 18:04:12 DBG] Script injected: /_framework/aspnetcore-browser-refresh.js
+[2026-04-03 18:04:12 INF] Request finished HTTP/2 GET https://localhost:5001/_framework/aspnetcore-browser-refresh.js - 200 16547 application/javascript; charset=utf-8 6.6925ms
+[2026-04-03 18:04:12 INF] Request finished HTTP/2 GET https://localhost:5001/_vs/browserLink - 200 null text/javascript; charset=UTF-8 22.254ms
+[2026-04-03 18:04:12 INF] Request starting HTTP/2 GET https://localhost:5001/swagger/v1/swagger.json - null null
+[2026-04-03 18:04:12 INF] Request finished HTTP/2 GET https://localhost:5001/swagger/v1/swagger.json - 200 null application/json;charset=utf-8 35.2244ms
+[2026-04-03 18:04:19 INF] Request starting HTTP/2 POST https://localhost:5001/api/SignLanguageTranslator/generate-local-tts?format=mp3 - application/json 139
+[2026-04-03 18:04:19 DBG] POST requests are not supported
+[2026-04-03 18:04:19 DBG] POST requests are not supported
+[2026-04-03 18:04:19 DBG] 1 candidate(s) found for the request path '/api/SignLanguageTranslator/generate-local-tts'
+[2026-04-03 18:04:19 DBG] Endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)' with route pattern 'api/SignLanguageTranslator/generate-local-tts' is valid for the request path '/api/SignLanguageTranslator/generate-local-tts'
+[2026-04-03 18:04:19 DBG] Request matched endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:04:19 DBG] The request has an origin header: 'https://localhost:5001'.
+[2026-04-03 18:04:19 INF] CORS policy execution successful.
+[2026-04-03 18:04:19 DBG] AuthenticationScheme: Bearer was not authenticated.
+[2026-04-03 18:04:19 INF] Executing endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:04:19 INF] Route matched with {action = "GenerateLocalTts", controller = "SignLanguageTranslator"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.ActionResult] GenerateLocalTts(GraduationProjectWebApplication.Models.DTOs.TTSRequest, System.String) on controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication).
+[2026-04-03 18:04:19 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2026-04-03 18:04:19 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2026-04-03 18:04:19 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)"]
+[2026-04-03 18:04:19 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2026-04-03 18:04:19 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2026-04-03 18:04:19 DBG] Executing controller factory for controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication)
+[2026-04-03 18:04:19 DBG] Executed controller factory for controller GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController (GraduationProjectWebApplication)
+[2026-04-03 18:04:19 DBG] Attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' ...
+[2026-04-03 18:04:19 DBG] Attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' using the name '' in request data ...
+[2026-04-03 18:04:19 DBG] Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+[2026-04-03 18:04:19 DBG] Connection id "0HNKHJA6DIT84", Request id "0HNKHJA6DIT84:0000000B": started reading request body.
+[2026-04-03 18:04:19 DBG] Connection id "0HNKHJA6DIT84", Request id "0HNKHJA6DIT84:0000000B": done reading request body.
+[2026-04-03 18:04:19 DBG] JSON input formatter succeeded, deserializing to type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'
+[2026-04-03 18:04:19 DBG] Done attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:04:19 DBG] Done attempting to bind parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:04:19 DBG] Attempting to validate the bound parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest' ...
+[2026-04-03 18:04:19 DBG] Done attempting to validate the bound parameter 'request' of type 'GraduationProjectWebApplication.Models.DTOs.TTSRequest'.
+[2026-04-03 18:04:19 DBG] Attempting to bind parameter 'format' of type 'System.String' ...
+[2026-04-03 18:04:19 DBG] Attempting to bind parameter 'format' of type 'System.String' using the name 'format' in request data ...
+[2026-04-03 18:04:19 DBG] Done attempting to bind parameter 'format' of type 'System.String'.
+[2026-04-03 18:04:19 DBG] Done attempting to bind parameter 'format' of type 'System.String'.
+[2026-04-03 18:04:19 DBG] Attempting to validate the bound parameter 'format' of type 'System.String' ...
+[2026-04-03 18:04:19 DBG] Done attempting to validate the bound parameter 'format' of type 'System.String'.
+[2026-04-03 18:04:19 INF] Start processing HTTP request POST http://localhost:8000/tts/
+[2026-04-03 18:04:19 INF] Sending HTTP request POST http://localhost:8000/tts/
+[2026-04-03 18:04:27 INF] Received HTTP response headers after 8173.1133ms - 200
+[2026-04-03 18:04:27 INF] End processing HTTP request after 8180.5045ms - 200
+[2026-04-03 18:04:27 INF] Executing FileContentResult, sending file with download name 'speech.wav' ...
+[2026-04-03 18:04:27 DBG] The file result has not been enabled for processing range requests. To enable it, set the EnableRangeProcessing property on the result to 'true'.
+[2026-04-03 18:04:27 INF] Executed action GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication) in 8227.289ms
+[2026-04-03 18:04:27 INF] Executed endpoint 'GraduationProjectWebApplication.Controllers.SignLanguageTranslatorController.GenerateLocalTts (GraduationProjectWebApplication)'
+[2026-04-03 18:04:27 INF] Request finished HTTP/2 POST https://localhost:5001/api/SignLanguageTranslator/generate-local-tts?format=mp3 - 200 293932 audio/wav 8259.909ms
+[2026-04-03 18:05:51 DBG] HttpMessageHandler expired after 120000ms for client ''
+[2026-04-03 18:06:01 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:01 DBG] Ending HttpMessageHandler cleanup cycle after 0.0431ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:06:11 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:11 DBG] Ending HttpMessageHandler cleanup cycle after 0.0028ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:06:21 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:21 DBG] Ending HttpMessageHandler cleanup cycle after 0.0021ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:06:31 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:31 DBG] Ending HttpMessageHandler cleanup cycle after 0.0027ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:06:41 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:41 DBG] Ending HttpMessageHandler cleanup cycle after 0.0068ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:06:51 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:06:51 DBG] Ending HttpMessageHandler cleanup cycle after 0.0041ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:07:01 DBG] Starting HttpMessageHandler cleanup cycle with 1 items
+[2026-04-03 18:07:01 DBG] Ending HttpMessageHandler cleanup cycle after 0.0035ms - processed: 0 items - remaining: 1 items
+[2026-04-03 18:07:06 DBG] Connection id "0HNKHJA6DIT84" received FIN.
+[2026-04-03 18:07:06 DBG] Connection id "0HNKHJA6DIT84" is closed. The last processed stream ID was 11.
+[2026-04-03 18:07:06 DBG] The connection queue processing loop for 0HNKHJA6DIT84 completed.
+[2026-04-03 18:07:06 DBG] Connection id "0HNKHJA6DIT84" sending FIN because: "The Socket transport's send loop completed gracefully."
+[2026-04-03 18:07:06 DBG] Connection id "0HNKHJA6DIT84" stopped.

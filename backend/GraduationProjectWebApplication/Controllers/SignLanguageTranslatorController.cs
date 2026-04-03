@@ -28,6 +28,7 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly string? hardwareCorrectSentenceKey;
         private readonly string? hardwareCorrectSentenceBackUpKey;
         private readonly string? hardwareTTSKey;
+        private readonly string? LocalTTSURL;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -51,6 +52,7 @@ namespace GraduationProjectWebApplication.Controllers
             hardwareCorrectSentenceKey = configuration["HARDWARE_CORRECT_SENTENCE_KEY"];
             hardwareCorrectSentenceBackUpKey = configuration["HARDWARE_CORRECT_SENTENCE_BACKUP_KEY"];
             hardwareTTSKey = configuration["HARDWARE_TTS_KEY"];
+            LocalTTSURL = configuration["TTS_SERVICE"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
@@ -61,7 +63,7 @@ namespace GraduationProjectWebApplication.Controllers
         [EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> FinalizeSentence([FromBody] SentenceData data, [FromQuery] string client = "frontend")
         {
-           
+          
             try
             {
 
@@ -429,7 +431,7 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
-                string localTtsUrl = "http://localhost:8000/api/tts/";
+                string localTtsUrl = $"{LocalTTSURL}/tts/";
 
                 var pythonRequestBody = new
                 {

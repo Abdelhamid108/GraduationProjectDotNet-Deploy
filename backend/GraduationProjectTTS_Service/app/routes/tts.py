@@ -9,7 +9,7 @@ import os
 from tts_arabic import tts
 
 # FIX: Set the prefix here...
-router = APIRouter(prefix="/api/tts", tags=["TTS"])
+router = APIRouter(prefix="/tts", tags=["TTS"])
 
 # FIX: Moved this helper function to the top so it's ready when the route calls it
 def remove_file(path: str):
