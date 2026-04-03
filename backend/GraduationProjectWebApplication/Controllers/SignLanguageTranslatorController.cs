@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Collections.Generic;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
@@ -410,6 +411,62 @@ namespace GraduationProjectWebApplication.Controllers
                 return StatusCode(
                    (int)HttpStatusCode.InternalServerError,
                    ErrorResponse<string>($"An unexpected error occurred."));
+            }
+        }
+
+        [HttpPost("generate-local-tts")]
+        public async Task<ActionResult> GenerateLocalTts([FromBody] TTSRequest request, [FromQuery] string format = "mp3")
+        {
+            if (string.IsNullOrWhiteSpace(request.Text))
+            {
+                return BadRequest(new { IsSuccess = false, ErrorMessage = "Text cannot be empty." });
+            }
+
+            try
+            {
+                string localTtsUrl = "http://localhost:8000/api/tts/";
+
+                var pythonRequestBody = new
+                {
+                    text = request.Text,
+                    speaker = 1,
+                    pace = 1.0
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(localTtsUrl, pythonRequestBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return StatusCode(500, new { IsSuccess = false, ErrorMessage = $"Python TTS failed: {errorContent}" });
+                }
+
+                // 1. THE FIX: Read the response as raw bytes, NOT as JSON!
+                byte[] audioBytes = await response.Content.ReadAsByteArrayAsync();
+
+                // 2. Format the response for the frontend
+                if (format.Equals("base64", StringComparison.OrdinalIgnoreCase))
+                {
+                    // If the frontend asked for base64, convert the bytes and wrap in JSON
+                    return Ok(new
+                    {
+                        Result = new
+                        {
+                            OriginalText = request.Text,
+                            AudioData = Convert.ToBase64String(audioBytes),
+                            SampleRate = 22050
+                        }
+                    });
+                }
+                else
+                {
+                    // Default: Send the raw playable audio file to the frontend
+                    return File(audioBytes, "audio/wav", "speech.wav");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { IsSuccess = false, ErrorMessage = $"An error occurred connecting to the local AI: {ex.Message}" });
             }
         }
     }
