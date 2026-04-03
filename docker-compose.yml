@@ -37,6 +37,23 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
   
 
+  # Python AI TTS Service
+  python_tts:
+    build:
+      context: ./GraduationProjectTTS_Service # Ensure this matches your folder name!
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000" # Exposes port 8000 so you can test Swagger locally
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G # AI models need a bit more RAM to run smoothly
+    networks:
+      - local
+      - api_network
+
   # Frontend Web Server Service (Nginx)
   nginx:
     image: abdelhameed208/graduationproject-nginx:latest
