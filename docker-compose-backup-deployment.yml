@@ -1,0 +1,85 @@
+# Docker Compose configuration for a multi-service application (backend API & frontend web server)
+# Version: (Note: The 'version' tag is omitted, typically used with Docker Compose v3+)
+
+services:
+  # Backend API Service
+  backend:
+    image: abdelhameed208/graduationproject-backend:latest
+    ports:
+      # Maps host port 5001 to container port 5001.
+      # This exposes the backend service running inside the container on port 5001 to the host machine.
+      - "5001:5001"
+    restart: always
+      # Policy: The container will always restart if it stops, unless explicitly stopped by the user.
+      # This ensures the backend service remains available after a reboot or crash.
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M      # Hard limit
+        reservations:
+          memory: 512M       # Soft limit
+    networks:
+      - local
+      - api_network
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_URLS=http://+:5001
+      - DEFAULT_CONNECTION=Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
+      - ASPNETCORE_ENVIRONMENT=Development
+  
+
+  # Frontend Web Server Service (Nginx)
+  nginx:
+    image: abdelhameed208/graduationproject-nginx:latest
+    environment:
+      CERT_PATH: ${CERT_PATH:-./Dev}
+      ARCHIVE_PATH: ${ARCHIVE_PATH:-./Dev}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5001}
+      BACKEND_HOST: ${BACKEND_HOST:-backend:5001}
+    ports:
+      # Maps host port 80 to container port 80. Used for HTTP traffic and likely HTTP->HTTPS redirection.
+      - "80:80"
+      # Maps host port 443 to container port 443. Used for HTTPS (secure) traffic.
+      - "443:443"
+    restart: always
+      # Policy: The container will always restart if it stops.
+      # This ensures the web server, a critical entry point, is always available.
+    depends_on:
+      # Defines a dependency: the 'frontend' service will not start until the 'backend' service is started.
+      # Note: This controls startup order only; it does not wait for the backend application *inside* the container to be fully healthy.
+      - backend
+    networks:
+      - api_network
+
+  #database service
+  database: 
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_ADMIN_PASS}
+      - DB_USER=${DB_USER}
+    volumes:
+      - db:/var/opt/mssql
+    networks:
+      - local
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER} -P ${DB_ADMIN_PASS} -C -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+networks:
+  local:
+    driver: bridge
+    internal: true
+  
+  api_network:
+    driver: bridge
+
+volumes:
+  db:
