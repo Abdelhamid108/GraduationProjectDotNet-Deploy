@@ -1,0 +1,19 @@
+# Dependency directories
+node_modules
+npm-debug.log
+
+# Build output directory
+dist
+dist-ssr
+
+# Git directory
+.git
+.gitignore
+
+
+# Docker-related files
+Dockerfile
+.dockerignore
+
+# Documentation
+README.md
