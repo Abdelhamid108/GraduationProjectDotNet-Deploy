@@ -168,12 +168,14 @@ jobs:
       - name: Authenticate to Azure
         if: always()
         uses: Azure/login@v2
+        continue-on-error: true
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Upload Test Artifacts to Azure Blob Storage
         if: always()
         id: upload_blob  
+        continue-on-error: true
         uses: azure/CLI@v2
         with:
           azcliversion: latest
@@ -224,11 +226,8 @@ jobs:
             ❌ Failed: ${{ steps.test_results.outputs.failed }}
             🔄 Total: ${{ steps.test_results.outputs.total }}
             📈 Pass Rate: ${{ steps.test_results.outputs.pass_rate }}
-
-            The full JSON artifact has been uploaded to Azure Blob Storage.
-
-            🔗 Secure Artifact Access (Expires in 24h)
-            ${{ steps.upload_blob.outputs.sas_url }}
+ 
+            ${{ steps.upload_blob.outcome == 'success' && format('🔗 Secure Artifact Access (Expires in 24h)\n{0}', steps.upload_blob.outputs.sas_url) || '⚠️ Note: Azure Upload failed. Artifact link unavailable.' }}
 
             Note Access is restricted. Link is generated dynamically for security.
 
