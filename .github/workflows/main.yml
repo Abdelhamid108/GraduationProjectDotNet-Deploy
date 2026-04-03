@@ -28,7 +28,7 @@ on:
 env:
   REGISTRY: 'abdelhameed208'
   BACKEND_IMAGE: 'graduationproject-backend'
-  FRONTEND_IMAGE: 'abdelhameed208/graduationproject-frontend'
+  FRONTEND_IMAGE: 'graduationproject-frontend'
 
 jobs:
   # ============================================================================
@@ -101,7 +101,7 @@ jobs:
           FRONTEND_TAG="v1.0-${FRONTEND_COUNT}-${FRONTEND_SHORT_SHA}"
 
           docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ./frontend
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG
 
           docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
