@@ -49,9 +49,28 @@ namespace GraduationProjectWebApplication
             builder.Host.UseSerilog();
 
             /*==================== Env Variables ===================*/
-            Env.TraversePath().Load();
+            // 1. Point explicitly to the root folder (two levels up from the Web API folder)
+            var rootEnvPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env"));
+
+            // 2. Load it if it exists (This runs when you debug locally in Visual Studio)
+            if (File.Exists(rootEnvPath))
+            {
+                Env.Load(rootEnvPath);
+            }
+            else
+            {
+                // Fallback: If it's not found in that exact spot, search upwards 
+                // (This acts as a safety net if you run the app from a different directory)
+                Env.TraversePath().Load();
+            }
+
+            // 3. Inject variables into the .NET configuration builder
+            // (Note: When running in Docker, docker-compose skips the file loading 
+            // above and natively injects the variables here)
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
+            {
                 builder.Configuration[env.Key.ToString()] = env.Value?.ToString();
+            }
 
             string? Key = builder.Configuration["SECRET_KEY"];
             string? Issuer = builder.Configuration["ISSUER"];
