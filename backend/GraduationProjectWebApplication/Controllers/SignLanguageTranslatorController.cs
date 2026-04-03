@@ -92,10 +92,15 @@ namespace GraduationProjectWebApplication.Controllers
 
                 var concatenatedText = data.Sentence;
                 var prompt = $"""
-                You are an expert in Arabic linguistics. Your task is to take a string of concatenated Arabic letters, 
-                which comes from a real-time sign language translator, and insert spaces to form a coherent sentence. 
-                You should also correct minor spelling mistakes based on the most likely context.
-                Return ONLY the corrected sentence as a plain string.
+                You are an expert in Arabic linguistics. Your task is to process a string of concatenated Arabic letters received from a real-time sign language translator.
+
+                You must perform the following three steps:
+                1. Insert spaces to form a coherent, contextually logical sentence.
+                2. Correct any minor spelling mistakes based on the likely context.
+                3. Apply full and grammatically correct Arabic diacritics (التشكيل الكامل - Tashkeel) to every word in the sentence.
+
+                Return ONLY the final, corrected, and fully diacritized Arabic sentence as a plain string. Do not include any translations, explanations, or markdown formatting.
+
                 Input Text: "{concatenatedText}"
                 """;
 
