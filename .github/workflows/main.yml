@@ -12,7 +12,7 @@ on:
       - "main"
     paths:
       - "backend/**"
-      - "nginx-proxy/**"
+      - "frontend/**"
       - "docker-compose.yml"
   workflow_dispatch:
     inputs:
@@ -28,7 +28,7 @@ on:
 env:
   REGISTRY: 'abdelhameed208'
   BACKEND_IMAGE: 'graduationproject-backend'
-  WEB_SERVER_IMAGE: 'graduationproject-nginx'
+  FRONTEND_IMAGE: 'graduationproject-frontend'
 
 jobs:
   # ============================================================================
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       backend_tag: ${{ steps.build_backend.outputs.tag }}
-      webserver_tag: ${{ steps.build_webserver.outputs.tag }}
+      frontend_tag: ${{ steps.build_frontend.outputs.tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -56,15 +56,15 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-            web-server:
-              - 'nginx-proxy/**'
+            frontend:
+              - 'frontend/**'
             docker-compose:
               - 'docker-compose.yml'
 
       - name: Authenticate to Docker Hub
         if: |
           steps.changes.outputs.backend == 'true' ||
-          steps.changes.outputs.web-server == 'true' ||
+          steps.changes.outputs.frontend == 'true' ||
           inputs.FiRST-RUN == true
         uses: docker/login-action@v3
         with:
@@ -91,22 +91,22 @@ jobs:
           # Export the unique tag to be used in the deployment job
           echo "tag=$BACKEND_TAG" >> $GITHUB_OUTPUT
 
-      # --- WEB SERVER BUILD ---
-      - name: Build and Push Web Server Image
-        id: build_webserver
-        if: steps.changes.outputs.web-server == 'true' || inputs.FiRST-RUN == true
+      # --- FRONTEND BUILD ---
+      - name: Build and Push Frontend Image
+        id: build_frontend
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
         run: |
-          WEB_SERVER_COUNT=$(git rev-list --count HEAD nginx-proxy/ || echo "0")
-          WEB_SERVER_SHORT_SHA=$(git rev-parse --short HEAD)
-          WEB_SERVER_TAG="v1.0-${WEB_SERVER_COUNT}-${WEB_SERVER_SHORT_SHA}"
+          FRONTEND_COUNT=$(git rev-list --count HEAD frontend/ || echo "0")
+          FRONTEND_SHORT_SHA=$(git rev-parse --short HEAD)
+          FRONTEND_TAG="v1.0-${FRONTEND_COUNT}-${FRONTEND_SHORT_SHA}"
 
-          docker build -t ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ./nginx-proxy
-          docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG
+          docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ./frontend
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG
 
-          docker tag ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:$WEB_SERVER_TAG ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:latest
+          docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
-          echo "tag=$WEB_SERVER_TAG" >> $GITHUB_OUTPUT
+          echo "tag=$FRONTEND_TAG" >> $GITHUB_OUTPUT
 
 
   # ============================================================================
@@ -168,12 +168,14 @@ jobs:
       - name: Authenticate to Azure
         if: always()
         uses: Azure/login@v2
+        continue-on-error: true
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Upload Test Artifacts to Azure Blob Storage
         if: always()
         id: upload_blob  
+        continue-on-error: true
         uses: azure/CLI@v2
         with:
           azcliversion: latest
@@ -224,11 +226,8 @@ jobs:
             ❌ Failed: ${{ steps.test_results.outputs.failed }}
             🔄 Total: ${{ steps.test_results.outputs.total }}
             📈 Pass Rate: ${{ steps.test_results.outputs.pass_rate }}
-
-            The full JSON artifact has been uploaded to Azure Blob Storage.
-
-            🔗 Secure Artifact Access (Expires in 24h)
-            ${{ steps.upload_blob.outputs.sas_url }}
+ 
+            ${{ steps.upload_blob.outcome == 'success' && format('🔗 Secure Artifact Access (Expires in 24h)\n{0}', steps.upload_blob.outputs.sas_url) || '⚠️ Note: Azure Upload failed. Artifact link unavailable.' }}
 
             Note Access is restricted. Link is generated dynamically for security.
 
@@ -271,10 +270,10 @@ jobs:
           containerAppName: ema2a
           resourceGroup: Ema2a
 
-      - name: Deploy Web Server to Azure Container Apps
-        if: needs.build-push-images.outputs.webserver_tag != ''
+      - name: Deploy Frontend to Azure Container Apps
+        if: needs.build-push-images.outputs.frontend_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.WEB_SERVER_IMAGE }}:${{ needs.build-push-images.outputs.webserver_tag }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_tag }}
           containerAppName: ema2a-webserver
           resourceGroup: Ema2a

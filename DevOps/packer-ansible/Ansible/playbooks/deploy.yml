@@ -1,0 +1,9 @@
+---
+
+- name: deploy 
+  hosts: all
+  gather_facts: no
+  become: true  
+  roles:
+    - ../roles/deploy
+

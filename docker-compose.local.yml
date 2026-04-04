@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5001:5001"
-    volumes:
-      - ./AIModels:/app/AIModels
     restart: always
     networks:
       - local
@@ -24,21 +22,29 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 512M
+          memory: '256M'
         reservations:
-          memory: 512M
+          memory: '128M'
 
-  nginx:
+  frontend:
     build:
-      context: ./nginx-proxy
+      context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_BASE_URI=${VITE_BASE_URI}  
     volumes:
-      - ./nginx-proxy/public:/usr/share/nginx/html
       - ${CERT_PATH:-./Dev}:/etc/letsencrypt/live/emaaha.ddns.net:ro
       - ${ARCHIVE_PATH:-./Dev}:/etc/letsencrypt/archive/emaaha.ddns.net:ro
     ports:
-      - "8080:80"   # Changed to avoid conflict with system services
+      - "8080:8080"   # Changed to avoid conflict with system services
       - "8443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: '128M'
+        reservations:
+          memory: '64M'
     restart: always
     environment:
       CERT_PATH: ${CERT_PATH:-./Dev}

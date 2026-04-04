@@ -1,0 +1,38 @@
+[Unit]
+Description=Ema2a Backup Deployment app
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+WorkingDirectory=/opt/ema2a-app
+
+Type=oneshot
+RemainAfterExit=yes
+
+# 1. FIXED: Systemd rejects 'always' for oneshot services.
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+User=github
+Group=github
+
+# 2. ExecStart blocks flattened to guarantee Ansible doesn't break them with spaces
+ExecStartPre=/bin/bash -c 'TOKEN=$$(/usr/bin/infisical login --method=aws-iam --machine-identity-id="{{ infisical_identity_id }}" --silent --plain); /usr/bin/infisical export --token="$$TOKEN" --projectId="{{ infisical_project_id }}" --env=prod --path=/ema2a --format=dotenv > .env'
+
+ExecStart=/bin/bash -c '/usr/bin/docker compose -f docker-compose.yml up -d --pull always && rm -f .env'
+
+ExecStop=/usr/bin/docker compose -f docker-compose.yml down
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 3. FIXED: Strict case-sensitivity
+ProtectSystem=full
+
+# 4. FIXED: Modern systemd syntax
+MemoryMax=2500M
+
+[Install]
+WantedBy=multi-user.target

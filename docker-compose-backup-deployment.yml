@@ -16,48 +16,24 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: '256M'      # Hard limit
+          memory: 512M      # Hard limit
         reservations:
-          memory: '128M'       # Soft limit
+          memory: 512M       # Soft limit
     networks:
       - local
       - api_network
     depends_on:
       database:
         condition: service_healthy
-    env_file:
-      - ./.env
     environment:
       - ASPNETCORE_URLS=http://+:5001
       - DEFAULT_CONNECTION=Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
       - ASPNETCORE_ENVIRONMENT=Development
   
 
-  # Python AI TTS Service
-  python_tts:
-    build:
-      context: ./GraduationProjectTTS_Service # Ensure this matches your folder name!
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000" # Exposes port 8000 so you can test Swagger locally
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G # AI models need a bit more RAM to run smoothly
-    networks:
-      - local
-      - api_network
-
   # Frontend Web Server Service (Nginx)
-  frontend:
-    image: abdelhameed208/graduationproject-frontend:latest
-    build:
-      context: .
-      args:
-        # This passes the variable from your host's .env to the Dockerfile ARG
-        - VITE_BASE_URI=${VITE_BASE_URI}
+  nginx:
+    image: abdelhameed208/graduationproject-nginx:latest
     environment:
       CERT_PATH: ${CERT_PATH:-./Dev}
       ARCHIVE_PATH: ${ARCHIVE_PATH:-./Dev}
@@ -65,16 +41,9 @@ services:
       BACKEND_HOST: ${BACKEND_HOST:-backend:5001}
     ports:
       # Maps host port 80 to container port 80. Used for HTTP traffic and likely HTTP->HTTPS redirection.
-      - "80:8080"
+      - "80:80"
       # Maps host port 443 to container port 443. Used for HTTPS (secure) traffic.
-      #  - "443:443"
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: '128M'     # Hard limit
-        reservations:
-          memory: '64M'       # Soft limit
+      - "443:443"
     restart: always
       # Policy: The container will always restart if it stops.
       # This ensures the web server, a critical entry point, is always available.
