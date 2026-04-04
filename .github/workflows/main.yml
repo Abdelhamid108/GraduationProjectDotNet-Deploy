@@ -35,12 +35,15 @@ jobs:
   # JOB 1: BUILD & PUSH
   # Builds Docker images conditionally based on changed paths and pushes them
   # to Docker Hub with immutable, traceable tags.
+  # Strictly compiles TWO separate Frontend images to guarantee perfect URL 
+  # resolution in both Azure and AWS.
   # ============================================================================
   build-push-images:
     runs-on: ubuntu-24.04
     outputs:
       backend_tag: ${{ steps.build_backend.outputs.tag }}
-      frontend_tag: ${{ steps.build_frontend.outputs.tag }}
+      frontend_azure_tag: ${{ steps.build_frontend.outputs.azure_tag }}
+      frontend_aws_tag: ${{ steps.build_frontend.outputs.aws_tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -91,22 +94,33 @@ jobs:
           # Export the unique tag to be used in the deployment job
           echo "tag=$BACKEND_TAG" >> $GITHUB_OUTPUT
 
-      # --- FRONTEND BUILD ---
-      - name: Build and Push Frontend Image
+      # --- FRONTEND BUILD (THE TWO-IMAGE STRATEGY) ---
+      - name: Build and Push Frontend Images (Azure & AWS)
         id: build_frontend
         if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
         run: |
           FRONTEND_COUNT=$(git rev-list --count HEAD frontend/ || echo "0")
           FRONTEND_SHORT_SHA=$(git rev-parse --short HEAD)
-          FRONTEND_TAG="v1.0-${FRONTEND_COUNT}-${FRONTEND_SHORT_SHA}"
+          FRONTEND_BASE_TAG="v1.0-${FRONTEND_COUNT}-${FRONTEND_SHORT_SHA}"
 
-          docker build --build-arg VITE_BASE_URI= -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ./frontend
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG
+          # 1. Compile exactly for AZURE
+          AZURE_TAG="${FRONTEND_BASE_TAG}-azure"
+          docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AZURE }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AZURE_TAG ./frontend
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AZURE_TAG
 
-          docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$FRONTEND_TAG ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          # 2. Compile exactly for AWS Disaster Recovery
+          AWS_TAG="${FRONTEND_BASE_TAG}-aws"
+          docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AWS }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG ./frontend
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG
+
+          # Push the AWS image as 'latest' so the local Integration Test Job 
+          # can easily pull it via docker-compose
+          docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
           docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
 
-          echo "tag=$FRONTEND_TAG" >> $GITHUB_OUTPUT
+          # Export specific tags for the deployment phase
+          echo "azure_tag=$AZURE_TAG" >> $GITHUB_OUTPUT
+          echo "aws_tag=$AWS_TAG" >> $GITHUB_OUTPUT
 
 
   # ============================================================================
@@ -193,19 +207,19 @@ jobs:
               --name "reports/$FILE_NAME" \
               --auth-mode login
 
-              # 2. Create User Delegation SAS Token (Valid for 24 Hours)
-              EXPIRY=$(date -u -d '24 hours' +%Y-%m-%dT%H:%MZ)
-              SAS_URL=$(az storage blob generate-sas \
-                 --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
-                 --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
-                 --name "reports/$FILE_NAME" \
-                 --permissions r \
-                 --expiry $EXPIRY \
-                 --as-user \
-                 --full-uri -otsv \
-                 --auth-mode login)
+            # 2. Create User Delegation SAS Token (Valid for 24 Hours)
+            EXPIRY=$(date -u -d '24 hours' +%Y-%m-%dT%H:%MZ)
+            SAS_URL=$(az storage blob generate-sas \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+              --container-name ${{ secrets.AZURE_STORAGE_CONTAINER }} \
+              --name "reports/$FILE_NAME" \
+              --permissions r \
+              --expiry $EXPIRY \
+              --as-user \
+              --full-uri -otsv \
+              --auth-mode login)
 
-              echo "sas_url=$SAS_URL" >> $GITHUB_OUTPUT  
+            echo "sas_url=$SAS_URL" >> $GITHUB_OUTPUT  
 
       - name: Send Notification Email
         if: always()
@@ -226,7 +240,7 @@ jobs:
             ❌ Failed: ${{ steps.test_results.outputs.failed }}
             🔄 Total: ${{ steps.test_results.outputs.total }}
             📈 Pass Rate: ${{ steps.test_results.outputs.pass_rate }}
- 
+
             ${{ steps.upload_blob.outcome == 'success' && format('🔗 Secure Artifact Access (Expires in 24h)\n{0}', steps.upload_blob.outputs.sas_url) || '⚠️ Note: Azure Upload failed. Artifact link unavailable.' }}
 
             Note Access is restricted. Link is generated dynamically for security.
@@ -249,6 +263,7 @@ jobs:
   # JOB 3: DEPLOYMENT
   # Deploys the immutable image tags to Azure Container Apps. 
   # Requires manual approval via GitHub Environments.
+  # Uses the specific *-azure frontend tag built in Job 1.
   # ============================================================================
   deploy:
     runs-on: ubuntu-24.04
@@ -271,9 +286,10 @@ jobs:
           resourceGroup: Ema2a
 
       - name: Deploy Frontend to Azure Container Apps
-        if: needs.build-push-images.outputs.frontend_tag != ''
+        if: needs.build-push-images.outputs.frontend_azure_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_tag }}
+          # Crucial: This specifically pulls the tag compiled with the Azure URL
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_azure_tag }}
           containerAppName: ema2a-webserver
           resourceGroup: Ema2a
