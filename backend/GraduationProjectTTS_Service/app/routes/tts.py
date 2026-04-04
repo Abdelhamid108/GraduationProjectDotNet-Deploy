@@ -4,6 +4,29 @@ from fastapi.responses import FileResponse
 from app.schemas import TTSRequest
 import uuid
 import os
+import psutil
+import time
+
+# GPU (safe optional)
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    GPU_AVAILABLE = True
+except:
+    GPU_AVAILABLE = False
+
+
+def get_ram_mb():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1024 / 1024
+
+
+def get_gpu_mb():
+    if not GPU_AVAILABLE:
+        return 0
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+    return mem_info.used / 1024 / 1024
 
 # ADDED: You must import tts in the exact file where it is used
 from tts_arabic import tts
@@ -28,8 +51,16 @@ async def generate_audio(request: TTSRequest, background_tasks: BackgroundTasks)
     unique_filename = f"output_{uuid.uuid4().hex}.wav"
     file_path = os.path.join(os.getcwd(), unique_filename)
 
+    # ✅ BEFORE request
+    start_time = time.time()
+    ram_before = get_ram_mb()
+    gpu_before = get_gpu_mb()
+
+    print("\n===== REQUEST START =====")
+    print(f"RAM Before: {ram_before:.2f} MB")
+    print(f"GPU Before: {gpu_before:.2f} MB")
+
     try:
-        # Generate the audio file using the tts_arabic package
         tts(
             text=request.text,
             speaker=request.speaker,
@@ -39,15 +70,26 @@ async def generate_audio(request: TTSRequest, background_tasks: BackgroundTasks)
             play=False
         )
 
+        # ✅ AFTER generation
+        ram_after = get_ram_mb()
+        gpu_after = get_gpu_mb()
+        elapsed = time.time() - start_time
+
+        print("----- REQUEST END -----")
+        print(f"RAM After: {ram_after:.2f} MB")
+        print(f"GPU After: {gpu_after:.2f} MB")
+        print(f"RAM Delta: {ram_after - ram_before:.2f} MB")
+        print(f"GPU Delta: {gpu_after - gpu_before:.2f} MB")
+        print(f"Time Taken: {elapsed:.2f} sec")
+
         if not os.path.exists(file_path):
             raise HTTPException(status_code=500, detail="Audio file was not generated.")
 
-        # Schedule the file to be deleted AFTER the response is sent to .NET
         background_tasks.add_task(remove_file, file_path)
 
         return FileResponse(
-            path=file_path, 
-            media_type="audio/wav", 
+            path=file_path,
+            media_type="audio/wav",
             filename="arabic_speech.wav"
         )
 
