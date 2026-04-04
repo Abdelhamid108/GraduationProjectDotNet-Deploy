@@ -124,7 +124,7 @@ module "alarm_metric_query" {
   alarm_description   = "Alarm For Stoping the server if there is no traffic"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 3
-  threshold           = 5
+  threshold           = 2
 
 
       namespace   = "AWS/EC2"
