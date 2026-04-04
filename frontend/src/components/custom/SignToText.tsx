@@ -115,7 +115,7 @@ export default function SignToText() {
 
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl('${import.meta.env.VITE_BASE_URI}/signHub`, { withCredentials: true })
+      .withUrl(`${import.meta.env.VITE_BASE_URI}/signHub`, { withCredentials: true })
       .withAutomaticReconnect({
         nextRetryDelayInMilliseconds: (retryContext) =>
           Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 10000),
