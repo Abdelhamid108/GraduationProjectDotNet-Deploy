@@ -302,6 +302,10 @@ jobs:
       contents: read
       security-events: write
     if: success()
+    # Pass the image tag downstream so deploy can reference it
+    # without needing a direct dependency on backend-build-push
+    outputs:
+      backend_tag: ${{ needs.backend-build-push.outputs.backend_tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -338,6 +342,11 @@ jobs:
       contents: read
       security-events: write
     if: success()
+    # Pass image tags downstream so deploy can reference them
+    # without needing a direct dependency on frontend-build-push
+    outputs:
+      frontend_azure_tag: ${{ needs.frontend-build-push.outputs.frontend_azure_tag }}
+      frontend_aws_tag: ${{ needs.frontend-build-push.outputs.frontend_aws_tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -517,18 +526,18 @@ jobs:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Deploy Backend to Azure Container Apps
-        if: needs.backend-build-push.outputs.backend_tag != ''
+        if: needs.trivy-backend.outputs.backend_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.backend-build-push.outputs.backend_tag }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.trivy-backend.outputs.backend_tag }}
           containerAppName: ema2a
           resourceGroup: Ema2a
 
       - name: Deploy Frontend to Azure Container Apps
-        if: needs.frontend-build-push.outputs.frontend_azure_tag != ''
+        if: needs.trivy-frontend.outputs.frontend_azure_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
           # Crucial: This specifically pulls the tag compiled with the Azure URL
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.frontend-build-push.outputs.frontend_azure_tag }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.trivy-frontend.outputs.frontend_azure_tag }}
           containerAppName: ema2a-webserver
           resourceGroup: Ema2a
