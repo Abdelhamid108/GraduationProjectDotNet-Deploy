@@ -10,14 +10,19 @@ server {
     location /.well-known/acme-challenge/ {
         root /usr/share/nginx/html;
     }
-
+    
     # 2. Frontend Routing (SPA Support)
     location / {
        
         try_files $uri /index.html;
     }
+ 
+    # 3. Prevent Scammers and Hackers Bots 
+    location ~* ^/(wp-admin|wp-includes|wp-login|wp-content|setup-config|install\.php|xmlrpc\.php|\.env|\.git) {
+        return 444; 
+    }
 
-    # 3. API Proxying
+    # 4. API Proxying
     location /api/ {
         # CORS Preflight Handling
         if ($request_method = 'OPTIONS') {
