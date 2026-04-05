@@ -98,7 +98,7 @@ jobs:
   # ============================================================================
   build-push-images:
     runs-on: ubuntu-24.04
-    needs: sonarqube
+    needs: sonarcloud-scan
     if: success()
     outputs:
       backend_tag: ${{ steps.build_backend.outputs.tag }}
