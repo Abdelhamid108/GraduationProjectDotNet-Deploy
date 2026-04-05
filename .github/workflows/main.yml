@@ -147,6 +147,13 @@ jobs:
           output: 'trivy-backend.sarif'
           scanners: 'vuln,secret'
           
+      - name: Upload Backend Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: needs.build-push-images.outputs.backend_tag != ''
+        with:
+          sarif_file: 'trivy-backend.sarif'
+          category: 'trivy-backend'    
+          
       - name: Scan Frontend Image Using Trivy
         uses: aquasecurity/trivy-action@v0.35.0
         if: needs.build-push-images.outputs.frontend_azure_tag != ''
@@ -157,12 +164,14 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend.sarif'
           scanners: 'vuln,secret'
-          
-      - name: Upload Trivy scan results to GitHub Security tab
+
+      - name: Upload Frontend Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: needs.build-push-images.outputs.frontend_azure_tag != ''
         with:
-          sarif_file: '.'  
+          sarif_file: 'trivy-frontend.sarif'
+          category: 'trivy-frontend'   
+          
           
   # ============================================================================
   # JOB 3: INTEGRATION TESTING & ARTIFACT STORAGE
