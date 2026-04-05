@@ -13,7 +13,9 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - "docker-compose.yml"
+      - "DevOps/**"
+      - "docker-compose*.yml"
+      - "**/Dockerfile"
   workflow_dispatch:
     inputs:
       FiRST-RUN:
@@ -31,27 +33,145 @@ env:
   FRONTEND_IMAGE: 'graduationproject-frontend'
 
 jobs:
+
   # ============================================================================
-  # JOB 1: BUILD & PUSH
-  # Builds Docker images conditionally based on changed paths and pushes them
-  # to Docker Hub with immutable, traceable tags.
-  # Strictly compiles TWO separate Frontend images to guarantee perfect URL 
-  # resolution in both Azure and AWS.
+  # SAST GATE — 2 parallel SonarCloud jobs.
+  # build-push-images waits for BOTH before proceeding.
+  # Hardware and Flutter are analyzed in their own dedicated workflow files.
   # ============================================================================
-  build-push-images:
+
+  # ---------------------------------------------------------------------------
+  # SAST JOB 1 — Backend (.NET 8 / ASP.NET Core)
+  # Uses the official dotnet-sonarscanner MSBuild wrapper (begin → build → end)
+  # ---------------------------------------------------------------------------
+  sonar-backend:
+    name: 'Sonar · Backend (.NET)'
     runs-on: ubuntu-24.04
-    outputs:
-      backend_tag: ${{ steps.build_backend.outputs.tag }}
-      frontend_azure_tag: ${{ steps.build_frontend.outputs.azure_tag }}
-      frontend_aws_tag: ${{ steps.build_frontend.outputs.aws_tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Optimizes pipeline duration by detecting which microservices actually changed
-      - name: Detect File Changes
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/backend/**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Cache SonarCloud Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Install dotnet-sonarscanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Create Backend .env File
+        run: echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" > ./backend/.env
+
+      - name: Build and Analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          cd ./backend
+          dotnet-sonarscanner begin \
+            /k:"Abdelhamid108_GraduationProjectDotNet-Deploy" \
+            /o:"abdelhamid108" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io"
+          dotnet build
+          dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+  # ---------------------------------------------------------------------------
+  # SAST JOB 2 — Frontend (React/TS) + DevOps (Terraform, Ansible, Docker)
+  # Combined into one SonarCloud project. Runs from repo root.
+  # Config: sonar-frontend-devops.properties
+  # ---------------------------------------------------------------------------
+  sonar-frontend-devops:
+    name: 'Sonar · Frontend + DevOps'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Cache SonarCloud Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Install frontend deps so Sonar can resolve TypeScript types
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install SonarScanner CLI
+        run: npm install -g sonar-scanner
+
+      # Run from repo root — sonar-frontend-devops.properties references
+      # both frontend/src and DevOps/** with paths relative to repo root
+      - name: Run Sonar Analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dproject.settings=sonar-frontend-devops.properties \
+            -Dsonar.token="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.host.url="https://sonarcloud.io"
+
+  # ============================================================================
+  # JOB: BACKEND BUILD & PUSH
+  # Builds the .NET Docker image independently and pushes to Docker Hub.
+  # Runs in parallel with frontend-build-push.
+  # Skips automatically when no backend/** files changed.
+  # ============================================================================
+  backend-build-push:
+    name: 'Build & Push · Backend (.NET)'
+    runs-on: ubuntu-24.04
+    needs: [sonar-backend, sonar-frontend-devops]
+    if: success()
+    outputs:
+      backend_tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Backend Changes
         id: changes
         uses: dorny/paths-filter@v3
         with:
@@ -59,78 +179,206 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-            frontend:
-              - 'frontend/**'
-            docker-compose:
-              - 'docker-compose.yml'
+
+      # BuildKit enables layer caching and faster rebuilds
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/setup-buildx-action@v3
 
       - name: Authenticate to Docker Hub
-        if: |
-          steps.changes.outputs.backend == 'true' ||
-          steps.changes.outputs.frontend == 'true' ||
-          inputs.FiRST-RUN == true
+        if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # --- BACKEND BUILD ---
-      - name: Build and Push Backend Image
-        id: build_backend
+      - name: Generate Immutable Image Tag
+        id: tag
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
         run: |
-          # Generate an immutable tag using commit count and short SHA for traceability
-          BACKEND_COUNT=$(git rev-list --count HEAD backend/ || echo "0")
-          BACKEND_SHORT_SHA=$(git rev-parse --short HEAD)
-          BACKEND_TAG="v1.0-${BACKEND_COUNT}-${BACKEND_SHORT_SHA}"
+          COUNT=$(git rev-list --count HEAD backend/ || echo "0")
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "value=v1.0-${COUNT}-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-          docker build -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ./backend
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG
-
-          # Push 'latest' tag as a secondary reference
-          docker tag ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:$BACKEND_TAG ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
-
-          # Export the unique tag to be used in the deployment job
-          echo "tag=$BACKEND_TAG" >> $GITHUB_OUTPUT
-
-      # --- FRONTEND BUILD (THE TWO-IMAGE STRATEGY) ---
-      - name: Build and Push Frontend Images (Azure & AWS)
-        id: build_frontend
-        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
-        run: |
-          FRONTEND_COUNT=$(git rev-list --count HEAD frontend/ || echo "0")
-          FRONTEND_SHORT_SHA=$(git rev-parse --short HEAD)
-          FRONTEND_BASE_TAG="v1.0-${FRONTEND_COUNT}-${FRONTEND_SHORT_SHA}"
-
-          # 1. Compile exactly for AZURE
-          AZURE_TAG="${FRONTEND_BASE_TAG}-azure"
-          docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AZURE }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AZURE_TAG ./frontend
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AZURE_TAG
-
-          # 2. Compile exactly for AWS Disaster Recovery
-          AWS_TAG="${FRONTEND_BASE_TAG}-aws"
-          docker build --build-arg VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AWS }} -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG ./frontend
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG
-
-          # Push the AWS image as 'latest' so the local Integration Test Job 
-          # can easily pull it via docker-compose
-          docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:$AWS_TAG ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
-
-          # Export specific tags for the deployment phase
-          echo "azure_tag=$AZURE_TAG" >> $GITHUB_OUTPUT
-          echo "aws_tag=$AWS_TAG" >> $GITHUB_OUTPUT
-
+      # docker/build-push-action handles BuildKit layer caching via registry
+      # cache-from restores cached layers; cache-to saves them after build
+      - name: Build and Push Backend Image
+        if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ steps.tag.outputs.value }}
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:buildcache,mode=max
 
   # ============================================================================
-  # JOB 2: INTEGRATION TESTING & ARTIFACT STORAGE
+  # JOB: FRONTEND BUILD & PUSH
+  # Builds TWO React images (Azure + AWS) with different VITE_BASE_URI args.
+  # Runs in parallel with backend-build-push.
+  # Skips automatically when no frontend/** files changed.
+  # ============================================================================
+  frontend-build-push:
+    name: 'Build & Push · Frontend (React)'
+    runs-on: ubuntu-24.04
+    needs: [sonar-backend, sonar-frontend-devops]
+    if: success()
+    outputs:
+      frontend_azure_tag: ${{ steps.tag.outputs.azure_tag }}
+      frontend_aws_tag: ${{ steps.tag.outputs.aws_tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Frontend Changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.ref_name }}
+          filters: |
+            frontend:
+              - 'frontend/**'
+
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Docker Hub
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Generate Immutable Image Tags
+        id: tag
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
+        run: |
+          COUNT=$(git rev-list --count HEAD frontend/ || echo "0")
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BASE="v1.0-${COUNT}-${SHORT_SHA}"
+          echo "azure_tag=${BASE}-azure" >> $GITHUB_OUTPUT
+          echo "aws_tag=${BASE}-aws" >> $GITHUB_OUTPUT
+
+      # --- IMAGE 1: Compiled for AZURE ---
+      - name: Build and Push Frontend Image (Azure)
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AZURE }}
+          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.azure_tag }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache-azure
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache-azure,mode=max
+
+      # --- IMAGE 2: Compiled for AWS (also tagged :latest for integration tests) ---
+      - name: Build and Push Frontend Image (AWS)
+        if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: VITE_BASE_URI=${{ secrets.VITE_BASE_URI_AWS }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.aws_tag }}
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache-aws
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:buildcache-aws,mode=max
+  # ============================================================================
+  # SECURITY JOB: TRIVY — Backend
+  # Scans the pushed .NET image. Runs immediately after backend-build-push,
+  # fully independent of the frontend pipeline.
+  # ============================================================================
+  trivy-backend:
+    name: 'Trivy · Backend Image Scan'
+    runs-on: ubuntu-24.04
+    needs: backend-build-push
+    permissions:
+      contents: read
+      security-events: write
+    if: success()
+    # Pass the image tag downstream so deploy can reference it
+    # without needing a direct dependency on backend-build-push
+    outputs:
+      backend_tag: ${{ needs.backend-build-push.outputs.backend_tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Scan Backend Image
+        uses: aquasecurity/trivy-action@v0.35.0
+        if: needs.backend-build-push.outputs.backend_tag != ''
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.backend-build-push.outputs.backend_tag }}
+          exit-code: 0
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
+          scanners: 'vuln,secret'
+
+      - name: Upload Results to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: needs.backend-build-push.outputs.backend_tag != ''
+        with:
+          sarif_file: 'trivy-backend.sarif'
+          category: 'trivy-backend'
+
+  # ============================================================================
+  # SECURITY JOB: TRIVY — Frontend
+  # Scans the pushed React (Azure) image. Runs immediately after
+  # frontend-build-push, fully independent of the backend pipeline.
+  # ============================================================================
+  trivy-frontend:
+    name: 'Trivy · Frontend Image Scan'
+    runs-on: ubuntu-24.04
+    needs: frontend-build-push
+    permissions:
+      contents: read
+      security-events: write
+    if: success()
+    # Pass image tags downstream so deploy can reference them
+    # without needing a direct dependency on frontend-build-push
+    outputs:
+      frontend_azure_tag: ${{ needs.frontend-build-push.outputs.frontend_azure_tag }}
+      frontend_aws_tag: ${{ needs.frontend-build-push.outputs.frontend_aws_tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Scan Frontend Image
+        uses: aquasecurity/trivy-action@v0.35.0
+        if: needs.frontend-build-push.outputs.frontend_azure_tag != ''
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.frontend-build-push.outputs.frontend_azure_tag }}
+          exit-code: 0
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          scanners: 'vuln,secret'
+
+      - name: Upload Results to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: needs.frontend-build-push.outputs.frontend_azure_tag != ''
+        with:
+          sarif_file: 'trivy-frontend.sarif'
+          category: 'trivy-frontend'   
+          
+          
+  # ============================================================================
+  # JOB 3: INTEGRATION TESTING & ARTIFACT STORAGE
   # Spins up an ephemeral environment, runs tests, uploads artifacts to Azure, 
   # notifies stakeholders, and enforces a Quality Gate.
   # ============================================================================
   test:
     runs-on: ubuntu-24.04
-    needs: build-push-images
+    needs: [trivy-backend, trivy-frontend]
     if: success()
     steps:
       - name: Checkout Repository
@@ -268,7 +516,7 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     # Strict dependency mapping: Deploy only if Build and Test succeed
-    needs: [build-push-images, test]
+    needs: [trivy-backend, trivy-frontend, test]
     environment: Production
     if: success()
     steps:
@@ -278,18 +526,18 @@ jobs:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Deploy Backend to Azure Container Apps
-        if: needs.build-push-images.outputs.backend_tag != ''
+        if: needs.trivy-backend.outputs.backend_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-push-images.outputs.backend_tag }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.trivy-backend.outputs.backend_tag }}
           containerAppName: ema2a
           resourceGroup: Ema2a
 
       - name: Deploy Frontend to Azure Container Apps
-        if: needs.build-push-images.outputs.frontend_azure_tag != ''
+        if: needs.trivy-frontend.outputs.frontend_azure_tag != ''
         uses: Azure/container-apps-deploy-action@v2
         with:
           # Crucial: This specifically pulls the tag compiled with the Azure URL
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_azure_tag }}
+          imageToDeploy: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.trivy-frontend.outputs.frontend_azure_tag }}
           containerAppName: ema2a-webserver
           resourceGroup: Ema2a

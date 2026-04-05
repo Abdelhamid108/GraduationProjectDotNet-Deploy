@@ -27,6 +27,8 @@ RUN npm run build
 # ==========================================
 FROM nginx:1.29.6-alpine3.23
 
+RUN apk upgrade --no-cache
+
 # Add metadata for the image
 LABEL maintainer="abdelhameednael27@gmail.com" \
       version="2.0" \
