@@ -121,16 +121,51 @@ jobs:
           # Export specific tags for the deployment phase
           echo "azure_tag=$AZURE_TAG" >> $GITHUB_OUTPUT
           echo "aws_tag=$AWS_TAG" >> $GITHUB_OUTPUT
-
-
   # ============================================================================
-  # JOB 2: INTEGRATION TESTING & ARTIFACT STORAGE
+  # JOB 2: SECURITY TESTING 
+  # Using DevSecOps tools for Security Scaning, 
+  # ============================================================================
+  security_test:
+    runs-on: ubuntu-24.04
+    needs: build-push-images
+    if: success()
+    steps:
+      - name: Scan Backend Image Using Trivy
+        uses: aquasecurity/trivy-action@v0.35.0
+        if: needs.build-push-images.outputs.backend_tag != ''
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-push-images.outputs.backend_tag }}
+          exit-code: 1
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
+          scanners: 'vuln,secret'
+          
+      - name: Scan Frontend Image Using Trivy
+        uses: aquasecurity/trivy-action@v0.35.0
+        if: needs.build-push-images.outputs.frontend_azure_tag != ''
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_azure_tag }}
+          exit-code: 1
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          scanners: 'vuln,secret'
+          
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: '.'  
+          
+  # ============================================================================
+  # JOB 3: INTEGRATION TESTING & ARTIFACT STORAGE
   # Spins up an ephemeral environment, runs tests, uploads artifacts to Azure, 
   # notifies stakeholders, and enforces a Quality Gate.
   # ============================================================================
   test:
     runs-on: ubuntu-24.04
-    needs: build-push-images
+    needs: [build-push-images,security_test]
     if: success()
     steps:
       - name: Checkout Repository
@@ -268,7 +303,7 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     # Strict dependency mapping: Deploy only if Build and Test succeed
-    needs: [build-push-images, test]
+    needs: [build-push-images, test,security_test]
     environment: Production
     if: success()
     steps:
