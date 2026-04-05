@@ -32,21 +32,62 @@ env:
 
 jobs:
 
-  sonarqube:
-    name: SonarQube
-    runs-on: ubuntu-latest
+# ============================================================================
+  # JOB 1: SAST CODE ANALYSIS (SonarQube Cloud)
+  # ============================================================================
+  sonarcloud-scan:
+    name: SonarCloud Code Analysis
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+          fetch-depth: 0  # Required for Sonar to calculate "New Code" vs "Old Code"
+
+      # 1. Sonar's analysis engine requires Java 17 to run
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      # 2. Your backend needs .NET 8 to build
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' 
+
+      # 3. Cache Sonar packages to speed up pipeline execution time
+      - name: Cache SonarQube Cloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # 4. Install the CLI tool
+      - name: Install SonarCloud Scanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      # 5. Inject your secrets so the backend builds successfully
+      - name: Create Backend .env File
+        run: |
+          cd ./backend
+          echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" >> .env
+
+      # 6. Execute the official 3-step MSBuild wrapper
+      - name: Build and Analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=Abdelhamid108_GraduationProjectDotNet-Deploy
-            -Dsonar.organization=abdelhamid108
+        run: |
+          cd ./backend
+          
+          # Using your exact project keys!
+          dotnet-sonarscanner begin /k:"Abdelhamid108_GraduationProjectDotNet-Deploy" /o:"abdelhamid108" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+          
+          dotnet build
+          
+          dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
           
   # ============================================================================
   # JOB 1: BUILD & PUSH
