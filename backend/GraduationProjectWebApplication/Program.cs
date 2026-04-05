@@ -86,7 +86,10 @@ namespace GraduationProjectWebApplication
                 options => options.UseSqlServer(ConnectionString));
 
             builder.Services.AddControllers();
-            builder.Services.AddSignalR();
+            builder.Services.AddSignalR(options =>
+            {
+                options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB
+            });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
