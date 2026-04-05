@@ -57,7 +57,7 @@ namespace GraduationProjectWebApplication.Controllers
 
 
         [HttpPost("finalize-sentence")]
-        [EnableRateLimiting("GeminiLimiter")]
+        //[EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> FinalizeSentence([FromBody] SentenceData data, [FromQuery] string client = "frontend")
         {
            
@@ -196,7 +196,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("generate-audio")]
-        [EnableRateLimiting("GeminiLimiter")]
+        //[EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {
             try
@@ -318,7 +318,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("text-to-speech/hardware")]
-        [EnableRateLimiting("GeminiLimiter")]
+        //[EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult> AzureTTS([FromBody] TTSRequest request, [FromQuery] string format = "mp3")
         {
             try
