@@ -13,7 +13,9 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - "docker-compose.yml"
+      - "DevOps/**"
+      - "docker-compose*.yml"
+      - "**/Dockerfile"
   workflow_dispatch:
     inputs:
       FiRST-RUN:
@@ -32,73 +34,134 @@ env:
 
 jobs:
 
-# ============================================================================
-  # JOB 1: SAST CODE ANALYSIS (SonarQube Cloud)
   # ============================================================================
-  sonarcloud-scan:
-    name: SonarCloud Code Analysis
+  # SAST GATE — 2 parallel SonarCloud jobs.
+  # build-push-images waits for BOTH before proceeding.
+  # Hardware and Flutter are analyzed in their own dedicated workflow files.
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # SAST JOB 1 — Backend (.NET 8 / ASP.NET Core)
+  # Uses the official dotnet-sonarscanner MSBuild wrapper (begin → build → end)
+  # ---------------------------------------------------------------------------
+  sonar-backend:
+    name: 'Sonar · Backend (.NET)'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for Sonar to calculate "New Code" vs "Old Code"
+          fetch-depth: 0
 
-      # 1. Sonar's analysis engine requires Java 17 to run
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: 'zulu'
 
-      # 2. Your backend needs .NET 8 to build
-      - name: Setup .NET SDK
+      - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' 
+          dotnet-version: '8.0.x'
 
-      # 3. Cache Sonar packages to speed up pipeline execution time
-      - name: Cache SonarQube Cloud packages
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/backend/**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Cache SonarCloud Packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      # 4. Install the CLI tool
-      - name: Install SonarCloud Scanner
+      - name: Install dotnet-sonarscanner
         run: dotnet tool install --global dotnet-sonarscanner
 
-      # 5. Inject your secrets so the backend builds successfully
       - name: Create Backend .env File
-        run: |
-          cd ./backend
-          echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" >> .env
+        run: echo "${{ secrets.EMA2A_ENV_FILE_CONTENT }}" > ./backend/.env
 
-      # 6. Execute the official 3-step MSBuild wrapper
       - name: Build and Analyze
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd ./backend
-          
-          # Using your exact project keys!
-          dotnet-sonarscanner begin /k:"Abdelhamid108_GraduationProjectDotNet-Deploy" /o:"abdelhamid108" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          
+          dotnet-sonarscanner begin \
+            /k:"Abdelhamid108_GraduationProjectDotNet-Deploy" \
+            /o:"abdelhamid108" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io"
           dotnet build
-          
           dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-          
+
+  # ---------------------------------------------------------------------------
+  # SAST JOB 2 — Frontend (React/TS) + DevOps (Terraform, Ansible, Docker)
+  # Combined into one SonarCloud project. Runs from repo root.
+  # Config: sonar-frontend-devops.properties
+  # ---------------------------------------------------------------------------
+  sonar-frontend-devops:
+    name: 'Sonar · Frontend + DevOps'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Cache SonarCloud Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Install frontend deps so Sonar can resolve TypeScript types
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install SonarScanner CLI
+        run: npm install -g sonar-scanner
+
+      # Run from repo root — sonar-frontend-devops.properties references
+      # both frontend/src and DevOps/** with paths relative to repo root
+      - name: Run Sonar Analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dproject.settings=sonar-frontend-devops.properties \
+            -Dsonar.token="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.host.url="https://sonarcloud.io"
+
   # ============================================================================
-  # JOB 1: BUILD & PUSH
+  # JOB 2: BUILD & PUSH
   # Builds Docker images conditionally based on changed paths and pushes them
   # to Docker Hub with immutable, traceable tags.
-  # Strictly compiles TWO separate Frontend images to guarantee perfect URL 
+  # Strictly compiles TWO separate Frontend images to guarantee perfect URL
   # resolution in both Azure and AWS.
   # ============================================================================
   build-push-images:
     runs-on: ubuntu-24.04
-    needs: sonarcloud-scan
+    needs: [sonar-backend, sonar-frontend-devops]
     if: success()
     outputs:
       backend_tag: ${{ steps.build_backend.outputs.tag }}
