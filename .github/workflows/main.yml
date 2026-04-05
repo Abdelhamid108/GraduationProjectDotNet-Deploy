@@ -31,6 +31,23 @@ env:
   FRONTEND_IMAGE: 'graduationproject-frontend'
 
 jobs:
+
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=Abdelhamid108_GraduationProjectDotNet-Deploy
+            -Dsonar.organization=abdelhamid108
+          
   # ============================================================================
   # JOB 1: BUILD & PUSH
   # Builds Docker images conditionally based on changed paths and pushes them
@@ -40,6 +57,8 @@ jobs:
   # ============================================================================
   build-push-images:
     runs-on: ubuntu-24.04
+    needs: sonarqube
+    if: success()
     outputs:
       backend_tag: ${{ steps.build_backend.outputs.tag }}
       frontend_azure_tag: ${{ steps.build_frontend.outputs.azure_tag }}
