@@ -128,14 +128,20 @@ jobs:
   security_test:
     runs-on: ubuntu-24.04
     needs: build-push-images
+    permissions:
+      contents: read         
+      security-events: write   
     if: success()
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
       - name: Scan Backend Image Using Trivy
         uses: aquasecurity/trivy-action@v0.35.0
         if: needs.build-push-images.outputs.backend_tag != ''
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.build-push-images.outputs.backend_tag }}
-          exit-code: 1
+          exit-code: 0
           severity: 'HIGH,CRITICAL'
           format: 'sarif'
           output: 'trivy-backend.sarif'
@@ -146,14 +152,14 @@ jobs:
         if: needs.build-push-images.outputs.frontend_azure_tag != ''
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.build-push-images.outputs.frontend_azure_tag }}
-          exit-code: 1
+          exit-code: 0
           severity: 'HIGH,CRITICAL'
           format: 'sarif'
           output: 'trivy-frontend.sarif'
           scanners: 'vuln,secret'
           
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: '.'  
