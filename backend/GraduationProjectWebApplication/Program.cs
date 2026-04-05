@@ -10,7 +10,6 @@ using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -122,7 +121,7 @@ namespace GraduationProjectWebApplication
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
-                options.CallbackPath = "/api/signin-google";
+                options.CallbackPath = "/signin-google";
             });
 
             /*=================== Swagger ===================*/
@@ -317,6 +316,9 @@ namespace GraduationProjectWebApplication
 
             /*============ To Get User Instance In a service ============*/
             builder.Services.AddHttpContextAccessor();
+            
+            /*=================== Health Checks Registration ===================*/
+            builder.Services.AddHealthChecks();
 
 
             var app = builder.Build();
@@ -343,21 +345,9 @@ namespace GraduationProjectWebApplication
             }
 
             /*=================== Middleware Pipeline ===================*/
-
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-                // ??? ?????? ???? ??????? ??? ?? Nginx ????? ?????? (mooo.com) ??????????? (https) ???? ????
-                KnownNetworks = { },
-                KnownProxies = { }
-            });
-
             app.UseStaticFiles();
             app.UseRouting();
             app.UseCors("AllowPublicCORS");
-
-
-
             app.UseAuthentication();
 
             /* ---- Rate Limiter (MUST come here) ---- */
@@ -383,6 +373,9 @@ namespace GraduationProjectWebApplication
 
             app.MapControllers();
             app.MapHub<SignHub>("/signHub");
+            
+            /*=================== Map Health Checks Endpoint ===================*/
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
