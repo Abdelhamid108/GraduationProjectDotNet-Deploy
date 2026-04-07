@@ -51,11 +51,22 @@ services:
       ARCHIVE_PATH: ${ARCHIVE_PATH:-./Dev}
       BACKEND_URL: ${BACKEND_URL:-http://backend:5001}
       BACKEND_HOST: ${BACKEND_HOST:-backend:5001}
+      TTS_SERVICE_URL: ${TTS_SERVICE_URL:-http://tts_service:8000}  
     depends_on:
       - backend
     networks:
       - api_network
-
+  
+  tts_service:
+    build:
+      context: ./backend/GraduationProjectTTS_Service
+      dockerfile: Dockerfile
+          
+    ports:
+      - "8000:8000"
+    networks:
+      - api_network    
+        
   database: 
     image: mcr.microsoft.com/mssql/server:2025-latest
     environment:
