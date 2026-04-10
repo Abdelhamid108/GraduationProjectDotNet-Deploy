@@ -1,8 +1,13 @@
 ﻿using GraduationProjectWebApplication.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.CognitiveServices.Speech;
+using Microsoft.CognitiveServices.Speech.Audio;
 using Newtonsoft.Json;
+using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GraduationProjectWebApplication.Controllers
@@ -16,12 +21,14 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly HttpClient _httpClient;
         private readonly string? generateTextFromAudioAPIKey;
         private readonly string? generateTextFromAudioBackupAPIKey;
+        private readonly string? _azureSpeechKey;
         private readonly ILogger<ArabicLanguageTranslatorController> _logger;
         public ArabicLanguageTranslatorController(HttpClient httpClient, IConfiguration configuration, ILogger<ArabicLanguageTranslatorController> logger)
         {
             _httpClient = httpClient;
             generateTextFromAudioAPIKey = configuration["GENERATE_TEXT_FROM_AUDIO_KEY"];
             generateTextFromAudioBackupAPIKey = configuration["GENERATE_TEXT_FROM_AUDIO_BACKUP_KEY"];
+            _azureSpeechKey = configuration["HARDWARE_TTS_KEY"];
             _logger = logger;
         }
 
@@ -210,6 +217,7 @@ namespace GraduationProjectWebApplication.Controllers
             }
         }
 
+
         [HttpGet("letters-keyboard")]
         [EnableRateLimiting("ArabicLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> LettersKeyboard([FromQuery] char letter)
@@ -264,6 +272,170 @@ namespace GraduationProjectWebApplication.Controllers
                     (int)HttpStatusCode.InternalServerError,
                     ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
             }
+        }
+
+
+        [HttpPost("azure-audio-to-text")]
+        public async Task<ActionResult<APIResponseDTO<string>>> AzureAudioToText([FromBody] TranscriptionRequest request)
+        {
+            _logger.LogInformation("AzureAudioToText called. AudioData length: {A}, MimeType: {M}",
+                request.AudioData?.Length ?? 0, request.MimeType ?? "null");
+
+            if (string.IsNullOrEmpty(request.AudioData) || string.IsNullOrEmpty(request.MimeType))
+            {
+                _logger.LogWarning("Invalid request: AudioData or MimeType is missing.");
+                return BadRequest(ErrorResponse<string>("Audio data or MIME type not provided."));
+            }
+
+            const int maxBase64Length = 14_000_000;
+            if (request.AudioData.Length > maxBase64Length)
+            {
+                _logger.LogWarning("AudioData exceeds size limit. Size: {Size}", request.AudioData.Length);
+                return BadRequest(ErrorResponse<string>("Audio data exceeds the maximum allowed size."));
+            }
+
+            byte[] audioBytes;
+            try
+            {
+                audioBytes = Convert.FromBase64String(request.AudioData);
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogWarning(ex, "AudioData is not valid base64.");
+                return BadRequest(ErrorResponse<string>("AudioData is not valid base64-encoded content."));
+            }
+
+            try
+            {
+                // Azure REST API only accepts WAV PCM or OGG Opus.
+                // We always convert to WAV to guarantee compatibility.
+                byte[] wavBytes = await ConvertToWavAsync(audioBytes);
+                _logger.LogInformation("Audio converted to WAV. Size: {Size} bytes", wavBytes.Length);
+
+                // Exact Content-Type required by Azure docs
+                const string azureContentType = "audio/wav; codecs=audio/pcm; samplerate=16000";
+                const string azureUrl = "https://eastus.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=ar-EG";
+
+                using var content = new ByteArrayContent(wavBytes);
+                content.Headers.TryAddWithoutValidation("Content-Type", azureContentType);
+
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, azureUrl);
+                httpRequest.Headers.Add("Ocp-Apim-Subscription-Key", _azureSpeechKey);
+                httpRequest.Headers.Add("Accept", "application/json");
+                httpRequest.Content = content;
+
+                _logger.LogInformation("Sending WAV to Azure Speech REST API.");
+                HttpResponseMessage response = await _httpClient.SendAsync(httpRequest);
+                string responseBody = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation("Azure response: {Status} — {Body}", response.StatusCode, responseBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Azure Speech API error. Status: {Status}, Body: {Body}",
+                        response.StatusCode, responseBody);
+                    return StatusCode(
+                        (int)HttpStatusCode.BadGateway,
+                        ErrorResponse<string>($"Azure Speech API error: {response.StatusCode}"));
+                }
+
+                var result = JsonConvert.DeserializeObject<AzureSpeechResponse>(responseBody);
+
+                if (result?.RecognitionStatus == "Success" && !string.IsNullOrEmpty(result.DisplayText))
+                {
+                    _logger.LogInformation("Transcription successful: {Text}", result.DisplayText);
+                    return Ok(SuccessResponse(result.DisplayText));
+                }
+
+                _logger.LogWarning("Recognition status: {Status}", result?.RecognitionStatus);
+                return StatusCode(
+                    (int)HttpStatusCode.UnprocessableEntity,
+                    ErrorResponse<string>($"Speech recognition was not successful: {result?.RecognitionStatus}"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in AzureAudioToText.");
+                return StatusCode(
+                    (int)HttpStatusCode.InternalServerError,
+                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Converts any audio format to 16kHz 16-bit mono WAV.
+        /// Uses NAudio on Windows, FFmpeg on Linux.
+        /// </summary>
+        private async Task<byte[]> ConvertToWavAsync(byte[] inputAudio)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return ConvertToWavWindows(inputAudio);
+            else
+                return await ConvertToWavLinuxAsync(inputAudio);
+        }
+
+        private static byte[] ConvertToWavWindows(byte[] inputAudio)
+        {
+            string tempInput = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
+            try
+            {
+                System.IO.File.WriteAllBytes(tempInput, inputAudio);
+
+                using var reader = new NAudio.Wave.MediaFoundationReader(tempInput);
+                using var resampler = new NAudio.Wave.MediaFoundationResampler(
+                    reader,
+                    new NAudio.Wave.WaveFormat(16000, 16, 1)
+                );
+                using var ms = new MemoryStream();
+                NAudio.Wave.WaveFileWriter.WriteWavFileToStream(ms, resampler);
+                return ms.ToArray();
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempInput))
+                    System.IO.File.Delete(tempInput);
+            }
+        }
+
+        private async Task<byte[]> ConvertToWavLinuxAsync(byte[] inputAudio)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = "-y -i pipe:0 -ar 16000 -ac 1 -acodec pcm_s16le -f wav pipe:1",
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi)
+                ?? throw new InvalidOperationException("ffmpeg could not be started.");
+
+            var writeTask = Task.Run(async () =>
+            {
+                await process.StandardInput.BaseStream.WriteAsync(inputAudio);
+                process.StandardInput.BaseStream.Close();
+            });
+
+            var readOutputTask = Task.Run(async () =>
+            {
+                using var ms = new MemoryStream();
+                await process.StandardOutput.BaseStream.CopyToAsync(ms);
+                return ms.ToArray();
+            });
+
+            var stderrTask = process.StandardError.ReadToEndAsync();
+
+            await Task.WhenAll(writeTask, readOutputTask, stderrTask);
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError("FFmpeg failed. Stderr: {Stderr}", await stderrTask);
+                throw new InvalidOperationException($"FFmpeg failed with exit code {process.ExitCode}.");
+            }
+
+            return await readOutputTask;
         }
 
     }

@@ -1,6 +1,55 @@
+
+terraform {
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~> 6.0" }
+    cloudflare = { source = "cloudflare/cloudflare", version = "~> 5.0" }
+    infisical = { source = "infisical/infisical" }
+  }
+}
+
 # Configure the AWS Provider
 provider "aws" {
-  region  = "us-east-1"
+  region  = var.aws_region
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+provider "infisical" {
+  auth = {
+    universal = {
+      client_id     = var.infisical_client_id
+      client_secret = var.infisical_client_secret
+    }
+  }
+}
+
+data "aws_vpc" "default" {
+  default = true
+}
+
+# Fetch all subnets in the default VPC
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+data "aws_ami" "ema2a_ami" {
+  owners = ["self"]
+ 
+  filter {
+    name   = "tag:Project"
+    values = ["ema2a"]
+  }
+  
+  filter {
+    name   = "tag:Component"
+    values = ["server-ami"]
+  }
+  
 }
 
 # Create a Key Pair using an existing public key on the local machine
@@ -9,28 +58,90 @@ resource "aws_key_pair" "devops_ema2a" {
   public_key = file("~/.ssh/ema2a.pub")
 }
 
-# Create an EC2 Instance
-resource "aws_instance" "ema2a_server" {
-  ami           = "ami-0fa3fe0fa7920f68e" # Ubuntu AMI (Verify region/OS)
-  instance_type = "c7i-flex.large"
-  key_name      = aws_key_pair.devops_ema2a.key_name
+# Create an Empty role for instance to use when fetching secrets
+module "iam_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
+
+  name = "ema2a-instance-profile"
   
-  root_block_device {
-    volume_size = 20
+  create_instance_profile = true
+
+  trust_policy_permissions = {
+    TrustRoleAndServiceToAssume = {
+      actions = [
+        "sts:AssumeRole",
+        "sts:TagSession",
+      ]
+      principals = [
+        {
+          type = "Service"
+          identifiers = [
+            "ec2.amazonaws.com",
+          ]
+        }
+      ]
+    }
   }
-  # Attach the Security Group
-  vpc_security_group_ids = [aws_security_group.ema2a_sg.id]
+  
   tags = {
-       Name = "Ema2a-Server"
+    Terraform   = "true"
+    Environment = "dev"
+    Project     = "ema2a"
   }
 }
 
-# Create an Elastic IP (EIP) and associate it with the instance
-# This ensures the instance has a static public IP address
-resource "aws_eip" "ema2a_public_ip" {
-  instance = aws_instance.ema2a_server.id
-  domain   = "vpc"
+module "ec2_instance" {
+  ami = data.aws_ami.ema2a_ami.id
+  create = true 
+   
+  subnet_id = data.aws_subnets.default.ids[0]
+
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  associate_public_ip_address = true
+  name = "ema2a-backup-deployment-server"
+  
+  create_eip             = true
+  iam_instance_profile   = module.iam_role.instance_profile_name
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.devops_ema2a.key_name
+  monitoring             = true
+  vpc_security_group_ids = [aws_security_group.ema2a_sg.id]
+  tags = {
+    Terraform   = "true"
+    Environment = "dev"
+    Project     = "ema2a"
+  }
+  root_block_device = {
+    size       = var.instance_root_volume_size
+  }
 }
+
+
+module "alarm_metric_query" {
+  source = "terraform-aws-modules/cloudwatch/aws//modules/metric-alarm"
+
+  alarm_name          = "auto stop ec2"
+  alarm_description   = "Alarm For Stoping the server if there is no traffic"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 3
+  threshold           = 2
+
+
+      namespace   = "AWS/EC2"
+      metric_name = "CPUUtilization"
+      period      = 300
+      statistic   = "Average"
+      dimensions  = {
+        InstanceId = module.ec2_instance.id
+      }
+
+  alarm_actions = ["arn:aws:automate:us-east-1:ec2:stop"]
+
+  tags = {
+    Project = "ema2a" 
+  }
+}
+
 
 # Create a Security Group to control traffic
 resource "aws_security_group" "ema2a_sg" {
@@ -93,10 +204,146 @@ resource "aws_security_group_rule" "allow_all_outbound" {
   security_group_id = aws_security_group.ema2a_sg.id
 }
 
+module "iam_policy" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
+
+  name        = "ema2a-lambda-function"
+  path        = "/"
+  description = "Function to start ema2a server"
+
+  policy = <<-EOF
+     {
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "VisualEditor0",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:StartInstances",
+				"ec2:StopInstances"
+			],
+			"Resource": "${module.ec2_instance.arn}"
+		},
+		{
+			"Sid": "VisualEditor1",
+			"Effect": "Allow",
+			"Action": "ec2:DescribeInstances",
+			"Resource": "*"
+		}
+	]
+    }  
+  EOF
+
+  tags = {
+    Terraform   = "true"
+    Environment = "dev"
+    Project     = "ema2a"
+  }
+}
+
+module "lambda_function" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "ema2a-lambda"
+  description   = "Lambda Function To start Deployment server"
+  handler       = "index.lambda_handler"
+  runtime       = "python3.12"
+  source_path = "./lambda_src"
+  
+  publish       = true
+  create_role   = true
+  attach_policy = true
+  policy        = module.iam_policy.arn
+
+  environment_variables = {
+    INSTANCE_ID = "${module.ec2_instance.id}"
+  }
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    Name = "my-lambda1"
+    project = "ema2a"
+  }
+}
+module "api_gateway" {
+  source = "terraform-aws-modules/apigateway-v2/aws"
+
+  name          = "ema2a-api-gateway"
+  description   = "ema2a api gateway for starting the server"
+  protocol_type = "HTTP"
+
+
+  # Domain Name
+  domain_name           = var.domain_name
+  create_domain_records = false
+  create_certificate    = false
+  domain_name_certificate_arn = var.certificate_arn
+
+
+  # Routes & Integration(s)
+  routes = {
+    "GET /" = {
+      integration = {
+        uri = module.lambda_function.lambda_function_arn
+        payload_format_version = "2.0"
+      }
+    }
+  }
+
+  tags = {
+    Environment = "dev"
+    Terraform   = "true"
+  }
+}
+
+resource "cloudflare_dns_record" "server_dns_record" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.server_dns_record_name
+  type    = "A"
+  comment = "Backup Deployments Server Domain verification record"
+  content = module.ec2_instance.public_ip
+  proxied = true
+  ttl     = 1
+}
+resource "cloudflare_dns_record" "api-gateway_dns_record" {
+  zone_id = var.cloudflare_zone_id
+  name    = "start"
+  type    = "CNAME"
+  comment = "Start Server API Gateway Domain verification record"
+  content = module.api_gateway.domain_name_target_domain_name
+  proxied = false
+  ttl     = 3600
+}
+
+resource "infisical_identity_aws_auth" "aws-auth" {
+  identity_id            = var.infisical_identity_id
+  sts_endpoint           = "https://sts.us-east-1.amazonaws.com/"
+  allowed_account_ids    = [var.infisical_allowed_account_id]
+  allowed_principal_arns = [module.iam_role.arn]
+  access_token_ttl       = 2592000
+  access_token_max_ttl   = 2592000
+
+  access_token_trusted_ips = [
+    { ip_address = "0.0.0.0/0" }
+  ]
+}
+output "cloudflare_target_url" {
+  value       = module.api_gateway.domain_name_target_domain_name
+  description = "Paste this into Cloudflare as your CNAME target (Grey Cloud!)"
+}
 # Output the Elastic IP of the server
 output "ema2a_server_ip" { 
-  value       = aws_eip.ema2a_public_ip.public_ip
+  value       = module.ec2_instance.public_ip
   description = "The public IP address of the ema2a server"
 }
 
 
+output "iam_role_arn" {
+  value       = module.iam_role.arn
+  description = "The arn For iam role for Infisical Secrets"
+}

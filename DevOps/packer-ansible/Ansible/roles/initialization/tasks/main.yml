@@ -1,0 +1,27 @@
+---
+# This task is crucial for Debian/Ubuntu before installing packages.
+- name: update cache (neccecary for debian and ubuntu based)
+  apt:
+    update_cache: yes
+  # This only runs on Debian-based systems (like Ubuntu).
+  when: ansible_os_family == "Debian"
+  # This prevents the task from showing "changed" every time it runs.
+  changed_when: false
+
+- name: Add Infisical repository
+  shell:
+    cmd: curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash    
+
+# Installs common tools that are useful on any server.
+- name: install important needed packages 
+  package:
+    name: 
+    # - curl
+      - vim
+      - git
+      - acl # Access Control List utilities
+      - python3-pip  
+      - infisical  
+    update_cache: yes
+    state: present
+

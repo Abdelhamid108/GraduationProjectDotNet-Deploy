@@ -85,7 +85,10 @@ namespace GraduationProjectWebApplication
                 options => options.UseSqlServer(ConnectionString));
 
             builder.Services.AddControllers();
-            builder.Services.AddSignalR();
+            builder.Services.AddSignalR(options =>
+            {
+                options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB
+            });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddHttpClient();
@@ -316,6 +319,9 @@ namespace GraduationProjectWebApplication
 
             /*============ To Get User Instance In a service ============*/
             builder.Services.AddHttpContextAccessor();
+            
+            /*=================== Health Checks Registration ===================*/
+            builder.Services.AddHealthChecks();
 
 
             var app = builder.Build();
@@ -370,6 +376,9 @@ namespace GraduationProjectWebApplication
 
             app.MapControllers();
             app.MapHub<SignHub>("/signHub");
+            
+            /*=================== Map Health Checks Endpoint ===================*/
+            app.MapHealthChecks("/health");
 
             app.Run();
         }

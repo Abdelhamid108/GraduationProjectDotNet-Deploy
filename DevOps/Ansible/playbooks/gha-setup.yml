@@ -1,8 +1,0 @@
----
-# This Playbook for Setuping A server for CI/CD process Using GitHub Actions
-- name: Setup Server Environment Fot GitHub actions ssh connections 
-  hosts: all
-  gather_facts: no
-  roles:
-    # This role responsible for creating a deploy user and setuping the ssh connection
-    - github_actions_ssh_setup

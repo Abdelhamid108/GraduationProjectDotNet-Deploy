@@ -1,0 +1,34 @@
+---
+
+- name: pull the repo 
+  ansible.builtin.git:
+    repo: 'https://github.com/Abdelhamid108/GraduationProjectDotNet-Deploy.git'
+    dest: /opt/ema2a-app
+    clone: yes
+    version: DEV
+    single_branch: yes  
+
+- name: Hand over ownership to the github user
+  ansible.builtin.file:
+    path: /opt/ema2a-app
+    owner: github
+    group: github
+    state: directory
+    recurse: yes      
+
+- name: transfer systemd file 
+  template:
+    src: files/ema2a-app.serivce.j2  
+    dest: /etc/systemd/system/ema2a-app.service
+    owner: root
+    group: root
+    mode: '0644'
+  vars:
+    infisical_identity_id: "dd22bb8a-6524-475b-a2ad-5080da6ac999"   
+    infisical_project_id: "8289c0bc-5bf9-458d-b86d-3d16276fed55"
+
+- name: enable the application serivce to run on boot
+  ansible.builtin.systemd:
+    name: ema2a-app.service
+    enabled: yes
+    daemon_reload: yes  

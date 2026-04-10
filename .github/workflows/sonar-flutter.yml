@@ -1,0 +1,82 @@
+name: Sonar · Flutter Mobile
+
+# -----------------------------------------------------------------------
+# Triggered ONLY when Flutter/mobile code changes.
+# Runs flutter test --coverage then uploads results to SonarCloud.
+# Runs independently from the main CI/CD pipeline.
+# -----------------------------------------------------------------------
+on:
+  push:
+    branches:
+      - "DEV"
+      - "main"
+    paths:
+      - "flutter/**"
+  pull_request:
+    branches:
+      - "DEV"
+      - "main"
+    paths:
+      - "flutter/**"
+  workflow_dispatch:
+
+jobs:
+  sonar-flutter:
+    name: 'Sonar · Mobile (Flutter/Dart)'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # SonarScanner requires JDK 17 as its runtime
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      # Flutter SDK — version matches pubspec.yaml: sdk ^3.10.0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: 'stable'
+          cache: true
+
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('flutter/pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+
+      - name: Cache SonarCloud Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Install Dependencies
+        working-directory: flutter
+        run: flutter pub get
+
+      # '|| true' — Sonar runs regardless of test failures
+      - name: Run Tests with Coverage
+        working-directory: flutter
+        run: flutter test --coverage || true
+
+      - name: Install SonarScanner CLI
+        run: npm install -g sonar-scanner
+
+      - name: Run Sonar Analysis
+        working-directory: flutter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dsonar.token="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.host.url="https://sonarcloud.io"

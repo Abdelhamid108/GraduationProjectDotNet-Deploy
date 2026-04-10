@@ -1,0 +1,59 @@
+name: "CodeQL & Security Scans"
+
+on:
+  workflow_dispatch: 
+  push:
+    branches: [ "main" ]
+
+jobs:
+  # =========================================================
+  # JOB: CODEQL FOR BACKEND (C#) & FRONTEND (JS/TS)
+  # Deep semantic analysis for SQLi, XSS, and logic flaws.
+  # =========================================================
+  codeql-analyze:
+    name: CodeQL Scan (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # CodeQL natively supports C# and JavaScript/TypeScript
+        language: [ 'csharp', 'javascript-typescript' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # "extended" gives you the highest level of security scanning available
+        queries: security-extended,security-and-quality
+
+    # CodeQL requires compiled languages (C#) to be built before scanning.
+    # We only run this step if the current matrix language is C#.
+    - name: Setup .NET (for C#)
+      if: matrix.language == 'csharp'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Matches your backend version in the main pipeline
+
+    - name: Build C# Backend
+      if: matrix.language == 'csharp'
+      # Restoring dependencies and building the backend for the CodeQL tracer
+      run: |
+        cd ./backend
+        dotnet restore
+        dotnet build 
+
+    # CodeQL Analysis Phase
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"

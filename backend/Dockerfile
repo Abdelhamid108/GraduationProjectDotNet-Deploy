@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 
 WORKDIR /src
 
@@ -14,15 +14,20 @@ RUN dotnet restore GraduationProjectWebApplication/GraduationProjectWebApplicati
 RUN dotnet publish -c Release -o /app/publish
 
 # Stage 2: Create the final runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS runtime
 
 WORKDIR /app
 
+# Update Packages for security reasons 
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends libgomp1 curl tini \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy published files from build stage
-COPY --from=build /app/publish .
+COPY --chown=app:app  --from=build /app/publish .
 
 # Copy AImodel files into container 
-COPY GraduationProjectWebApplication/AIModels/ ./AIModels
+COPY --chown=app:app GraduationProjectWebApplication/AIModels/ ./AIModels
 
 # Document that the container listens on port 5001 at runtime
 EXPOSE 5001
@@ -43,5 +48,12 @@ ENV DOTNET_GCHeapHardLimit=0x60000000
 # Enable concurrent GC for better responsiveness
 ENV DOTNET_gcConcurrent=1
 
-# Set entry point
-ENTRYPOINT ["dotnet", "GraduationProjectWebApplication.dll"]
+USER app
+
+# Healthcheck to ensure the app is actually responding
+HEALTHCHECK --interval=30s --timeout=5s --start-period=80s --retries=3 \
+            CMD curl -f http://localhost:5001/health || exit 1
+
+# Start gracefully using tini
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["dotnet", "GraduationProjectWebApplication.dll"]

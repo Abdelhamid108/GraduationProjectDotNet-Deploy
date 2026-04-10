@@ -1,575 +1,553 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign Language Translator · Real‑time</title>
-    <!-- Tailwind + fonts + icons (from second template) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- SignalR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحويل النص العربي إلى لغة الإشارة</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #e74c3c;
+            --secondary-dark: #c0392b;
+            --accent: #9b59b6;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --text: #333;
+            --text-light: #777;
+            --gradient-start: #6a11cb;
+            --gradient-end: #2575fc;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f0f4ff 0%, #e6e6ff 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
         }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #e2e8f0;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
-        .card {
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.85);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            animation: fadeIn 0.8s ease;
         }
-        .video-container {
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
             position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-        .video-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.05));
-            pointer-events: none;
-        }
-        .status-indicator {
             display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
         }
-        .status-active {
-            background-color: #10B981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
-        }
-        .status-inactive {
-            background-color: #EF4444;
-        }
-        .detection-box {
-            transition: all 0.3s ease;
-            min-height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(to right, #f0f9ff, #e0f2fe);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-        .sentence-box {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .sentence-box::before {
+
+        h1::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(to bottom, #3B82F6, #2563EB);
+            bottom: -10px;
+            left: 25%;
+            width: 50%;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            border-radius: 2px;
         }
-        .pulse-animation {
-            animation: pulse 2s infinite;
+
+        .description {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            max-width: 80%;
+            margin: 0 auto;
+            margin-top: 8px;
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+
+        .input-section { margin-bottom: 30px; }
+
+        textarea {
+            width: 100%;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            min-height: 150px;
+            resize: vertical;
+            transition: var(--transition);
+            background: var(--light);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .btn {
-            transition: all 0.2s ease;
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
         }
-        .btn:active {
-            transform: scale(0.97);
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
         }
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 16px;
-            border-radius: 12px;
+
+        button:hover::before { left: 100%; }
+        button:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+        #convertBtn {
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        #recordBtn {
+            background: linear-gradient(to right, var(--secondary), var(--secondary-dark));
+            color: white;
+        }
+
+        #recordBtn.recording {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Loading */
+        .loading { text-align: center; display: none; margin: 30px 0; }
+
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Error */
+        .error {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            border-left: 4px solid var(--secondary);
+            display: none;
+        }
+
+        /* Result */
+        .result { margin-top: 40px; }
+
+        .word-container {
             background: white;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            transform: translateX(100%);
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.5s ease;
+        }
+
+        .word-label {
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed #eee;
             display: flex;
             align-items: center;
-            gap: 12px;
-            max-width: 350px;
+            gap: 10px;
         }
-        .notification.show {
-            transform: translateX(0);
-            opacity: 1;
+
+        .word-label i { color: var(--accent); }
+
+        .letters-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
         }
-        .notification.error {
-            border-left: 4px solid #EF4444;
+
+        .letter-container {
+            text-align: center;
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+            transform: translateY(20px);
         }
-        .notification.success {
-            border-left: 4px solid #10B981;
+
+        .letter-image-container {
+            width: 120px; height: 150px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(145deg, var(--primary), var(--primary-dark));
+            box-shadow: var(--shadow);
+            overflow: hidden;
         }
-        .notification.info {
-            border-left: 4px solid #3B82F6;
+
+        .letter-image {
+            max-width: 90%; max-height: 90%;
+            object-fit: contain;
+            animation: bounceIn 0.8s ease forwards;
         }
-        .mirror-video {
-            transform: scaleX(-1);
+
+        .letter-label {
+            margin-top: 15px;
+            font-weight: bold;
+            color: var(--dark);
+            font-size: 1.1rem;
+            background: var(--light);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: inline-block;
         }
-        /* extra padding for single sentence display */
-        .accumulated-letters {
-            font-family: monospace;
-            background: #f8fafc;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            margin-top: 0.25rem;
-            color: #1e293b;
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-light); }
+        .empty-state i { font-size: 3rem; margin-bottom: 20px; color: #ddd; display: block; }
+
+        footer { text-align: center; margin-top: 40px; color: var(--text-light); font-size: 0.9rem; }
+
+        /* Animations */
+        @keyframes fadeIn   { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes slideIn  { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin     { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0   rgba(231,76,60,0.7); }
+            70%  { box-shadow: 0 0 0 15px rgba(231,76,60,0);   }
+            100% { box-shadow: 0 0 0 0   rgba(231,76,60,0);   }
+        }
+        @keyframes bounceIn {
+            0%   { opacity:0; transform:scale(0.3);  }
+            50%  { opacity:1; transform:scale(1.05); }
+            70%  {            transform:scale(0.9);  }
+            100% { opacity:1; transform:scale(1);    }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            h1 { font-size: 2rem; }
+            .description { max-width: 100%; }
+            .button-group { flex-direction: column; }
+            button { width: 100%; }
+            .letter-image-container { width: 100px; height: 130px; }
         }
     </style>
 </head>
-<body class="min-h-screen p-4 sm:p-6 flex items-center justify-center">
-    <div class="card rounded-2xl p-6 sm:p-8 w-full max-w-2xl">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
-                Sign Language Translator
-            </h1>
-            <p class="text-gray-600">Real‑time detection – one sentence at a time</p>
-        </div>
+<body>
+    <div class="container">
+        <header>
+            <h1>تحويل النص العربي إلى لغة الإشارة</h1>
+            <p class="description">أدخل النص العربي أو سجله صوتياً لتحويله إلى لغة الإشارة وعرض الحروف بطريقة تفاعلية جميلة</p>
+        </header>
 
-        <!-- Video stream area -->
-        <div class="video-container mb-6">
-            <video id="video" class="w-full h-auto block mirror-video" autoplay playsinline></video>
-            <div class="video-overlay"></div>
-        </div>
+        <div class="input-section">
+            <textarea id="arabicText" placeholder="أدخل النص العربي هنا..."></textarea>
 
-        <!-- Controls and status -->
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
-            <div class="flex items-center">
-                <span id="statusIndicator" class="status-indicator status-inactive"></span>
-                <span id="statusMessage" class="text-gray-700 font-medium">Initializing...</span>
-            </div>
-            <div class="flex gap-2">
-                <button id="startBtn" 
-                        class="btn px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 w-full sm:w-auto pulse-animation">
-                    <i class="fas fa-video"></i> Start
+            <div class="button-group">
+                <button id="convertBtn">
+                    <i class="fas fa-language"></i>
+                    تحويل النص
                 </button>
-                <button id="stopBtn" 
-                        class="btn px-6 py-3 bg-gray-500 text-white font-semibold rounded-xl shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400">
-                    <i class="fas fa-stop"></i> Stop
+                <button id="recordBtn">
+                    <i class="fas fa-microphone"></i>
+                    <span id="recordLabel">تسجيل صوتي</span>
                 </button>
             </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">جاري تحويل النص، يرجى الانتظار...</p>
+            </div>
+
+            <div id="error" class="error"></div>
         </div>
 
-        <!-- Current letter (translation) + accumulated letters hint -->
-        <div class="detection-box rounded-xl p-5 mb-6">
-            <div class="text-center w-full">
-                <p class="text-sm text-indigo-600 font-medium mb-1">CURRENT LETTER</p>
-                <p id="translation" class="text-3xl font-bold text-indigo-800">—</p>
-                <!-- small visual feedback of accumulated letters (optional) -->
-                <div class="text-xs text-gray-500 mt-2">
-                    Accumulated letters: <span id="accumulatedHint" class="font-mono bg-white px-2 py-1 rounded">—</span>
-                </div>
+        <div id="result" class="result">
+            <div class="empty-state">
+                <i class="fas fa-hands"></i>
+                <h3>لا يوجد نص للعرض حالياً</h3>
+                <p>سيتم عرض إشارات الحروف هنا بعد إدخال النص</p>
             </div>
         </div>
 
-        <!-- Final Sentence display (replaces word + sentence boxes) -->
-        <div class="sentence-box bg-blue-50 rounded-xl p-5 mb-6">
-            <p class="text-center font-medium text-blue-700 mb-2"><i class="fas fa-align-left mr-2"></i>FINAL SENTENCE</p>
-            <p id="formedSentenceDisplay" class="text-center text-xl font-bold text-blue-900">—</p>
-        </div>
-
-        <!-- Action buttons: only Correct Sentence (finalize) and Generate Sound -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button id="correctSentenceBtn" 
-                    class="btn px-4 py-3 bg-pink-100 text-pink-700 font-semibold rounded-lg hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all col-span-1">
-                <i class="fas fa-spell-check"></i> Correct Sentence
-            </button>
-            <button id="generateSoundBtn" 
-                    class="btn px-4 py-3 bg-green-100 text-green-700 font-semibold rounded-lg hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-300 transition-all col-span-1">
-                <i class="fas fa-volume-up"></i> Generate Sound
-            </button>
-        </div>
-
-        <!-- Hidden audio player (for TTS) -->
-        <audio id="audioPlayer" class="hidden"></audio>
-
-        <!-- Optional clear link (soft reset) -->
-        <div class="text-right mt-3">
-            <button id="clearLettersBtn" class="text-xs text-gray-400 hover:text-gray-600 transition">
-                <i class="far fa-trash-alt mr-1"></i>Clear accumulated letters
-            </button>
-        </div>
-    </div>
-
-    <!-- Notification toast -->
-    <div id="notification" class="notification">
-        <i class="fas fa-info-circle text-blue-500"></i>
-        <div>
-            <p class="font-medium" id="notification-title">Notification</p>
-            <p class="text-sm text-gray-600 mt-1" id="notification-message"></p>
-        </div>
-        <button class="ml-auto text-gray-400 hover:text-gray-600" onclick="hideNotification()">
-            <i class="fas fa-times"></i>
-        </button>
+        <footer></footer>
     </div>
 
     <script>
-        // ---------- DOM elements ----------
-        const video = document.getElementById('video');
-        const statusEl = document.getElementById('statusMessage');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const translationEl = document.getElementById('translation');
-        const formedSentenceEl = document.getElementById('formedSentenceDisplay');
-        const accumulatedHint = document.getElementById('accumulatedHint');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const correctSentenceBtn = document.getElementById('correctSentenceBtn');
-        const generateSoundBtn = document.getElementById('generateSoundBtn');
-        const clearLettersBtn = document.getElementById('clearLettersBtn');
-        const audioPlayer = document.getElementById('audioPlayer');
+        const API_BASE_URL = 'https://localhost:5001'; // ← update to your backend port
 
-        // ---------- State ----------
-        let connection;                       // SignalR hub connection
-        let intervalId = null;                // frame sender interval
-        let stream = null;                     // webcam stream
-        let isStreaming = false;               // camera active ?
+        const convertBtn     = document.getElementById('convertBtn');
+        const recordBtn      = document.getElementById('recordBtn');
+        const recordLabel    = document.getElementById('recordLabel');
+        const arabicTextarea = document.getElementById('arabicText');
+        const resultDiv      = document.getElementById('result');
+        const errorDiv       = document.getElementById('error');
+        const loadingDiv     = document.getElementById('loading');
+        const loadingText    = document.getElementById('loadingText');
 
-        // cooldown to avoid duplicate letters
-        let lastPrediction = '';
-        let lastPredictionTime = 0;
-        const COOLDOWN_MS = 1000;
+        // Recording state
+        let mediaRecorder     = null;
+        let audioChunks       = [];
+        let isRecording       = false;
+        let activeStream      = null;
+        let recordingMimeType = '';
+        let timerInterval     = null;
+        let timerSeconds      = 0;
 
-        // Store the sequence of detected letters (raw accumulation)
-        let accumulatedLetters = '';           // e.g., "ا ب ت"
-
-        // The final processed sentence (after /finalize-sentence)
-        let currentSentence = '';
-
-        // Arabic label list (from second template)
-        const arabicLabels = ["ع","ال","ا","ب","د","ظ","ض","ف","ق","غ","ه","ح","ج","ك","خ","لا","ل","م","ن","ر","ص","س","ش","ت","ط","ث","ذ","ة","و","ئ","ي","ز"];
-
-        // API base – adjust if needed (relative by default)
-        const API_BASE_URL = ' https://ema2a.mooo.com';  
-        // SignalR hub URL (same as first snippet)
-        const HUB_URL = `${API_BASE_URL}/signHub`;   // adjust as needed
-
-        // ---------- Notification helpers ----------
-        window.showNotification = function(title, message, type = 'info') {
-            const notification = document.getElementById('notification');
-            const titleEl = document.getElementById('notification-title');
-            const messageEl = document.getElementById('notification-message');
-            const icon = notification.querySelector('i');
-            
-            titleEl.textContent = title;
-            messageEl.textContent = message;
-            
-            notification.className = 'notification';
-            if (type === 'error') {
-                notification.classList.add('error');
-                icon.className = 'fas fa-exclamation-circle text-red-500';
-            } else if (type === 'success') {
-                notification.classList.add('success');
-                icon.className = 'fas fa-check-circle text-green-500';
-            } else {
-                notification.classList.add('info');
-                icon.className = 'fas fa-info-circle text-blue-500';
-            }
-            
-            notification.classList.add('show');
-            setTimeout(hideNotification, 5000);
-        };
-
-        window.hideNotification = function() {
-            document.getElementById('notification').classList.remove('show');
-        };
-
-        // ---------- Update UI hint for accumulated letters ----------
-        function updateAccumulatedHint() {
-            if (accumulatedLetters && accumulatedLetters !== '') {
-                accumulatedHint.textContent = accumulatedLetters.split('').join(' ');
-            } else {
-                accumulatedHint.textContent = '—';
-            }
-        }
-
-        // ---------- SignalR initialization ----------
-        async function initSignalR() {
+        // ── Text → Sign Language ─────────────────────────────────────────────
+        convertBtn.addEventListener('click', async function () {
+            const text = arabicTextarea.value.trim();
+            clearUI();
+            if (!text) { showError('الرجاء إدخال نص لتحويله'); return; }
+            showLoading('جاري تحويل النص...');
             try {
-                connection = new signalR.HubConnectionBuilder()
-                    .withUrl(HUB_URL, { withCredentials: true })
-                    .configureLogging(signalR.LogLevel.Information)
-                    .build();
-
-                connection.on('ReceiveTranslation', (message) => {
-                    // update current letter
-                    translationEl.textContent = message || '—';
-
-                    // accumulate letter if it's a valid arabic label and respects cooldown
-                    if (arabicLabels.includes(message)) {
-                        const now = Date.now();
-                        if (message !== lastPrediction || (now - lastPredictionTime) > COOLDOWN_MS) {
-                            // append to accumulated letters (store as plain string)
-                            accumulatedLetters += message;
-                            lastPrediction = message;
-                            lastPredictionTime = now;
-
-                            // update the hint display
-                            updateAccumulatedHint();
-                        }
+                const response = await fetch(
+                    `${API_BASE_URL}/api/ArabicLanguageTranslator/text-to-sign`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ Text: text })
                     }
-                });
-
-                connection.onclose(() => {
-                    statusEl.textContent = 'Disconnected from hub';
-                    statusIndicator.classList.replace('status-active','status-inactive');
-                });
-
-                await connection.start();
-                statusEl.textContent = 'Connected to SignalR hub';
-                statusIndicator.classList.replace('status-inactive','status-active');
-                showNotification('SignalR', 'Connected to translation hub', 'success');
-            } catch (err) {
-                console.error('SignalR connection error:', err);
-                statusEl.textContent = 'SignalR connection failed';
-                statusIndicator.classList.replace('status-active','status-inactive');
-                showNotification('Connection error', 'Could not connect to SignalR hub', 'error');
-            }
-        }
-
-        // ---------- Webcam functions ----------
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                isStreaming = true;
-                statusEl.textContent = 'Webcam active, sending frames...';
-                statusIndicator.classList.replace('status-inactive','status-active');
-                if (!connection || connection.state !== 'Connected') {
-                    await initSignalR();
+                );
+                const data = await response.json();
+                if (!response.ok)  throw new Error(data.errorMessage || 'حدث خطأ أثناء تحويل النص');
+                if (!data.success) throw new Error(data.errorMessage || 'فشل تحويل النص');
+                if (!data.data || data.data.length === 0) {
+                    resultDiv.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><h3>لا توجد إشارات متاحة للنص المدخل</h3></div>';
+                    return;
                 }
-                startDetection();
-                showNotification('Camera', 'Webcam started', 'success');
+                displaySignLanguageImages(data.data, text);
             } catch (err) {
-                console.error('Webcam error:', err);
-                statusEl.textContent = 'Camera access denied';
-                showNotification('Camera error', err.message, 'error');
+                console.error('Convert error:', err);
+                showError(err.message);
+            } finally {
+                hideLoading();
             }
-        }
+        });
 
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
+        // ── Record button ────────────────────────────────────────────────────
+        recordBtn.addEventListener('click', async function () {
+
+            // ── STOP ──
+            if (isRecording) {
+                isRecording = false;
+                mediaRecorder.requestData(); // flush last chunk
+                mediaRecorder.stop();
+                recordBtn.classList.remove('recording');
+                recordBtn.disabled = true;
+                recordLabel.textContent = 'جاري المعالجة...';
+                clearInterval(timerInterval);
+                return;
             }
-            isStreaming = false;
-            stopDetection();
-            statusEl.textContent = 'Camera stopped';
-            statusIndicator.classList.replace('status-active','status-inactive');
-            translationEl.textContent = '—';
-        }
 
-        // ---------- Frame capture & sending via SignalR ----------
-        function captureFrame() {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth || 480;
-            canvas.height = video.videoHeight || 360;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return canvas.toDataURL('image/jpeg', 0.7);
-        }
+            // ── START ──
+            clearUI();
+            try {
+                activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        async function startDetection() {
-            if (!connection || connection.state !== 'Connected') {
-                showNotification('Warning', 'SignalR not connected, trying to reconnect...', 'info');
-                try { await initSignalR(); } catch { return; }
-            }
-            if (intervalId) clearInterval(intervalId);
-            intervalId = setInterval(async () => {
-                if (video.readyState >= 2 && isStreaming) {
-                    const base64Image = captureFrame();
+                // Use the same MIME type priority that worked in the test page
+                recordingMimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                    ? 'audio/webm;codecs=opus'
+                    : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+                        ? 'audio/ogg;codecs=opus'
+                        : 'audio/webm';
+
+                console.log('[recorder] MIME type:', recordingMimeType);
+
+                mediaRecorder = new MediaRecorder(activeStream, { mimeType: recordingMimeType });
+                audioChunks   = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    if (activeStream) {
+                        activeStream.getTracks().forEach(t => t.stop());
+                        activeStream = null;
+                    }
+
+                    const audioBlob = new Blob(audioChunks, { type: recordingMimeType });
+                    console.log('[recorder] Blob size:', audioBlob.size, 'bytes | chunks:', audioChunks.length);
+
+                    showLoading('جاري تحليل الصوت...');
                     try {
-                        await connection.invoke('ProcessFrame',{
-                            imageData: base64Image
-                        });
+                        const base64Audio = await blobToBase64(audioBlob);
+                        await sendAudioToAPI(base64Audio, recordingMimeType);
                     } catch (err) {
-                        console.warn('Frame send error:', err);
-                        if (err.message.includes('connection')) {
-                            stopDetection();
-                            statusEl.textContent = 'Connection lost';
-                        }
+                        console.error('STT error:', err);
+                        showError(err.message);
+                    } finally {
+                        recordBtn.disabled = false;
+                        recordBtn.classList.remove('recording');
+                        recordLabel.textContent = 'تسجيل صوتي';
+                        hideLoading();
                     }
-                }
-            }, 300);
+                };
+
+                // Start with 250ms timeslice so chunks arrive regularly
+                mediaRecorder.start(250);
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                recordLabel.textContent = 'إيقاف التسجيل';
+
+                // Timer display
+                timerSeconds = 0;
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    const m   = Math.floor(timerSeconds / 60);
+                    const s   = timerSeconds % 60;
+                    recordLabel.textContent = `إيقاف ● ${m}:${s.toString().padStart(2,'0')}`;
+                }, 1000);
+
+            } catch (err) {
+                console.error('Microphone error:', err);
+                showError('تعذر الوصول إلى الميكروفون. يرجى التأكد من السماح بالوصول.');
+            }
+        });
+
+        // ── Blob → base64 (exact same function from working test page) ───────
+        async function blobToBase64(blob) {
+            const buffer = await blob.arrayBuffer();
+            const uint8  = new Uint8Array(buffer);
+            let binary   = '';
+            const CHUNK  = 8192;
+            for (let i = 0; i < uint8.length; i += CHUNK) {
+                binary += String.fromCharCode(...uint8.subarray(i, i + CHUNK));
+            }
+            return btoa(binary);
         }
 
-        function stopDetection() {
-            if (intervalId) {
-                clearInterval(intervalId);
-                intervalId = null;
-            }
-        }
-
-        // ---------- REST API Helpers (audio) ----------
-        const base64ToArrayBuffer = (base64) => {
-            const binaryString = window.atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            return bytes.buffer;
-        };
-
-        const pcmToWav = (pcmData, sampleRate) => {
-            const pcm16 = new Int16Array(pcmData);
-            const wavHeader = new ArrayBuffer(44);
-            const view = new DataView(wavHeader);
-
-            view.setUint32(0, 0x52494646, false); // "RIFF"
-            view.setUint32(4, 36 + pcm16.length * 2, true);
-            view.setUint32(8, 0x57415645, false); // "WAVE"
-            view.setUint32(12, 0x666d7420, false); // "fmt "
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM
-            view.setUint16(22, 1, true); // mono
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true);
-            view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true);
-            view.setUint32(36, 0x64617461, false); // "data"
-            view.setUint32(40, pcm16.length * 2, true);
-
-            const wavData = new Uint8Array(44 + pcm16.length * 2);
-            wavData.set(new Uint8Array(wavHeader), 0);
-            wavData.set(new Uint8Array(pcm16.buffer), 44);
-            return new Blob([wavData], { type: 'audio/wav' });
-        };
-
-        // ---------- finalize-sentence endpoint (renamed from correctSentence) ----------
-        async function finalizeSentence() {
-            if (!accumulatedLetters || accumulatedLetters === '') {
-                showNotification('Cannot finalize', 'No letters accumulated yet.', 'error');
-                return;
-            }
-
-            statusEl.textContent = 'Finalizing sentence...';
-            formedSentenceEl.textContent = 'Processing...';
-
-            try {
-                // Use the endpoint "finalize-sentence" as requested
-                const response = await fetch(`${API_BASE_URL}/api/signlanguagetranslator/finalize-sentence`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sentence: accumulatedLetters })  // send raw letters
-                });
-
-                const result = await response.json();
-                if (result.success && result.data)
+        // ── POST to azure-audio-to-text (exact same logic from working test page)
+        async function sendAudioToAPI(base64Audio, mimeType) {
+            const response = await fetch(
+                `${API_BASE_URL}/api/ArabicLanguageTranslator/azure-audio-to-text`,
                 {
-                    currentSentence = result.data;
-                    formedSentenceEl.textContent = currentSentence;
-
-                    showNotification('Success', 'Sentence finalized!', 'success');
-                } else {
-                    formedSentenceEl.textContent = '—';
-                    showNotification('Finalize error', result.errorMessage || 'Could not process sentence', 'error');
-                }
-            } catch (error) {
-                console.error(error);
-                formedSentenceEl.textContent = '—';
-                showNotification('Network error', 'Failed to call finalize-sentence', 'error');
-            } finally {
-                statusEl.textContent = isStreaming ? 'Webcam active, sending frames...' : 'Camera stopped';
-            }
-        }
-
-        // ---------- Generate sound (unchanged) ----------
-        async function generateSoundFromSentence() {
-            if (!currentSentence || currentSentence === '—' || currentSentence === '') {
-                showNotification('Audio Error', 'No finalized sentence to generate audio for.', 'error');
-                return;
-            }
-            statusEl.textContent = 'Generating audio...';
-            generateSoundBtn.disabled = true;
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/signlanguagetranslator/generate-audio`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: currentSentence })
-                });
-                const result = await response.json();
-                if (result.success && result.data) {
-                    const pcmData = base64ToArrayBuffer(result.data.audioData);
-                    const wavBlob = pcmToWav(pcmData, result.data.sampleRate);
-                    audioPlayer.src = URL.createObjectURL(wavBlob);
-                    audioPlayer.play();
-                    showNotification('Audio', 'Playing generated speech', 'success');
-                } else {
-                    showNotification('Audio Error', result.errorMessage || 'Generation failed', 'error');
+                    body: JSON.stringify({
+                        audioData: base64Audio,
+                        mimeType:  mimeType
+                    })
                 }
-            } catch (error) {
-                console.error(error);
-                showNotification('Audio Error', 'Request failed', 'error');
-            } finally {
-                generateSoundBtn.disabled = false;
-                statusEl.textContent = isStreaming ? 'Webcam active, sending frames...' : 'Camera stopped';
+            );
+
+            const data = await response.json();
+            if (!response.ok)  throw new Error(data.errorMessage || `خطأ في الخادم: ${response.status}`);
+            if (!data.success) throw new Error(data.errorMessage || 'فشل تحويل الصوت إلى نص');
+
+            // Put the transcribed text in the textarea then auto-convert
+            arabicTextarea.value = data.data || '';
+            if (arabicTextarea.value.trim()) {
+                convertBtn.click();
             }
         }
 
-        // ---------- Clear accumulated letters (soft reset) ----------
-        function clearAccumulated() {
-            accumulatedLetters = '';
-            lastPrediction = '';
-            lastPredictionTime = 0;
-            translationEl.textContent = '—';
-            updateAccumulatedHint();
-            showNotification('Cleared', 'Accumulated letters reset', 'info');
+        // ── UI helpers ───────────────────────────────────────────────────────
+        function clearUI() {
+            resultDiv.innerHTML    = '';
+            errorDiv.style.display = 'none';
+            errorDiv.textContent   = '';
         }
 
-        // ---------- Button event bindings ----------
-        startBtn.addEventListener('click', () => {
-            if (!isStreaming) startCamera();
-        });
+        function showLoading(msg = 'جاري...') {
+            loadingText.textContent  = msg;
+            loadingDiv.style.display = 'block';
+        }
 
-        stopBtn.addEventListener('click', () => {
-            if (isStreaming) stopCamera();
-        });
+        function hideLoading() {
+            loadingDiv.style.display = 'none';
+        }
 
-        // Correct Sentence now uses finalize-sentence
-        correctSentenceBtn.addEventListener('click', finalizeSentence);
+        function showError(msg) {
+            errorDiv.textContent   = msg;
+            errorDiv.style.display = 'block';
+        }
 
-        generateSoundBtn.addEventListener('click', generateSoundFromSentence);
+        function displaySignLanguageImages(data, text) {
+            const words = text.split(' ').filter(w => w.trim());
+            let html = '';
+            words.forEach((word, wi) => {
+                if (wi >= data.length) return;
+                const imgs = data[wi];
+                html += `
+                    <div class="word-container">
+                        <div class="word-label">
+                            <i class="fas fa-hand-point-right"></i>
+                            كلمة: ${word}
+                        </div>
+                        <div class="letters-container">
+                `;
+                for (let i = 0; i < word.length; i++) {
+                    if (i >= imgs.length) continue;
+                    const delay = (wi * word.length + i) * 0.1;
+                    html += `
+                        <div class="letter-container" style="animation-delay:${delay}s">
+                            <div class="letter-image-container">
+                                <img src="${imgs[i]}" alt="إشارة الحرف ${word[i]}" class="letter-image">
+                            </div>
+                            <div class="letter-label">حرف: ${word[i]}</div>
+                        </div>
+                    `;
+                }
+                html += `</div></div>`;
+            });
+            resultDiv.innerHTML = html;
+        }
 
-        clearLettersBtn.addEventListener('click', clearAccumulated);
-
-        // ---------- Load & init ----------
-        (async () => {
-            await initSignalR();
-            statusEl.textContent = 'Ready. Click Start.';
-        })();
-
-        // Cleanup
-        window.addEventListener('beforeunload', () => {
-            if (isStreaming) stopCamera();
+        window.addEventListener('unhandledrejection', event => {
+            if (event.reason?.message?.includes('Failed to fetch') ||
+                event.reason?.message?.includes('NetworkError')) {
+                showError('تعذر الاتصال بالخادم. يرجى التأكد من تشغيل الخادم المحلي.');
+            }
         });
     </script>
 </body>
