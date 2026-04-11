@@ -46,14 +46,14 @@ jobs:
           cache: true
 
       - name: Cache Pub Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('flutter/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
 
       - name: Cache SonarCloud Packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
