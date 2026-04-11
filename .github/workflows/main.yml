@@ -204,7 +204,7 @@ jobs:
       # cache-from restores cached layers; cache-to saves them after build
       - name: Build and Push Backend Image
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: true
@@ -267,7 +267,7 @@ jobs:
       # --- IMAGE 1: Compiled for AZURE ---
       - name: Build and Push Frontend Image (Azure)
         if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
@@ -279,7 +279,7 @@ jobs:
       # --- IMAGE 2: Compiled for AWS (also tagged :latest for integration tests) ---
       - name: Build and Push Frontend Image (AWS)
         if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
