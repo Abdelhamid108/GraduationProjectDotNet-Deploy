@@ -183,7 +183,7 @@ jobs:
       # BuildKit enables layer caching and faster rebuilds
       - name: Set up Docker Buildx
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Authenticate to Docker Hub
         if: steps.changes.outputs.backend == 'true' || inputs.FiRST-RUN == true
@@ -245,7 +245,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Authenticate to Docker Hub
         if: steps.changes.outputs.frontend == 'true' || inputs.FiRST-RUN == true
