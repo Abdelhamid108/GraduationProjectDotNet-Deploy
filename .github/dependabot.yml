@@ -1,0 +1,59 @@
+version: 2
+updates:
+  # 1. Docker: Scans Dockerfiles in backend and frontend
+  - package-ecosystem: "docker"
+    directories:
+      - "/backend"
+      - "/frontend"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"
+    
+  # 2. Docker Compose: Scans the docker-compose.yml in the root
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"
+
+  # 3. .NET SDK: Keeps the .NET SDK version updated (via global.json)
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"
+    
+  # 4. Backend: .NET / NuGet packages (.csproj)
+  - package-ecosystem: "nuget"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"  
+    
+  # 5. Frontend: npm packages (React)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"
+    
+  # 6. GitHub Actions: Keep your pipeline actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV" 
+
+  # 7. Infrastructure: Keep Terraform providers and modules up to date
+  - package-ecosystem: "terraform"
+    directory: "/DevOps/Terraform"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"
+    
+  # 8. Mobile: Flutter/Dart packages
+  - package-ecosystem: "pub"
+    directory: "/flutter"
+    schedule:
+      interval: "weekly"
+    target-branch: "DEV"   
