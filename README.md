@@ -760,7 +760,6 @@ Detailed documentation is available in the `Documentation/` directory:
 | [`DevOps_Documentation/Docker.md`](./Documentation/DevOps_Documentation/Docker.md) | All Dockerfiles, Compose files, Nginx config |
 | [`DevOps_Documentation/Provisioning&&Infra.md`](./Documentation/DevOps_Documentation/Provisioning&&Infra.md) | Terraform (Azure + AWS), Packer, Ansible |
 | [`DevOps_Documentation/CI-CD.md`](./Documentation/DevOps_Documentation/CI-CD.md) | GitHub Actions workflows, job-by-job breakdown |
-| [`DevOps_Documentation/Google_OAuth_Debug.md`](./Documentation/DevOps_Documentation/Google_OAuth_Debug.md) | Google OAuth analysis & fix guide |
 | [`Hardware-Service/README.md`](./Hardware-Service/README.md) | Raspberry Pi hardware module documentation |
 
 ---
