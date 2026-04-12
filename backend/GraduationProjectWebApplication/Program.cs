@@ -19,6 +19,7 @@ using Serilog;
 using System.Collections;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace GraduationProjectWebApplication
 {
@@ -124,7 +125,15 @@ namespace GraduationProjectWebApplication
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
-                options.CallbackPath = "/signin-google";
+                options.CallbackPath = "api/signin-google";
+            });
+
+
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
             });
 
             /*=================== Swagger ===================*/
@@ -348,6 +357,7 @@ namespace GraduationProjectWebApplication
             }
 
             /*=================== Middleware Pipeline ===================*/
+            app.UseForwardedHeaders();
             app.UseStaticFiles();
             app.UseRouting();
             app.UseCors("AllowPublicCORS");
