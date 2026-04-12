@@ -38,7 +38,10 @@ server {
         proxy_pass ${BACKEND_URL};
         
         # Identity Headers
-        proxy_set_header Host $proxy_host;
+        # FIX: Use $host (the public domain the client sent) NOT $proxy_host (the internal backend hostname).
+        # This ensures X-Forwarded-Host and the actual Host header reflect ema2a.ddns.net,
+        # so ASP.NET's UseForwardedHeaders() builds the correct Google OAuth redirect URI.
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -64,7 +67,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         
-        proxy_set_header Host $proxy_host;
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
