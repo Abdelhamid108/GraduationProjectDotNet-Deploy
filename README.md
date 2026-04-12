@@ -738,7 +738,6 @@ GraduationProjectDotNet-Deploy/
 │   │   ├── Docker.md                  ← Container documentation
 │   │   ├── Provisioning&&Infra.md     ← Terraform + Packer + Ansible docs
 │   │   ├── CI-CD.md                   ← Pipeline detailed documentation
-│   │   └── Google_OAuth_Debug.md      ← OAuth fix analysis
 │   ├── API_Test_Documentation/        ← API test suite docs
 │   └── Hardware/                      ← Hardware module docs
 │
