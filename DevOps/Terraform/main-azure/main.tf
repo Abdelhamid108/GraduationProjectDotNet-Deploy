@@ -51,11 +51,9 @@ module "storage_account" {
   account_tier                  = "Standard"
   account_kind                  = "StorageV2"
   
-  # 🚨 Ensures the access key isn't blocked by Azure's new default policies
   shared_access_key_enabled     = true
   public_network_access_enabled = true
 
-  # 🚨 Ensures there are no hidden network deny policies blocking the container app
   network_rules = {
     default_action = "Allow"
     bypass         = ["AzureServices"]
@@ -104,7 +102,7 @@ module "sql_server" {
 
 resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
   name             = "AllowAzureServices"
-  # 🚨 FIX: Corrected from '.resource.id' to '.resource_id' to match AVM standard
+  
   server_id        = module.sql_server.resource_id 
 
   start_ip_address = "0.0.0.0"
@@ -152,7 +150,6 @@ resource "azurerm_container_app_environment_storage" "mount_images" {
   account_name                 = module.storage_account.name
   share_name                   = azurerm_storage_share.images.name
 
-  # 🚨 FIX: Properly references the data block instead of a non-existent resource
   access_key                   = data.azurerm_storage_account.storage_keys.primary_access_key
   access_mode                  = "ReadWrite"
 }
@@ -184,7 +181,6 @@ module "backend_app" {
       cpu    = 0.25
       memory = "0.5Gi"
 
-      # 🚨 Cleaned up the concat formatting to properly merge the hardcoded vars and the loop
       env = concat(
         [
           { name = "DEFAULT_CONNECTION", value = "Server=tcp:ema2a-sql-server-azure1234.database.windows.net,1433;Initial Catalog=ema2a-database;User ID=${var.database_admin};Password=${var.database_admin_pass};Encrypt=True;" },
