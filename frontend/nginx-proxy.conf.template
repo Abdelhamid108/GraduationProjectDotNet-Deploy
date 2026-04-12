@@ -1,6 +1,6 @@
 server {
     listen 8080;
-    server_name ema2a.ddns.net www.ema2a.ddns.net;
+    server_name backup.ema2a.website www.backup.ema2a.website;
 
     # Root directory for your frontend build files
     root /usr/share/nginx/html;
