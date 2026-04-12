@@ -3,6 +3,7 @@ using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -390,7 +391,13 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
-                var redirectUrl = Url.Action("GoogleCallback", "Auth");
+                var redirectUrl = Url.Action(
+                    action: "GoogleCallback",
+                    controller: "Auth",
+                    values: null,
+                    protocol: Request.Scheme,
+                    host: Request.Host.Value
+                );
 
                 if (string.IsNullOrEmpty(redirectUrl))
                 {
@@ -428,7 +435,7 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
-                var result = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
+                var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
                 if (!result.Succeeded)
                 {
@@ -470,7 +477,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogInformation("External login successful for Google ID: {GoogleId}", googleId);
 
                 // Clear the external cookie
-                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 _logger.LogDebug("External authentication cookie cleared.");
 
                 return Ok(SuccessResponse<ExternalLoginResponseDTO>(response));
