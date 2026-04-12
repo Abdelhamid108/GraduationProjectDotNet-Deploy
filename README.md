@@ -752,16 +752,114 @@ GraduationProjectDotNet-Deploy/
 
 ## 11. Documentation
 
-Detailed documentation is available in the `Documentation/` directory:
+All documentation lives under the `Documentation/` directory, organized by stack. Every document is based on the actual source code — nothing is assumed or invented.
 
-| Document | Description |
-|----------|-------------|
-| [`DevOps_Documentation/DevOps.md`](./Documentation/DevOps_Documentation/DevOps.md) | General infrastructure & DevOps overview |
-| [`DevOps_Documentation/Docker.md`](./Documentation/DevOps_Documentation/Docker.md) | All Dockerfiles, Compose files, Nginx config |
-| [`DevOps_Documentation/Provisioning&&Infra.md`](./Documentation/DevOps_Documentation/Provisioning&&Infra.md) | Terraform (Azure + AWS), Packer, Ansible |
-| [`DevOps_Documentation/CI-CD.md`](./Documentation/DevOps_Documentation/CI-CD.md) | GitHub Actions workflows, job-by-job breakdown |
-| [`DevOps_Documentation/Google_OAuth_Debug.md`](./Documentation/DevOps_Documentation/Google_OAuth_Debug.md) | Google OAuth analysis & fix guide |
-| [`Hardware-Service/README.md`](./Hardware-Service/README.md) | Raspberry Pi hardware module documentation |
+---
+
+### 🔧 Backend Documentation
+
+**Directory:** `Documentation/Backend/`
+
+| File | What It Covers |
+|------|---------------|
+| [`Readme.MD`](./Documentation/Backend/Readme.MD) | Backend documentation index — how to use all API docs, authentication flow, quick start for developers, Postman + Swagger setup |
+| [`API_Documentaion.MD`](./Documentation/Backend/API_Documentaion.MD) | Full backend API reference — all endpoints with request/response schemas, error codes, validation rules, and integration examples |
+| [`Quick_Reference.MD`](./Documentation/Backend/Quick_Reference.MD) | One-page quick reference — endpoint URLs, cURL examples, common patterns, troubleshooting guide |
+
+**Per-controller detailed docs** — `Documentation/Backend/API Documentations/`:
+
+| File | Controller | Covers |
+|------|-----------|--------|
+| [`Auth.MD`](./Documentation/Backend/API%20Documentations/Auth.MD) | `AuthController` | Register, login, JWT tokens, refresh, Google OAuth, password reset, OTP, profile management |
+| [`Sign Language Translator.MD`](./Documentation/Backend/API%20Documentations/Sign%20Language%20Translator.MD) | `SignLanguageTranslatorController` | Frame classification, sentence finalization, AI correction, TTS audio generation |
+| [`Arabic Language Translator.MD`](./Documentation/Backend/API%20Documentations/Arabic%20Language%20Translator.MD) | `ArabicLanguageTranslatorController` | Text-to-sign image conversion, speech-to-text (STT), letter keyboard endpoint |
+| [`User History.MD`](./Documentation/Backend/API%20Documentations/User%20History.MD) | `UserHistoryController` | Get history, delete single record, delete all history |
+| [`SignHub.MD`](./Documentation/Backend/API%20Documentations/SignHub.MD) | `SignHub` (SignalR) | Real-time WebSocket hub — connection protocol, events, streaming translation |
+| [`swagger_documentation.json`](./Documentation/Backend/API%20Documentations/swagger_documentation.json) | All controllers | OpenAPI 3.0 / Swagger JSON spec — import into Postman, Swagger UI, or SDK generators |
+
+---
+
+### 🌐 Frontend Documentation
+
+**Directory:** `frontend/`
+
+The frontend is self-documented through:
+
+| Resource | Location | Description |
+|----------|----------|-------------|
+| Component structure | `frontend/src/` | `pages/` → UI pages · `components/` → reusable elements · `Api/` → typed API layer |
+| API type definitions | `frontend/src/Api/APICalls.ts` | All DTOs, interfaces, and typed fetch wrappers matching backend contracts |
+| Auth session logic | `frontend/src/Api/AuthSession.ts` | JWT storage, expiry checks, token refresh logic |
+| Nginx proxy config | `frontend/nginx-proxy.conf.template` | SPA routing, API proxy rules, WebSocket forwarding, CORS, bot blocking |
+| Docker image | `frontend/Dockerfile` | Two-stage build: Node/Vite build → Nginx runtime, `VITE_BASE_URI` baking |
+| Vite config | `frontend/vite.config.ts` | Build configuration, path aliases |
+
+---
+
+### 📱 Mobile App Documentation
+
+**Directory:** `flutter/`
+
+| Resource | Location | Description |
+|----------|----------|-------------|
+| Flutter README | [`flutter/README.md`](./flutter/README.md) | Setup guide, dependencies, run instructions |
+| Dependencies | `flutter/pubspec.yaml` | All 16 packages: `signalr_netcore`, `camera`, `audioplayers`, `get`, `dio`, `get_storage`, etc. |
+| Source code | `flutter/lib/` | App screens, navigation, API integration, state management |
+| Test suite | `flutter/test/` | Widget and unit tests (run by `sonar-flutter.yml` CI workflow) |
+| SonarCloud config | `flutter/sonar-project.properties` | Code quality analysis settings |
+
+---
+
+### 🤖 AI Model Documentation
+
+The AI model is documented directly in this README under **[Section 5 — AI Models](#5-ai-models)**, covering:
+
+- The three ONNX model files (`best.onnx`, `ASL.onnx`, `WordsModel.onnx`) and their sizes/purpose
+- YOLOv8 architecture and the full inference pipeline diagram
+- Input tensor format `[1, 3, 256, 256]`, confidence threshold, and NMS algorithm
+- Thread-safety design (`SemaphoreSlim`) and Singleton registration
+- GC memory tuning (`DOTNET_GCHeapHardLimit`) for native ONNX memory
+- Full ArSL alphabet label coverage
+- Sentence construction and finalization flow
+
+---
+
+### 🔌 Hardware Documentation
+
+**Directory:** `Documentation/Hardware/` and `Hardware-Service/`
+
+| File | Description |
+|------|-------------|
+| [`Hardware/README.md`](./Documentation/Hardware/README.md) | Hardware module overview — system architecture, components, setup |
+| [`Hardware-Service/README.md`](./Hardware-Service/README.md) | Full Raspberry Pi service documentation — camera capture, gesture recognition loop, sentence builder, TTS pipeline, systemd service setup, configuration parameters, debugging |
+| [`Hardware-Service/translator.py`](./Hardware-Service/translator.py) | Main Python service (13 KB) — all logic is inline-commented |
+| [`Hardware-Service/sign-translator.service`](./Hardware-Service/sign-translator.service) | systemd unit file — auto-start on boot configuration |
+
+---
+
+### 🚀 DevOps Documentation
+
+**Directory:** `Documentation/DevOps_Documentation/`
+
+| File | What It Covers |
+|------|---------------|
+| [`DevOps.md`](./Documentation/DevOps_Documentation/DevOps.md) | **General overview** — full architecture diagram, all technology tools, repo structure map, Azure vs AWS comparison, secrets management strategy, environment table |
+| [`Docker.md`](./Documentation/DevOps_Documentation/Docker.md) | **Containerization** — backend Dockerfile (multi-stage, ONNX GC tuning, non-root user), frontend Dockerfile (Vite build → Nginx runtime), Nginx proxy config (SPA + API + WebSocket + CORS), all 3 Compose files compared |
+| [`Provisioning&&Infra.md`](./Documentation/DevOps_Documentation/Provisioning&&Infra.md) | **Infrastructure** — Azure Terraform (Container Apps, SQL, Storage, Speech, DNS, TLS), AWS Terraform (EC2, Lambda, API Gateway, CloudWatch auto-stop), Packer AMI build, all 4 Ansible roles step-by-step, systemd service template |
+| [`CI-CD.md`](./Documentation/DevOps_Documentation/CI-CD.md) | **CI/CD Pipeline** — all 4 GitHub Actions workflows, every job/step explained, pipeline dependency graph, immutable image tag formula, quality gate logic, secrets reference |
+| [`Google_OAuth_Debug.md`](./Documentation/DevOps_Documentation/Google_OAuth_Debug.md) | **OAuth Fix** — full root cause analysis of 8 OAuth bugs, fixes applied for backend (ForwardedHeaders, CallbackPath, absolute RedirectUri, cookie scheme), remaining frontend work |
+
+---
+
+### 🧪 API Test Documentation
+
+**Directory:** `Documentation/API_Test_Documentation/`
+
+| File | Description |
+|------|-------------|
+| [`README.md`](./Documentation/API_Test_Documentation/README.md) | Test suite overview — what is tested, how tests are structured, how to run locally, test categories |
+| [`CICD_INTEGRATION.md`](./Documentation/API_Test_Documentation/CICD_INTEGRATION.md) | How the test suite integrates with GitHub Actions — the `test` job, `run_tests.sh`, JSON report generation, Azure Blob upload, SAS token, email notification, quality gate threshold |
+| [`FAILURE_ANALYSIS.md`](./Documentation/API_Test_Documentation/FAILURE_ANALYSIS.md) | Common test failure patterns, how to diagnose them, known flaky tests, debugging steps |
 
 ---
 
