@@ -125,7 +125,7 @@ namespace GraduationProjectWebApplication
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
-                options.CallbackPath = "api/signin-google";
+                options.CallbackPath = "/api/signin-google";
             });
 
 
