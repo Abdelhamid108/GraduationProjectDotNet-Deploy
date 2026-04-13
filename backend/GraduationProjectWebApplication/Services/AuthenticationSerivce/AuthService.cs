@@ -511,35 +511,32 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
 
             if (user == null)
             {
-                user = await _userManager.FindByEmailAsync(loginDTO.Email);
-                if (user == null)
+                string relativeImagePath = Path.Combine("Images", "UserImages", "BaseImage.png"); // تأكد أن الصورة بصيغة png كما كتبت هنا
+                string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                string baseImageFullPath = Path.Combine(webRootPath, relativeImagePath);
+
+                user = new ApplicationUser
                 {
-                    string relativeImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
+                    UserName = loginDTO.Email,
+                    Email = loginDTO.Email,
+                    EmailConfirmed = true,
+                    FullName = loginDTO.Name,
+                    PhoneNumber = loginDTO.PhoneNumber,
+                    HasImage = false,
+                    ImagePath = relativeImagePath 
+                };
 
-                    string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
-                    string baseImageFullPath = Path.Combine(webRootPath, relativeImagePath);
-
-                    user = new ApplicationUser
-                    {
-                        UserName = loginDTO.Email,
-                        Email = loginDTO.Email,
-                        EmailConfirmed = true,
-                        FullName = loginDTO.Name,
-                        PhoneNumber = loginDTO.PhoneNumber,
-                        HasImage = false,
-                        ImagePath = baseImageFullPath
-                    };
-
+                if (System.IO.File.Exists(baseImageFullPath))
+                {
                     base64Iamge = await _fileService.ConvertToBase64(baseImageFullPath);
-
-                    var createResult = await _userManager.CreateAsync(user);
-                    if (!createResult.Succeeded) return null;
+                }
+                else
+                {
+                    base64Iamge = string.Empty;
                 }
 
-                var loginInfo = new UserLoginInfo(loginDTO.Provider, loginDTO.ProviderUserId, loginDTO.Provider);
-                var addLoginResult = await _userManager.AddLoginAsync(user, loginInfo);
-                if (!addLoginResult.Succeeded) return null;
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded) return null;
             }
 
             TokenResponseDTO tokenResponseDTO = new TokenResponseDTO()
