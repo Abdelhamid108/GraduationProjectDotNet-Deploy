@@ -45,8 +45,12 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port $server_port;
+        # FIX: TLS is terminated upstream (Cloudflare / load-balancer) before reaching this Nginx.
+        # At this point $scheme is always "http" because Nginx receives plain HTTP internally.
+        # We must hardcode "https" so ASP.NET Core builds the correct OAuth redirect URI:
+        # https://backup.ema2a.website/api/signin-google  (not http://)
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port 443;
         proxy_set_header Authorization $http_authorization;
 
         # Connection Upgrades (Crucial for performance/stability)
@@ -71,7 +75,7 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto https;
 
         # Disable buffering for real-time data
         proxy_buffering off;

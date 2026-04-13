@@ -131,7 +131,15 @@ namespace GraduationProjectWebApplication
 
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
-                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                // Forward scheme (http/https) AND host from the upstream proxy (Nginx/Cloudflare).
+                // XForwardedHost ensures Request.Host reflects the public domain (backup.ema2a.website),
+                // not the internal Docker container hostname.
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor |
+                    ForwardedHeaders.XForwardedProto |
+                    ForwardedHeaders.XForwardedHost;
+                // Trust ALL proxies/networks (Docker bridge IP ranges are dynamic).
+                // This is safe because incoming traffic should only reach the container through Nginx.
                 options.KnownNetworks.Clear();
                 options.KnownProxies.Clear();
             });
