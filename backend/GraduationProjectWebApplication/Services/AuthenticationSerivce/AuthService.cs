@@ -1,4 +1,5 @@
 ﻿using Azure;
+using DotNetEnv;
 using GraduationProject.StaticDetails;
 using GraduationProjectWebApplication.Data;
 using GraduationProjectWebApplication.Models.DTOs;
@@ -513,7 +514,7 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 user = await _userManager.FindByEmailAsync(loginDTO.Email);
                 if (user == null)
                 {
-                    string baseImagePath = @"\Images\UserImages\BaseImage.jpg";
+                    var baseImagePath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", "BaseImage.jpg");
 
                     string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                     string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
