@@ -1,6 +1,6 @@
 server {
     listen 8080;
-    server_name ema2a.ddns.net www.ema2a.ddns.net;
+    server_name backup.ema2a.website www.backup.ema2a.website;
 
     # Root directory for your frontend build files
     root /usr/share/nginx/html;
@@ -38,12 +38,19 @@ server {
         proxy_pass ${BACKEND_URL};
         
         # Identity Headers
-        proxy_set_header Host $proxy_host;
+        # FIX: Use $host (the public domain the client sent) NOT $proxy_host (the internal backend hostname).
+        # This ensures X-Forwarded-Host and the actual Host header reflect ema2a.ddns.net,
+        # so ASP.NET's UseForwardedHeaders() builds the correct Google OAuth redirect URI.
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port $server_port;
+        # FIX: TLS is terminated upstream (Cloudflare / load-balancer) before reaching this Nginx.
+        # At this point $scheme is always "http" because Nginx receives plain HTTP internally.
+        # We must hardcode "https" so ASP.NET Core builds the correct OAuth redirect URI:
+        # https://backup.ema2a.website/api/signin-google  (not http://)
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port 443;
         proxy_set_header Authorization $http_authorization;
 
         # Connection Upgrades (Crucial for performance/stability)
@@ -64,11 +71,11 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         
-        proxy_set_header Host $proxy_host;
+        proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto https;
 
         # Disable buffering for real-time data
         proxy_buffering off;

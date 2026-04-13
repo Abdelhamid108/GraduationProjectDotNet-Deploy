@@ -1,4 +1,4 @@
-﻿using GraduationProjectWebApplication.Models.DTOs;
+using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -391,6 +391,10 @@ namespace GraduationProjectWebApplication.Controllers
 
             try
             {
+                // FIX: Read the public-facing scheme and host from X-Forwarded-* headers set by nginx.
+                // The container runs on plain http internally, but the public site is https.
+                // UseForwardedHeaders() populates Request.Scheme and Request.Host from these headers,
+                // so Url.Action() will correctly build: https://ema2a.ddns.net/api/Auth/google-callback
                 var redirectUrl = Url.Action(
                     action: "GoogleCallback",
                     controller: "Auth",
