@@ -17,8 +17,15 @@ const Letters = () => {
 
   return (
     <ScreenWrapper>
-      <div className="w-full h-full flex flex-col gap-10  py-[10vh]">
-        <BlurWrapper>
+      <div className="w-full h-full flex flex-col   py-[10vh]">
+        <h1 className="text-6xl text-white mt-4 mb-4">
+          لوحة مفاتيح لغة الاشارة العربية
+        </h1>
+        <h2 className="text-3xl text-[#A9A9A9] mb-4">
+          انقر علي الحرف لعرض الاشارة
+        </h2>
+
+        <BlurWrapper className="mt-4">
           <DisplaySign imageUrl={imageUrl} letter={letter} />
           <Keyboard onKeyPress={handleKeyClick} />
         </BlurWrapper>

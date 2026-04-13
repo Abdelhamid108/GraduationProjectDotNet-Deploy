@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import LoginButton from "../auth/LoginButton";
 import ProfileWidget from "./ProfileWidget";
 import { NavLink } from "react-router-dom";
-import { getAccessToken } from "@/Api/AuthSession";
-import { userProfile, type UserProfileDTO } from "@/Api/APICalls";
+import { getAccessToken } from "@/api/AuthSession";
+import { userProfile, type UserProfileDTO } from "@/api/APICalls";
 
 // ─── Extracted exact values from Frame_218.svg ───────────────────────────────
 // Canvas: 1280 × 120px
