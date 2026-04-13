@@ -508,37 +508,69 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
         {
             var user = await _userManager.FindByLoginAsync(loginDTO.Provider, loginDTO.ProviderUserId);
             string base64Iamge = string.Empty;
+            string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 
+            // 1. إذا كان المستخدم يزورنا لأول مرة (أو لم يربط حسابه بجوجل بعد)
             if (user == null)
             {
-                string relativeImagePath = Path.Combine("Images", "UserImages", "BaseImage.png"); // تأكد أن الصورة بصيغة png كما كتبت هنا
-                string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                string baseImageFullPath = Path.Combine(webRootPath, relativeImagePath);
+                user = await _userManager.FindByEmailAsync(loginDTO.Email);
 
-                user = new ApplicationUser
+                // إذا كان الإيميل غير موجود تماماً، ننشئ حساباً جديداً
+                if (user == null)
                 {
-                    UserName = loginDTO.Email,
-                    Email = loginDTO.Email,
-                    EmailConfirmed = true,
-                    FullName = loginDTO.Name,
-                    PhoneNumber = loginDTO.PhoneNumber,
-                    HasImage = false,
-                    ImagePath = relativeImagePath 
-                };
+                    string relativeImagePath = Path.Combine("Images", "UserImages", "BaseImage.png");
+                    string baseImageFullPath = Path.Combine(webRootPath, relativeImagePath);
 
-                if (System.IO.File.Exists(baseImageFullPath))
-                {
-                    base64Iamge = await _fileService.ConvertToBase64(baseImageFullPath);
+                    user = new ApplicationUser
+                    {
+                        UserName = loginDTO.Email,
+                        Email = loginDTO.Email,
+                        EmailConfirmed = true,
+                        FullName = loginDTO.Name,
+                        PhoneNumber = loginDTO.PhoneNumber,
+                        HasImage = false,
+                        ImagePath = relativeImagePath // نحفظ المسار النسبي فقط
+                    };
+
+                    if (System.IO.File.Exists(baseImageFullPath))
+                    {
+                        base64Iamge = await _fileService.ConvertToBase64(baseImageFullPath);
+                    }
+
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        // 🔴 بدلاً من return null، نظهر الخطأ الحقيقي لمعرفة السبب!
+                        var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+                        throw new Exception($"Identity Create User Failed: {errors}");
+                    }
                 }
-                else
-                {
-                    base64Iamge = string.Empty;
-                }
 
-                var createResult = await _userManager.CreateAsync(user);
-                if (!createResult.Succeeded) return null;
+                var loginInfo = new UserLoginInfo(loginDTO.Provider, loginDTO.ProviderUserId, loginDTO.Provider);
+                var addLoginResult = await _userManager.AddLoginAsync(user, loginInfo);
+
+                if (!addLoginResult.Succeeded)
+                {
+                    // 🔴 بدلاً من return null، نظهر الخطأ الحقيقي!
+                    var errors = string.Join("; ", addLoginResult.Errors.Select(e => e.Description));
+                    throw new Exception($"Identity Add Login Failed: {errors}");
+                }
+            }
+            // 2. إذا كان المستخدم موجوداً بالفعل (السيناريو الخاص بك: المرة الثانية وما بعدها)
+            else
+            {
+                // ✅ يجب أن نقوم بتحميل صورته القديمة لكي لا يرجع الحقل فارغاً
+                if (!string.IsNullOrEmpty(user.ImagePath))
+                {
+                    string fullPath = Path.Combine(webRootPath, user.ImagePath);
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        base64Iamge = await _fileService.ConvertToBase64(fullPath);
+                    }
+                }
             }
 
+            // 3. إصدار التوكنات (JWT & Refresh Token)
             TokenResponseDTO tokenResponseDTO = new TokenResponseDTO()
             {
                 AccessToken = await GenerateAccessToken(user),
@@ -546,8 +578,6 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 AccessTokenExpires = DateTime.UtcNow.AddMinutes(30),
                 RefreshTokenExpires = DateTime.UtcNow.AddDays(7)
             };
-
-
 
             return new ExternalLoginResponseDTO()
             {
