@@ -1,8 +1,7 @@
+import { logout, userProfile, type UserProfileDTO } from "@/Api/APICalls";
+import { clearAuthSession, getRefreshToken } from "@/Api/AuthSession";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { logout, userProfile, type UserProfileDTO } from "@/Api/APICalls";
-import { getRefreshToken, clearAuthSession } from "@/Api/AuthSession";
-import boyKidImg from "@/assets/boy kid.jpg";
 
 type ProfileWidgetProps = {
   close: () => void;
@@ -139,8 +138,8 @@ export default function ProfileWidget({ close }: ProfileWidgetProps) {
   }, []);
 
   const handleChangePassword = () => {
-    close();
     navigate("/forgot-password");
+    close();
   };
 
   const handleLogout = async () => {
