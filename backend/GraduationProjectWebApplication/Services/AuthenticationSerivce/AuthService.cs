@@ -514,12 +514,11 @@ namespace GraduationProjectWebApplication.Services.AuthenticationSerivce
                 user = await _userManager.FindByEmailAsync(loginDTO.Email);
                 if (user == null)
                 {
-                    var baseImagePath = Path.Combine(_webHostEnvironment.WebRootPath, "Images", "UserImages", "BaseImage.jpg");
+                    string relativeImagePath = Path.Combine("Images", "UserImages", "BaseImage.jpg");
 
-                    string relative = baseImagePath.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                    string baseImageFullPath = Path.Combine(_webHostEnvironment.WebRootPath ??
-                                                       Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                                       relative);
+                    string webRootPath = _webHostEnvironment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+
+                    string baseImageFullPath = Path.Combine(webRootPath, relativeImagePath);
 
                     user = new ApplicationUser
                     {
