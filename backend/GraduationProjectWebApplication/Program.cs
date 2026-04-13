@@ -105,8 +105,12 @@ namespace GraduationProjectWebApplication
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            }).AddCookie(options =>
+            {
+                options.Cookie.SameSite = SameSiteMode.None; 
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
             })
-            .AddCookie()
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
             {
                 x.RequireHttpsMetadata = false;
@@ -126,6 +130,8 @@ namespace GraduationProjectWebApplication
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
                 options.CallbackPath = "/api/signin-google";
+                options.CorrelationCookie.SameSite = SameSiteMode.None;
+                options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
             });
 
 
