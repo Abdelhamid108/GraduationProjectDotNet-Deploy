@@ -19,6 +19,7 @@ using Serilog;
 using System.Collections;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace GraduationProjectWebApplication
 {
@@ -104,8 +105,12 @@ namespace GraduationProjectWebApplication
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            }).AddCookie(options =>
+            {
+                options.Cookie.SameSite = SameSiteMode.None; 
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
             })
-            .AddCookie()
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
             {
                 x.RequireHttpsMetadata = false;
@@ -124,7 +129,25 @@ namespace GraduationProjectWebApplication
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
-                options.CallbackPath = "/signin-google";
+                options.CallbackPath = "/api/signin-google";
+                options.CorrelationCookie.SameSite = SameSiteMode.None;
+                options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
+            });
+
+
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                // Forward scheme (http/https) AND host from the upstream proxy (Nginx/Cloudflare).
+                // XForwardedHost ensures Request.Host reflects the public domain (backup.ema2a.website),
+                // not the internal Docker container hostname.
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor |
+                    ForwardedHeaders.XForwardedProto |
+                    ForwardedHeaders.XForwardedHost;
+                // Trust ALL proxies/networks (Docker bridge IP ranges are dynamic).
+                // This is safe because incoming traffic should only reach the container through Nginx.
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
             });
 
             /*=================== Swagger ===================*/
@@ -348,6 +371,7 @@ namespace GraduationProjectWebApplication
             }
 
             /*=================== Middleware Pipeline ===================*/
+            app.UseForwardedHeaders();
             app.UseStaticFiles();
             app.UseRouting();
             app.UseCors("AllowPublicCORS");
