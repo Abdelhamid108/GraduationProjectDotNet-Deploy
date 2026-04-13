@@ -4,7 +4,7 @@ import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { FormInput } from "@/components/auth/FormInput";
 import AuthPagesLayout from "@/Layouts/AuthPagesLayout";
 import girlKidImg from "@/assets/gril kid.jpg";
-import { loginUser } from "@/Api/APICalls";
+import { loginGoogle, loginUser } from "@/Api/APICalls";
 import {
   clearAuthSession,
   hasUsableRefreshToken,
@@ -12,6 +12,7 @@ import {
   type TokenResponseDTO,
 } from "@/Api/AuthSession";
 import { toast } from "sonner";
+import GoogleButton from "@/components/custom/GoogleButton";
 
 const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +69,27 @@ const Login = () => {
     }
   };
 
+  async function loginWithGoogle() {
+    try {
+      setIsSubmitting(true);
+      const response = await loginGoogle();
+      if (!response?.success || !response?.data) {
+        toast.error(
+          response?.errorMessage || "فشل تسجيل الدخول عبر جوجل. حاول مرة أخرى.",
+        );
+        return;
+      }
+      if (!persistAuthSession(response.data as TokenResponseDTO)) {
+        clearAuthSession();
+        toast.error("استجابة تسجيل الدخول غير مكتملة.");
+        return;
+      }
+    } catch (error) {
+      toast.error("حدث خطأ أثناء تسجيل الدخول عبر جوجل. حاول مرة أخرى.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
   return (
     <AuthPagesLayout img={girlKidImg}>
       <AuthFormCard
@@ -85,6 +107,12 @@ const Login = () => {
               <div className="w-[49px] h-px bg-[#D9D9D9] border border-[#D9D9D9]" />
             </div>
             {/* Sign up link */}
+
+            <GoogleButton
+              onClick={() => {
+                loginWithGoogle();
+              }}
+            />
             <div className="flex flex-row justify-center items-center gap-2 w-full">
               <span className="font-['Cairo'] font-normal text-xs leading-[22px] text-[#757373]">
                 ليس لديك حساب؟
@@ -111,12 +139,12 @@ const Login = () => {
             placeholder="ادخل كلمة المرور"
             name="password"
           />
-          <a
-            href="#"
+          <Link
+            to="/forgot-password"
             className="w-full text-right font-['El Messiri'] font-normal text-sm leading-[22px] text-[#93A494] underline"
           >
             نسيت كلمة المرور
-          </a>
+          </Link>
         </div>
         {errorMessage ? (
           <p className="w-full text-right text-sm text-red-600">
