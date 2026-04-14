@@ -32,9 +32,6 @@ env:
   BACKEND_IMAGE: 'graduationproject-backend'
   FRONTEND_IMAGE: 'graduationproject-frontend'
 
-permissions:
-  id-token: write    
-
 jobs:
 
   # ============================================================================
