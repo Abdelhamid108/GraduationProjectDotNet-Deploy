@@ -394,15 +394,30 @@ module "ema2a_github_policy" {
   }
 }
 
+module "iam_oidc_provider" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-oidc-provider"
+  version = "6.4.0"
+
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
 module "github_oidc_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role"
   version = "6.4.0"
-  
+
   name = "github_actions_aws_auth"
 
   enable_github_oidc = true
 
-  oidc_wildcard_subjects = ["abdelhameed208/graduationproject-backend:*"]
+  oidc_wildcard_subjects = ["Abdelhamid108/GraduationProjectDotNet-Deploy:*"]
 
   policies = {
     EmaaDeployAccess = module.ema2a_github_policy.arn
@@ -436,3 +451,9 @@ output "github_role_arn" {
   description = "Copy this ARN into your GitHub Actions workflow YAML"
   value       = module.github_oidc_role.arn
 }
+
+output "instance_id" {
+  description = "Instance Id to use for GitHub Actions"
+  value       = module.ec2_instance.id
+}
+
