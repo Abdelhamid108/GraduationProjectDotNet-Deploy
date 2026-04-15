@@ -82,6 +82,10 @@ module "iam_role" {
       ]
     }
   }
+
+  policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
   
   tags = {
     Terraform   = "true"
@@ -332,10 +336,90 @@ resource "infisical_identity_aws_auth" "aws-auth" {
     { ip_address = "0.0.0.0/0" }
   ]
 }
+
+module "ema2a_github_policy" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
+  version = "6.4.0"
+
+  name        = "ema2a_deployment_policy"
+  path        = "/"
+  description = "Allows GitHub Actions to start EC2 and deploy Emaa via SSM"
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "AllowEC2StateChanges",
+        "Effect": "Allow",
+        "Action": [
+          "ec2:RebootInstances",
+          "ec2:StartInstances",
+          "ec2:StopInstances"
+        ],
+        "Resource": "arn:aws:ec2:us-east-1:863030157396:instance/${module.ec2_instance.id}"
+      },
+      {
+        "Sid": "AllowSSMToExecuteScript",
+        "Effect": "Allow",
+        "Action": "ssm:SendCommand",
+        "Resource": [
+          "arn:aws:ec2:us-east-1:863030157396:instance/i-0627b1d98edb61cd2",
+          "arn:aws:ssm:us-east-1::document/AWS-RunShellScript"
+        ]
+      },
+      {
+        "Sid": "AllowSSMToReadCommandOutput",
+        "Effect": "Allow",
+        "Action": "ssm:GetCommandInvocation",
+        "Resource": "*"
+      },
+      {
+        "Sid": "AllowEC2StatusChecks",
+        "Effect": "Allow",
+        "Action": [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+  EOF
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
+module "github_oidc_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
+  version = "6.4.0"
+  
+  name = "github_actions_aws_auth"
+
+  enable_github_oidc = true
+
+  oidc_wildcard_subjects = ["abdelhameed208/graduationproject-backend:*"]
+
+  policies = {
+    EmaaDeployAccess = module.ema2a_github_policy.arn
+  }
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
 output "cloudflare_target_url" {
   value       = module.api_gateway.domain_name_target_domain_name
   description = "Paste this into Cloudflare as your CNAME target (Grey Cloud!)"
 }
+
 # Output the Elastic IP of the server
 output "ema2a_server_ip" { 
   value       = module.ec2_instance.public_ip
@@ -346,4 +430,9 @@ output "ema2a_server_ip" {
 output "iam_role_arn" {
   value       = module.iam_role.arn
   description = "The arn For iam role for Infisical Secrets"
+}
+
+output "github_role_arn" {
+  description = "Copy this ARN into your GitHub Actions workflow YAML"
+  value       = module.github_oidc_role.arn
 }

@@ -560,7 +560,7 @@ jobs:
       - name: Authenticate to AWS
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::863030157396:role/github_actions_aws_auth
+          role-to-assume: arn:aws:iam::863030157396:role/github_actions_aws_auth-20260415174844996400000001
           aws-region: us-east-1
 
       # Step 1: Check the state and save it as an output variable
