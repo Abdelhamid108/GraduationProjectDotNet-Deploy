@@ -29,12 +29,9 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# Fetch all subnets in the default VPC
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
+data "aws_subnet" "selected" {
+  vpc_id            = data.aws_vpc.default.id
+  availability_zone = "us-east-1a"
 }
 
 data "aws_ami" "ema2a_ami" {
@@ -98,7 +95,7 @@ module "ec2_instance" {
   ami = data.aws_ami.ema2a_ami.id
   create = true 
    
-  subnet_id = data.aws_subnets.default.ids[0]
+  subnet_id = data.aws_subnet.selected.id
 
   source  = "terraform-aws-modules/ec2-instance/aws"
   associate_public_ip_address = true
@@ -327,7 +324,7 @@ resource "cloudflare_dns_record" "api-gateway_dns_record" {
 resource "infisical_identity_aws_auth" "aws-auth" {
   identity_id            = var.infisical_identity_id
   sts_endpoint           = "https://sts.us-east-1.amazonaws.com/"
-  allowed_account_ids    = [var.infisical_allowed_account_id]
+  allowed_account_ids    = [var.account_id]
   allowed_principal_arns = [module.iam_role.arn]
   access_token_ttl       = 2592000
   access_token_max_ttl   = 2592000
@@ -357,15 +354,15 @@ module "ema2a_github_policy" {
           "ec2:StartInstances",
           "ec2:StopInstances"
         ],
-        "Resource": "arn:aws:ec2:us-east-1:863030157396:instance/${module.ec2_instance.id}"
+        "Resource": "arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/${module.ec2_instance.id}"
       },
       {
         "Sid": "AllowSSMToExecuteScript",
         "Effect": "Allow",
         "Action": "ssm:SendCommand",
         "Resource": [
-          "arn:aws:ec2:us-east-1:863030157396:instance/i-0627b1d98edb61cd2",
-          "arn:aws:ssm:us-east-1::document/AWS-RunShellScript"
+          "arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/${module.ec2_instance.id}",
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
         ]
       },
       {

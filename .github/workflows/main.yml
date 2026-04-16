@@ -586,7 +586,7 @@ jobs:
           echo "Instance is stopped. Calling API Gateway to start it..."
 
           # Call the webhook (add headers like -H "x-api-key: YOUR_KEY" if your API is secured)
-          curl -X POST "$API_URL"
+          curl "$API_URL"
 
           echo "Start signal sent. Waiting for AWS to register the instance as 'running'..."
           aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
