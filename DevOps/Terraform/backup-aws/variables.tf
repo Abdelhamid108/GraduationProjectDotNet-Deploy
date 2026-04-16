@@ -4,6 +4,13 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "subnet" {
+  description = "The aws subent which Infra will be held at"
+  type        = string
+  default     = "us-east-1a"
+}
+
+
 variable "ami" {
   description = "The resultant ami from packer"
   type        = string
@@ -32,7 +39,7 @@ variable "domain_name" {
 variable "certificate_arn" {
   description = "The apigateway domain certificate arn"
   type        = string
-  default     = "arn:aws:acm:us-east-1:863030157396:certificate/5e0bcc1a-4df9-4797-bc1b-0d1ae13cf0f6"
+  default     = "arn:aws:acm:us-east-1:069089526123:certificate/b3c0ca4b-f450-47ba-b208-8b3a564f7d4b"
 }
 
 variable "cloudflare_zone_id" {
@@ -59,10 +66,10 @@ variable "infisical_identity_id" {
   default     = "dd22bb8a-6524-475b-a2ad-5080da6ac999"
 }
 
-variable "infisical_allowed_account_id" {
+variable "account_id" {
   description = "The allowed account to use for infisical"
   type        = string
-  default     = "863030157396"
+  default     = "069089526123"
 }
 
 variable "cloudflare_api_token" {
