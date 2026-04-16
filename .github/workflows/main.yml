@@ -554,13 +554,13 @@ jobs:
       contents: read
       
     env:
-      INSTANCE_ID: "i-0627b1d98edb61cd2" # Don't forget to swap this with your real EC2 ID
+      INSTANCE_ID: ${{ vars.INSTANCE_ID }} # Don't forget to swap this with your real EC2 ID
     if: success()
     steps:
       - name: Authenticate to AWS
         uses: aws-actions/configure-aws-credentials@v6.1.0
         with:
-          role-to-assume: arn:aws:iam::863030157396:role/github_actions_aws_auth
+          role-to-assume: ${{ vars.AWS_GITHUB_RULE }}
           aws-region: us-east-1
 
       # Step 1: Check the state and save it as an output variable
@@ -586,7 +586,7 @@ jobs:
           echo "Instance is stopped. Calling API Gateway to start it..."
 
           # Call the webhook (add headers like -H "x-api-key: YOUR_KEY" if your API is secured)
-          curl -X POST "$API_URL"
+          curl "$API_URL"
 
           echo "Start signal sent. Waiting for AWS to register the instance as 'running'..."
           aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"

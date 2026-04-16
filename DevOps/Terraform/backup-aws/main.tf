@@ -29,12 +29,9 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# Fetch all subnets in the default VPC
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
+data "aws_subnet" "selected" {
+  vpc_id            = data.aws_vpc.default.id
+  availability_zone = "us-east-1a"
 }
 
 data "aws_ami" "ema2a_ami" {
@@ -82,6 +79,10 @@ module "iam_role" {
       ]
     }
   }
+
+  policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
   
   tags = {
     Terraform   = "true"
@@ -94,7 +95,7 @@ module "ec2_instance" {
   ami = data.aws_ami.ema2a_ami.id
   create = true 
    
-  subnet_id = data.aws_subnets.default.ids[0]
+  subnet_id = data.aws_subnet.selected.id
 
   source  = "terraform-aws-modules/ec2-instance/aws"
   associate_public_ip_address = true
@@ -323,7 +324,7 @@ resource "cloudflare_dns_record" "api-gateway_dns_record" {
 resource "infisical_identity_aws_auth" "aws-auth" {
   identity_id            = var.infisical_identity_id
   sts_endpoint           = "https://sts.us-east-1.amazonaws.com/"
-  allowed_account_ids    = [var.infisical_allowed_account_id]
+  allowed_account_ids    = [var.account_id]
   allowed_principal_arns = [module.iam_role.arn]
   access_token_ttl       = 2592000
   access_token_max_ttl   = 2592000
@@ -332,10 +333,105 @@ resource "infisical_identity_aws_auth" "aws-auth" {
     { ip_address = "0.0.0.0/0" }
   ]
 }
+
+module "ema2a_github_policy" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
+  version = "6.4.0"
+
+  name        = "ema2a_deployment_policy"
+  path        = "/"
+  description = "Allows GitHub Actions to start EC2 and deploy Emaa via SSM"
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "AllowEC2StateChanges",
+        "Effect": "Allow",
+        "Action": [
+          "ec2:RebootInstances",
+          "ec2:StartInstances",
+          "ec2:StopInstances"
+        ],
+        "Resource": "arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/${module.ec2_instance.id}"
+      },
+      {
+        "Sid": "AllowSSMToExecuteScript",
+        "Effect": "Allow",
+        "Action": "ssm:SendCommand",
+        "Resource": [
+          "arn:aws:ec2:${var.aws_region}:${var.account_id}:instance/${module.ec2_instance.id}",
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
+        ]
+      },
+      {
+        "Sid": "AllowSSMToReadCommandOutput",
+        "Effect": "Allow",
+        "Action": "ssm:GetCommandInvocation",
+        "Resource": "*"
+      },
+      {
+        "Sid": "AllowEC2StatusChecks",
+        "Effect": "Allow",
+        "Action": [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+  EOF
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
+module "iam_oidc_provider" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-oidc-provider"
+  version = "6.4.0"
+
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
+module "github_oidc_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
+  version = "6.4.0"
+
+  name = "github_actions_aws_auth"
+
+  enable_github_oidc = true
+
+  oidc_wildcard_subjects = ["Abdelhamid108/GraduationProjectDotNet-Deploy:*"]
+
+  policies = {
+    EmaaDeployAccess = module.ema2a_github_policy.arn
+  }
+
+  tags = {
+    Terraform   = "true"
+    Environment = "Production"
+    Project     = "Emaa"
+  }
+}
+
 output "cloudflare_target_url" {
   value       = module.api_gateway.domain_name_target_domain_name
   description = "Paste this into Cloudflare as your CNAME target (Grey Cloud!)"
 }
+
 # Output the Elastic IP of the server
 output "ema2a_server_ip" { 
   value       = module.ec2_instance.public_ip
@@ -347,3 +443,14 @@ output "iam_role_arn" {
   value       = module.iam_role.arn
   description = "The arn For iam role for Infisical Secrets"
 }
+
+output "github_role_arn" {
+  description = "Copy this ARN into your GitHub Actions workflow YAML"
+  value       = module.github_oidc_role.arn
+}
+
+output "instance_id" {
+  description = "Instance Id to use for GitHub Actions"
+  value       = module.ec2_instance.id
+}
+
