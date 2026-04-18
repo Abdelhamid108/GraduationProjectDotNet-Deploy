@@ -1,43 +1,48 @@
 #!/usr/bin/env python3
-
-
 from __future__ import annotations
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "libs"))
 
 import base64
 import io
-import os
 import time
 import tempfile
 import subprocess
-import sys
 import math
 import struct
 import wave
+import threading
 from typing import Optional, Tuple, List
 
 import requests
 import urllib3
 from picamera2 import Picamera2
 
+from signalrcore.hub_connection_builder import HubConnectionBuilder
+
+
 # ======================
 # CONFIG
 # ======================
-BASE_URL = os.getenv("SIGN_BASE_URL", "https://ema2a.mooo.com").rstrip("/")
+BASE_URL = os.getenv("SIGN_BASE_URL", "https://backup.ema2a.website").rstrip("/")
 
-TRANSLATE_URL = f"{BASE_URL}/api/signlanguagetranslator"
-FINALIZE_URL = f"{BASE_URL}/api/signlanguagetranslator/finalize-sentence?client=hardware"
+SIGNALR_URL = "https://backup.ema2a.website/signHub"
+
+FINALIZE_URL = f"{BASE_URL}/api/SignLanguageTranslator/finalize-sentence"
 HARDWARE_TTS_URL = f"{BASE_URL}/api/signlanguagetranslator/text-to-speech/hardware?format=base64"
 LOGIN_URL = f"{BASE_URL}/api/auth/login-user"
 
 VERIFY_SSL = os.getenv("VERIFY_SSL", "0") == "1"
 TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "50"))
 
-SENTENCE_TIMEOUT = float(os.getenv("SENTENCE_TIMEOUT", "90"))
-GLOBAL_IDLE_TIMEOUT = float(os.getenv("GLOBAL_IDLE_TIMEOUT", "320"))
+SENTENCE_TIMEOUT = float(os.getenv("SENTENCE_TIMEOUT", "80"))
+GLOBAL_IDLE_TIMEOUT = float(os.getenv("GLOBAL_IDLE_TIMEOUT", "300"))
 
 CAMERA_WIDTH = int(os.getenv("CAM_W", "640"))
 CAMERA_HEIGHT = int(os.getenv("CAM_H", "480"))
-JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "80"))
+JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "85"))
 
 BASE_FRAME_DELAY = float(os.getenv("BASE_FRAME_DELAY", "0.085"))
 IDLE_BACKOFF_MAX = float(os.getenv("IDLE_BACKOFF_MAX", "1.0"))
@@ -48,9 +53,11 @@ AUDIO_RETRIES = int(os.getenv("AUDIO_RETRIES", "2"))
 USERNAME = os.getenv("SIGN_API_USERNAME", "").strip()
 PASSWORD = os.getenv("SIGN_API_PASSWORD", "").strip()
 
-GROQ_API_KEY = "GROQ_API_KEY"  # Must be set in environment for Groq usage
+GROQ_API_KEY = "GROQ_API_KEY" 
 GROQ_BASE = os.getenv("GROQ_BASE", "https://api.groq.com/openai/v1").rstrip("/")
+
 PLANB_LLM_MODEL = os.getenv("PLANB_LLM_MODEL", "llama-3.3-70b-versatile")
+
 GROQ_MODEL_FALLBACKS: List[str] = [
     PLANB_LLM_MODEL,
     "llama-3.1-8b-instant",
@@ -61,8 +68,7 @@ STABLE_FRAMES = int(os.getenv("STABLE_FRAMES", "1"))
 RESET_NO_SIGN_FRAMES = int(os.getenv("RESET_NO_SIGN_FRAMES", "1"))
 SAME_LETTER_COOLDOWN = float(os.getenv("SAME_LETTER_COOLDOWN", "0.6"))
 
-BEEP_MIN_INTERVAL = float(os.getenv("BEEP_MIN_INTERVAL", "0.18"))
-BEEP_FREQ_HZ = float(os.getenv("BEEP_FREQ_HZ", "1150"))
+BEEP_FREQ_HZ = float(os.getenv("BEEP_FREQ_HZ", "900"))
 BEEP_DURATION_SEC = float(os.getenv("BEEP_DURATION_SEC", "0.14"))
 
 if not VERIFY_SSL:
@@ -71,6 +77,109 @@ if not VERIFY_SSL:
 session = requests.Session()
 session.verify = VERIFY_SSL
 session.headers.update({"Accept": "application/json"})
+
+ACCESS_TOKEN: Optional[str] = None
+
+
+# ======================
+# AUTH
+# ======================
+def have_credentials() -> bool:
+    return bool(USERNAME and PASSWORD)
+
+
+def login_and_get_token() -> Optional[str]:
+    global ACCESS_TOKEN
+
+    if not have_credentials():
+        return None
+
+    try:
+        r = session.post(
+            LOGIN_URL,
+            json={"userName": USERNAME, "password": PASSWORD},
+            timeout=TIMEOUT,
+        )
+
+        if r.ok:
+            js = r.json()
+            ACCESS_TOKEN = js.get("data", {}).get("accessToken")
+            return ACCESS_TOKEN
+
+    except Exception as e:
+        print(f"❌ Login error: {e}")
+
+    return None
+
+
+# ======================
+# SignalR WebSocket
+# ======================
+latest_translation = None
+translation_event = threading.Event()
+
+
+def on_receive_translation(args):
+    global latest_translation
+    message = args[0]
+
+    if message.startswith("Frame received"):
+        return
+
+    latest_translation = message
+    translation_event.set()
+
+
+print("🔌 Connecting to SignHub WebSocket...")
+
+token = login_and_get_token()
+
+headers = {
+    "User-Agent": "Python-SignalR",
+    "Accept": "application/json",
+    "Connection": "keep-alive"
+}
+
+if token:
+    headers["Authorization"] = f"Bearer {token}"
+
+hub_connection = HubConnectionBuilder()\
+    .with_url(
+        SIGNALR_URL,
+        options={
+            "verify_ssl": VERIFY_SSL,
+            "headers": headers,
+            "skip_negotiation": False
+        }
+    )\
+    .with_automatic_reconnect({
+        "type": "raw",
+        "keep_alive_interval": 5,
+        "reconnect_interval": 5,
+        "max_attempts": 999999
+    })\
+    .build()
+
+hub_connection.on("ReceiveTranslation", on_receive_translation)
+
+def on_close():
+    print("⚠️ WebSocket closed — reconnecting...")
+    try:
+        time.sleep(2)
+        hub_connection.start()
+        print("✅ WebSocket Reconnected")
+    except Exception as e:
+        print("❌ Reconnect failed:", e)
+
+
+hub_connection.on_close(on_close)
+
+try:
+    hub_connection.start()
+    print("✅ WebSocket Connected")
+except Exception as e:
+    print("❌ WebSocket connection failed:", e)
+    raise
 
 # ======================
 # Helpers
@@ -82,9 +191,11 @@ def safe_remove(path: Optional[str]):
         except Exception:
             pass
 
+
 def exit_script():
     print("\n🛑 Idle timeout reached. Exiting script...")
     sys.exit(0)
+
 
 def play_audio_file(path: str):
     if path.endswith(".wav"):
@@ -92,97 +203,96 @@ def play_audio_file(path: str):
     elif path.endswith(".mp3"):
         subprocess.run(["mpg123", "-q", path], check=False)
 
+
 def beep():
     sr = 22050
     n = int(sr * BEEP_DURATION_SEC)
-    amp = 0.95
+
     path = tempfile.NamedTemporaryFile(delete=False, suffix=".wav").name
+
     with wave.open(path, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(sr)
+
         for i in range(n):
-            sample = int(amp * 32767 * math.sin(2 * math.pi * BEEP_FREQ_HZ * (i / sr)))
+            sample = int(
+                32767 * math.sin(2 * math.pi * BEEP_FREQ_HZ * (i / sr))
+            )
             wf.writeframes(struct.pack("<h", sample))
+
     subprocess.run(["aplay", "-q", "-D", "plughw:2,0", path], check=False)
     safe_remove(path)
 
+
 # ======================
-# Audio decode helpers
+# WebSocket Translate
+# ======================
+def translate_frame(img_b64: str) -> Tuple[Optional[str], bool]:
+    global latest_translation
+
+    try:
+        translation_event.clear()
+
+        hub_connection.send(
+            "ProcessFrame",
+            [{
+                "ImageData": img_b64
+            }]
+        )
+
+        if translation_event.wait(timeout=5):
+            return latest_translation, False
+
+        return None, True
+
+    except Exception:
+        return None, True
+
+
+# ======================
+# Audio helpers
 # ======================
 def decode_audio_to_file(audio_b64: str) -> Optional[str]:
     try:
         audio_bytes = base64.b64decode(audio_b64)
     except Exception:
         return None
+
     out = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
+
     with open(out, "wb") as f:
         f.write(audio_bytes)
+
     return out
 
-# ======================
-# Optional Auth
-# ======================
-ACCESS_TOKEN: Optional[str] = None
 
-def have_credentials() -> bool:
-    return bool(USERNAME and PASSWORD)
-
-def login_and_get_token() -> Optional[str]:
+# ======================
+# HTTP helper
+# ======================
+def post_json(url: str, payload: dict, need_auth: bool):
     global ACCESS_TOKEN
-    if not have_credentials():
-        return None
+
+    headers = {"Content-Type": "application/json"}
+
+    if need_auth:
+        if ACCESS_TOKEN is None:
+            ACCESS_TOKEN = login_and_get_token()
+
+        if ACCESS_TOKEN:
+            headers["Authorization"] = f"Bearer {ACCESS_TOKEN}"
+
     try:
-        r = session.post(LOGIN_URL, json={"userName": USERNAME, "password": PASSWORD}, timeout=TIMEOUT)
-        js = None
-        try:
-            js = r.json()
-        except Exception:
-            js = None
-        if not r.ok or not js or not js.get("success", False):
-            msg = (js or {}).get("errorMessage") or r.text[:200]
-            print(f"❌ Login failed ({r.status_code}): {msg}")
-            return None
-        ACCESS_TOKEN = js["data"]["accessToken"]
-        return ACCESS_TOKEN
-    except Exception as e:
-        print(f"❌ Login error: {e}")
-        return None
+        r = session.post(url, json=payload, headers=headers, timeout=TIMEOUT)
+        return r, r.json()
 
-def post_json(url: str, payload: dict, need_auth: bool) -> Tuple[Optional[requests.Response], Optional[dict]]:
-    global ACCESS_TOKEN
-    for attempt in range(2):
-        headers = {"Content-Type": "application/json"}
-        if need_auth:
-            if ACCESS_TOKEN is None:
-                ACCESS_TOKEN = login_and_get_token()
-            if ACCESS_TOKEN:
-                headers["Authorization"] = f"Bearer {ACCESS_TOKEN}"
-        try:
-            r = session.post(url, json=payload, headers=headers, timeout=TIMEOUT)
-        except Exception:
-            return None, None
-        try:
-            js = r.json()
-        except Exception:
-            js = None
-        if need_auth and r.status_code == 401 and attempt == 0 and have_credentials():
-            ACCESS_TOKEN = None
-            continue
-        return r, js
-    return None, None
+    except Exception:
+        return None, None
+
 
 # ======================
 # API
 # ======================
-def translate_frame(img_b64: str) -> Tuple[Optional[str], bool]:
-    r, js = post_json(TRANSLATE_URL, {"imageData": img_b64}, need_auth=False)
-    if r is None or js is None:
-        return None, True
-    if js.get("success"):
-        return (js.get("data") or {}).get("translation"), False
-    return None, False
-
 def finalize_sentence_backend(sentence: str) -> Optional[str]:
    
     need_auth = have_credentials()
@@ -298,7 +408,16 @@ def main():
                 stable_word = None
                 stable_count = 0
             else:
-                valid = bool(word and isinstance(word, str) and ("no sign" not in word.lower()))
+                valid = (
+                    word
+                    and isinstance(word, str)
+                    and word.lower() not in [
+                    "no confident match",
+                    "no sign detected",
+                    "invalid image"
+                    ]
+    and not word.lower().startswith("error")
+)
                 if valid:
                     no_sign_count = 0
                     if stable_word == word:
