@@ -472,7 +472,7 @@ jobs:
 
       - name: Send Notification Email
         if: always()
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v17
         with:
           server_address: smtp.gmail.com
           server_port: 587
