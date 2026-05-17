@@ -196,6 +196,7 @@ namespace GraduationProjectWebApplication.Controllers
         }
 
         [HttpPost("generate-audio")]
+        [Authorize]
         //[EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudio([FromBody] TTSRequest request)
         {
@@ -297,6 +298,15 @@ namespace GraduationProjectWebApplication.Controllers
                     };
 
                     _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
+
+                    _context.UserRecords.Add(new UserRecord
+                    {
+                        FormedAt = DateTime.Now,
+                        FormedSentence = request.Text,
+                        UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    });
+
+                    await _context.SaveChangesAsync();   
 
                     return Ok(SuccessResponse(ttsResponse));
                 }
