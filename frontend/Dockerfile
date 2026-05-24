@@ -25,7 +25,7 @@ RUN npm run build
 # ==========================================
 # Stage 2: Serve the Application with Nginx
 # ==========================================
-FROM nginx:1.29.6-alpine3.23
+FROM nginx:1.31.1-alpine3.23
 
 RUN apk upgrade --no-cache
 
