@@ -1,4 +1,4 @@
-using GraduationProjectWebApplication.Models.DTOs;
+﻿using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -385,17 +385,34 @@ namespace GraduationProjectWebApplication.Controllers
 
         [HttpGet("login-google")]
         [EnableRateLimiting("GoogleLoginLimiter")]
-        public IActionResult LoginWithGoogle()
+        public IActionResult LoginWithGoogle([FromQuery] string? redirectUri)
         {
             _logger.LogInformation("LoginWithGoogle endpoint called.");
 
             try
             {
-                // FIX: Read the public-facing scheme and host from X-Forwarded-* headers set by nginx.
-                // The container runs on plain http internally, but the public site is https.
-                // UseForwardedHeaders() populates Request.Scheme and Request.Host from these headers,
-                // so Url.Action() will correctly build: https://ema2a.ddns.net/api/Auth/google-callback
-                var redirectUrl = Url.Action(
+                var allowedOrigins = new[]
+                {
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "https://ema2a.mooo.com",
+                    "https://backup.ema2a.website"
+                };
+
+                if (string.IsNullOrEmpty(redirectUri) ||
+                    !Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+                {
+                    return BadRequest("Invalid redirect URI.");
+                }
+
+                var origin = $"{uri.Scheme}://{uri.Host}{(uri.IsDefaultPort ? "" : ":" + uri.Port)}";
+
+                if (!allowedOrigins.Contains(origin))
+                {
+                    return BadRequest("Redirect URI is not allowed.");
+                }
+
+                var backendCallback = Url.Action(
                     action: "GoogleCallback",
                     controller: "Auth",
                     values: null,
@@ -403,37 +420,28 @@ namespace GraduationProjectWebApplication.Controllers
                     host: Request.Host.Value
                 );
 
-                if (string.IsNullOrEmpty(redirectUrl))
-                {
-                    _logger.LogError("Failed to generate Google callback URL.");
-
-                    return StatusCode(
-                        (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<string>("Failed to initiate Google login."));
-                }
-
-                _logger.LogInformation("Redirecting to Google authentication. Callback URL: {RedirectUrl}", redirectUrl);
-
                 var properties = new AuthenticationProperties
                 {
-                    RedirectUri = redirectUrl
+                    RedirectUri = backendCallback
                 };
+
+                // store frontend return URL
+                properties.Items["returnUrl"] = redirectUri;
 
                 return Challenge(properties, GoogleDefaults.AuthenticationScheme);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error occurred while initiating Google login.");
-
-                return StatusCode(
-                    (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<string>($"An unexpected error occurred: {ex.Message}"));
+                _logger.LogError(ex, "Error in LoginWithGoogle.");
+                return StatusCode(500, "Unexpected error");
             }
         }
 
+
+
         [HttpGet("google-callback")]
         [EnableRateLimiting("GoogleCallbackLimiter")]
-        public async Task<ActionResult<APIResponseDTO<ExternalLoginResponseDTO>>> GoogleCallback()
+        public async Task<IActionResult> GoogleCallback()
         {
             _logger.LogInformation("GoogleCallback endpoint called.");
 
@@ -443,11 +451,11 @@ namespace GraduationProjectWebApplication.Controllers
 
                 if (!result.Succeeded)
                 {
-                    _logger.LogWarning("External authentication failed.");
-                    return Unauthorized(ErrorResponse<string>("External authentication failed."));
+                    return Unauthorized("External authentication failed.");
                 }
 
                 var claims = result.Principal?.Identities.FirstOrDefault()?.Claims;
+
                 var email = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
                 var name = claims?.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
                 var googleId = claims?.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -455,11 +463,8 @@ namespace GraduationProjectWebApplication.Controllers
 
                 if (string.IsNullOrEmpty(googleId))
                 {
-                    _logger.LogError("Google ID claim not found in external login.");
-                    return BadRequest(ErrorResponse<string>("External login failed: missing Google ID."));
+                    return BadRequest("Missing Google ID.");
                 }
-
-                _logger.LogInformation("External login claims retrieved. Email: {Email}, Name: {Name}", email, name);
 
                 var loginDto = new ExternalLoginDTO
                 {
@@ -470,28 +475,42 @@ namespace GraduationProjectWebApplication.Controllers
                     PhoneNumber = phoneNumber
                 };
 
-                ExternalLoginResponseDTO response = await _authService.ExternalLoginAsync(loginDto);
+                var response = await _authService.ExternalLoginAsync(loginDto);
 
                 if (response == null)
                 {
-                    _logger.LogError("JWT token not issued for external login.");
-                    return BadRequest(ErrorResponse<string>("JWT token not issued"));
+                    return BadRequest("JWT token not issued.");
                 }
 
-                _logger.LogInformation("External login successful for Google ID: {GoogleId}", googleId);
+                // ✅ Get frontend URL
+                var returnUrl = result.Properties?.Items["returnUrl"];
 
-                // Clear the external cookie
+                if (string.IsNullOrEmpty(returnUrl))
+                {
+                    returnUrl = "https://backup.ema2a.website"; // fallback
+                }
+
+                // ✅ CLEAR external cookie
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                _logger.LogDebug("External authentication cookie cleared.");
 
-                return Ok(SuccessResponse<ExternalLoginResponseDTO>(response));
+                // ✅ STORE JWT IN HTTP-ONLY COOKIE
+                Response.Cookies.Append("access_token", response.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true, // MUST be true in production
+                    SameSite = SameSiteMode.None, // required for cross-site
+                    Expires = DateTimeOffset.UtcNow.AddDays(7)
+                });
+
+                _logger.LogInformation("User logged in via Google. Redirecting to frontend.");
+
+                // ✅ Redirect WITHOUT token
+                return Redirect(returnUrl);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error occurred during Google external login.");
-                return StatusCode(
-                    (int)HttpStatusCode.InternalServerError,
-                    ErrorResponse<ExternalLoginResponseDTO>($"An unexpected error occurred: {ex.Message}"));
+                _logger.LogError(ex, "Error in GoogleCallback.");
+                return StatusCode(500, "Unexpected error");
             }
         }
 

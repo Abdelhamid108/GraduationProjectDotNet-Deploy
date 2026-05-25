@@ -1,4 +1,4 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using GraduationProjectWebApplication.Configuration;
 using GraduationProjectWebApplication.Data;
 using GraduationProjectWebApplication.Hubs;
@@ -105,35 +105,79 @@ namespace GraduationProjectWebApplication
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+
+                // Used by Google OAuth internally
                 options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            }).AddCookie(options =>
-            {
-                options.Cookie.SameSite = SameSiteMode.None; 
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
             })
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
+            .AddCookie(options =>
             {
-                x.RequireHttpsMetadata = false;
-                x.SaveToken = true;
-                x.TokenValidationParameters = new TokenValidationParameters
+                // 🔐 Cookie used temporarily for external login (Google)
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.None;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+                // Optional: cleaner behavior
+                options.Events.OnRedirectToLogin = context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                };
+            })
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.RequireHttpsMetadata = false; // set to true in strict production if HTTPS only
+                options.SaveToken = true;
+
+                // 🔥 IMPORTANT: Read JWT from HttpOnly cookie
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        // First check Authorization header (normal flow)
+                        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                        {
+                            context.Token = authHeader.Substring("Bearer ".Length);
+                        }
+                        else if (context.Request.Cookies.ContainsKey("access_token"))
+                        {
+                            // ✅ Fallback to cookie
+                            context.Token = context.Request.Cookies["access_token"];
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Key)),
+
                     ValidateIssuer = true,
                     ValidIssuer = Issuer,
+
                     ValidateAudience = false,
+
                     ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero // 🔐 no delay in token expiration
                 };
             })
             .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
             {
                 options.ClientId = GoogleClientId;
                 options.ClientSecret = GoogleClientSecret;
+
+                // 🔥 This MUST match Google Console
                 options.CallbackPath = "/api/signin-google";
+
+                // 🔐 Required for cross-site (frontend ↔ backend)
                 options.CorrelationCookie.SameSite = SameSiteMode.None;
                 options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
-            });
 
+                // Optional but recommended
+                options.SaveTokens = true;
+            });
 
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
