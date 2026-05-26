@@ -1,5 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 import "./App.css";
+import ChangePassword from "./pages/ChangePassword";
 import CheckCode from "./pages/CheckCode";
 import ForgotPassword from "./pages/ForgotPassword";
 import History from "./pages/History";
@@ -7,9 +9,7 @@ import Home from "./pages/Home";
 import Instructions from "./pages/Instructions";
 import Letters from "./pages/Letters";
 import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
 import Signup from "./pages/Signup";
-import { Toaster } from "sonner";
 
 function App() {
   return (
@@ -23,7 +23,7 @@ function App() {
         <Route path="/instructions" element={<Instructions />} />
 
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/check-code" element={<CheckCode />} />
       </Routes>
       <Toaster richColors position="top-center" />
