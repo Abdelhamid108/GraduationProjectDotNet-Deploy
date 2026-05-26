@@ -267,7 +267,7 @@ export default function SignToText() {
 
     try {
       const data = await finalizeSentence({ sentence: detectedSentence });
-      setDetectedSentence(data?.data || detectedSentence);
+      setAssembledWord(data?.data || detectedSentence);
       setNote("تم تصحيح الجملة");
     } catch {
       setNote("تعذر تصحيح الجملة");
