@@ -169,7 +169,8 @@ Stage 4: Integration Testing (after Stage 3)
                               → email notification → quality gate (≤10 failures)
 
 Stage 5: Deployment (after Stage 4, requires manual approval)
-└── deploy                 → Deploy to Azure Container Apps (Production environment gate)
+├── deploy_main            → Deploy to Azure Container Apps (Production - Main env gate)
+└── deploy_backup          → Deploy to AWS EC2 via SSM (Production - Backup env gate)
 ```
 
 **Additional standalone workflows:**
@@ -310,8 +311,8 @@ Pipeline credentials are stored as **GitHub repository secrets** and never logge
 | Environment | Branch | Deployment Target | Protection |
 |-------------|--------|-------------------|------------|
 | Development | `DEV` | *(CI tests only, no auto-deploy)* | None |
-| Production | `main` | Azure Container Apps | Manual approval required via GitHub Environments |
-| Backup | Manual / `main` | AWS EC2 | Manual SSH or auto-deploy via GitHub Actions (SSH) |
+| Production - Main | `main` | Azure Container Apps | Manual approval required via GitHub Environments |
+| Production - Backup | `main` | AWS EC2 | Auto-deploy via GitHub Actions (AWS SSM + OIDC) |
 
 ---
 

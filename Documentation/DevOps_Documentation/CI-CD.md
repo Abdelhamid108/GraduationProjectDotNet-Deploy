@@ -22,7 +22,8 @@
    - [Job: `trivy-backend`](#27-job-trivy-backend)
    - [Job: `trivy-frontend`](#28-job-trivy-frontend)
    - [Job: `test`](#29-job-test)
-   - [Job: `deploy`](#210-job-deploy)
+   - [Job: `deploy_main`](#210-job-deploy_main)
+   - [Job: `deploy_backup`](#211-job-deploy_backup)
 3. [Workflow: `CodeQl.yml` — Deep Security Analysis](#3-workflow-codeqlyml--deep-security-analysis)
 4. [Workflow: `sonar-flutter.yml` — Flutter Mobile Analysis](#4-workflow-sonar-flutteryml--flutter-mobile-analysis)
 5. [Workflow: `sonar-hardware.yml` — Hardware Service Analysis](#5-workflow-sonar-hardwareyml--hardware-service-analysis)
@@ -60,8 +61,8 @@ The Ema2a CI/CD system consists of **four GitHub Actions workflows**, each with 
 ## 2. Workflow: `main.yml` — Primary CI/CD Pipeline
 
 **File:** `.github/workflows/main.yml`  
-**Total Lines:** 544  
-**Jobs:** 8
+**Total Lines:** 622  
+**Jobs:** 9
 
 ### 2.1 Trigger Configuration
 
@@ -257,7 +258,7 @@ Builds the .NET backend Docker image using BuildKit layer caching and pushes two
 
 2. Detect Backend Changes
    id: changes
-   uses: dorny/paths-filter@v3
+   uses: dorny/paths-filter@v4
    with:
      base: ${{ github.ref_name }}
      filters: |
@@ -653,17 +654,17 @@ The email body conditionally includes the SAS URL depending on whether the Azure
 
 ---
 
-### 2.10 Job: `deploy`
+### 2.10 Job: `deploy_main`
 
 **Name:** *(no `name` field)*  
 **Runner:** `ubuntu-24.04`  
 **Needs:** `[trivy-backend, trivy-frontend, test]`  
 **Condition:** `if: success()` — requires ALL three predecessors to pass  
-**Environment:** `Production` (requires manual approval)
+**Environment:** `Production - Main` (requires manual approval)
 
 #### Purpose
 
-Deploys the exact immutable image tags (built and security-scanned earlier in the pipeline) to Azure Container Apps. Uses the `Production` environment gate to require a human approval before any production change goes live.
+Deploys the exact immutable image tags (built and security-scanned earlier in the pipeline) to Azure Container Apps. Uses the `Production - Main` environment gate to require a human approval before any production change goes live.
 
 #### Steps
 
@@ -705,12 +706,117 @@ Deploys the exact immutable image tags (built and security-scanned earlier in th
 
 **Critical Design Note:** The deployment explicitly uses `needs.trivy-frontend.outputs.frontend_azure_tag` — the Azure-compiled variant. Using `:latest` would accidentally deploy the AWS variant (which uses a different backend URL), causing API calls to fail.
 
-#### Production Environment Gate
+#### Production - Main Environment Gate
 
-The `environment: Production` field activates GitHub Environments protection rules:
+The `environment: "Production - Main"` field activates GitHub Environments protection rules:
 - Required reviewers must approve the deployment before the job can start
 - Deployment history is tracked per environment
 - Deployment status is visible on the main branch's commit page
+
+---
+
+### 2.11 Job: `deploy_backup`
+
+**Name:** *(no `name` field)*  
+**Runner:** `ubuntu-24.04`  
+**Needs:** `[trivy-backend, trivy-frontend, test]`  
+**Condition:** `if: success()` — requires ALL three predecessors to pass  
+**Environment:** `Production - Backup` (requires manual approval, separate from Main)  
+**Permissions:** `id-token: write`, `contents: read` (required for AWS OIDC authentication)
+
+#### Purpose
+
+Deploys the application to the **AWS EC2 backup server** by authenticating via AWS OIDC federation (no static credentials), checking the EC2 instance state, waking it if stopped, and triggering a service restart via **AWS Systems Manager (SSM)** `RunShellScript`. This is a completely separate approval gate from `deploy_main`.
+
+#### Steps
+
+**Step 1 — Authenticate to AWS via OIDC**
+```yaml
+- name: Authenticate to AWS
+  uses: aws-actions/configure-aws-credentials@v6.1.0
+  with:
+    role-to-assume: ${{ vars.AWS_GITHUB_RULE }}
+    aws-region: us-east-1
+```
+
+Uses GitHub's OIDC token provider (`id-token: write` permission) to assume an AWS IAM role without storing any static AWS credentials. The `AWS_GITHUB_RULE` environment variable holds the ARN of the IAM role created by Terraform (`github_actions_aws_auth`).
+
+**Step 2 — Check EC2 Instance State**
+```yaml
+- name: Check EC2 Instance State
+  id: ec2_state
+  run: |
+    STATE=$(aws ec2 describe-instances \
+      --instance-ids "$INSTANCE_ID" \
+      --query "Reservations[0].Instances[0].State.Name" \
+      --output text)
+    echo "Current instance state: $STATE"
+    echo "state=$STATE" >> $GITHUB_OUTPUT
+```
+
+Queries the EC2 instance state before deciding whether to start it. The `INSTANCE_ID` comes from a GitHub Environment variable (`vars.INSTANCE_ID`).
+
+**Step 3 — Start Instance via API Gateway (if stopped)**
+```yaml
+- name: Start Instance via API Gateway
+  if: steps.ec2_state.outputs.state == 'stopped'
+  run: |
+    curl "https://start.ema2a.website"
+    aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+    sleep 45   # Wait for OS and SSM Agent to fully boot
+```
+
+Calls the public API Gateway endpoint (which triggers the Lambda function) to start the instance, then waits for AWS to confirm the instance is running and gives 45 seconds for the OS and SSM Agent to initialize.
+
+**Step 4 — Deploy via AWS SSM (Restart Service)**
+```yaml
+- name: Deploy via AWS SSM (Restart Service)
+  run: |
+    COMMAND_ID=$(aws ssm send-command \
+      --document-name "AWS-RunShellScript" \
+      --instance-ids "$INSTANCE_ID" \
+      --parameters 'commands=["systemctl restart ema2a-app.service"]' \
+      --query "Command.CommandId" \
+      --output text)
+
+    aws ssm wait command-executed \
+      --command-id "$COMMAND_ID" \
+      --instance-id "$INSTANCE_ID"
+
+    aws ssm get-command-invocation \
+      --command-id "$COMMAND_ID" \
+      --instance-id "$INSTANCE_ID" \
+      --query "StandardOutputContent" \
+      --output text
+```
+
+SSM `send-command` executes `systemctl restart ema2a-app.service` on the EC2 instance. This triggers the systemd unit which:
+1. Fetches fresh secrets from Infisical via AWS IAM auth
+2. Pulls latest Docker images from Docker Hub
+3. Starts the application stack with `docker compose up -d`
+4. Deletes the `.env` file from disk (security)
+
+#### Why SSM Instead of SSH?
+
+- **No SSH key management** — SSM uses IAM permissions, not SSH keys
+- **No inbound port required** — SSM works via the SSM Agent (outbound HTTPS), even if port 22 is closed
+- **Auditable** — all SSM commands are logged in AWS CloudTrail
+- **OIDC-native** — pairs cleanly with GitHub's OIDC token, eliminating static credentials entirely
+
+#### Environment Variables
+
+| Variable | Source | Description |
+|----------|--------|---------|
+| `INSTANCE_ID` | `vars.INSTANCE_ID` (GitHub Environment Variable) | EC2 instance ID to target |
+| `AWS_GITHUB_RULE` | `vars.AWS_GITHUB_RULE` (GitHub Environment Variable) | ARN of the IAM role for OIDC authentication |
+
+#### Production - Backup Environment Gate
+
+The `environment: "Production - Backup"` field activates a **separate** GitHub Environments protection rule from `Production - Main`:
+- Has its own set of required reviewers
+- Can be approved or rejected independently of the Azure deployment
+- Has its own environment-scoped variables (`INSTANCE_ID`, `AWS_GITHUB_RULE`)
+- Deployment history is tracked separately
 
 ---
 
@@ -745,7 +851,7 @@ Two parallel CodeQL jobs run simultaneously:
 1. Checkout Repository
 
 2. Initialize CodeQL
-   uses: github/codeql-action/init@v3
+   uses: github/codeql-action/init@v4
    with:
      languages: ${{ matrix.language }}
      queries: security-extended,security-and-quality
@@ -766,7 +872,7 @@ Two parallel CodeQL jobs run simultaneously:
    # CodeQL traces the build to understand code structure
 
 5. Perform CodeQL Analysis
-   uses: github/codeql-action/analyze@v3
+   uses: github/codeql-action/analyze@v4
    with:
      category: "/language:${{ matrix.language }}"
 ```
@@ -912,12 +1018,15 @@ main.yml — Job Dependency Graph
               │  Gate)       │
               └──────┬───────┘
                      │
-                     ▼
-              ┌─────────────────────────────┐
-              │          deploy              │
-              │ (Production Env Approval →   │
-              │  Azure Container Apps)       │
-              └─────────────────────────────┘
+          ┌──────────┴──────────────────────────────────────┐
+          │                                                 │
+          ▼                                                 ▼
+   ┌─────────────────────────────┐  ┌──────────────────────────────────┐
+   │       deploy_main           │  │        deploy_backup              │
+   │ (Production - Main          │  │ (Production - Backup              │
+   │  Env Approval →             │  │  Env Approval →                   │
+   │  Azure Container Apps)      │  │  AWS EC2 via SSM)                 │
+   └─────────────────────────────┘  └──────────────────────────────────┘
 
 ═══ PARALLEL WORKFLOWS (independent, path-triggered) ═══════════════════
 
@@ -949,12 +1058,34 @@ All secrets are defined at the **repository level** in GitHub Settings → Secre
 | `MAIL_USERNAME` | `test` | Display name / sender address in notification emails |
 | `TARGET_EMAIL` | `test` | Recipient address for CI test notification emails |
 
-### Environment-Level Protection (`Production`)
+### Environment-Level Variables (`Production - Backup`)
 
-The `deploy` job targets the `Production` GitHub Environment. This environment must be configured in the repository settings with:
+These are **GitHub Environment Variables** (not Secrets) configured on the `Production - Backup` environment:
+
+| Variable Name | Used By | Description |
+|---------------|---------|-------------|
+| `AWS_GITHUB_RULE` | `deploy_backup` | ARN of the IAM role for GitHub OIDC authentication with AWS |
+| `INSTANCE_ID` | `deploy_backup` | EC2 instance ID of the backup deployment server |
+
+### Environment-Level Protection
+
+Two GitHub Environments are configured, each with independent approval gates:
+
+#### `Production - Main` (Azure Deployment)
+
+The `deploy_main` job targets this environment. It must be configured in the repository settings with:
 - **Required reviewers** — one or more GitHub users who must approve before the job proceeds
 - **Wait timer** (optional) — delay between approval and execution
 - **Branch restrictions** — only allow deployment from `main` branch
+
+#### `Production - Backup` (AWS Deployment)
+
+The `deploy_backup` job targets this environment. It must be configured with:
+- **Required reviewers** — can be the same or different reviewers from `Production - Main`
+- **Environment variables** — `INSTANCE_ID` and `AWS_GITHUB_RULE` must be set here
+- **Branch restrictions** — only allow deployment from `main` branch
+
+Both environments can be approved or rejected independently — approving Azure deployment does not automatically approve AWS deployment, and vice versa.
 
 ---
 
@@ -966,13 +1097,15 @@ The `deploy` job targets the `Production` GitHub Environment. This environment m
 | **SonarCloud** | Latest | SAST, code quality, code smells | `sonar-backend`, `sonar-frontend-devops`, `sonar-flutter`, `sonar-hardware` |
 | **dotnet-sonarscanner** | Latest | .NET MSBuild Sonar integration | `sonar-backend` |
 | **sonar-scanner** (CLI) | Latest | Language-agnostic Sonar CLI | `sonar-frontend-devops`, `sonar-flutter`, `sonar-hardware` |
-| **GitHub CodeQL** | v3 | Deep semantic security analysis | `CodeQl.yml` |
+| **GitHub CodeQL** | v4 | Deep semantic security analysis | `CodeQl.yml` |
 | **Trivy** | v0.35.0 | Container image CVE + secret scanning | `trivy-backend`, `trivy-frontend` |
 | **Docker Buildx** | v4 | BuildKit-powered image builds with registry caching | `backend-build-push`, `frontend-build-push` |
 | **docker/build-push-action** | v7 | Build and push Docker images | `backend-build-push`, `frontend-build-push` |
-| **dorny/paths-filter** | v3 | Detect which paths changed to skip unnecessary builds | `backend-build-push`, `frontend-build-push` |
-| **Azure Container Apps Deploy** | v2 | Deploy updated images to Container Apps | `deploy` |
+| **dorny/paths-filter** | v4 | Detect which paths changed to skip unnecessary builds | `backend-build-push`, `frontend-build-push` |
+| **Azure Container Apps Deploy** | v2 | Deploy updated images to Container Apps | `deploy_main` |
 | **Azure CLI** | Latest | Blob storage upload + SAS token generation | `test` |
+| **aws-actions/configure-aws-credentials** | v6.1.0 | OIDC-based AWS authentication | `deploy_backup` |
+| **AWS SSM (RunShellScript)** | N/A | Remote command execution on EC2 without SSH | `deploy_backup` |
 | **dawidd6/action-send-mail** | v3 | Email notification via Gmail SMTP | `test` |
 | **subosito/flutter-action** | v2 | Install Flutter SDK | `sonar-flutter` |
 | **websocat** | Latest | WebSocket testing for SignalR hub | `test` |
