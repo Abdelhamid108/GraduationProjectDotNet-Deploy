@@ -4,6 +4,7 @@ import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { FormInput } from "@/components/auth/FormInput";
 import AuthPagesLayout from "@/Layouts/AuthPagesLayout";
 import { getResetPasswordToken, resetPassword } from "@/Api/APICalls"; // Adjust import path as needed
+import { useNavigate } from "react-router-dom";
 
 type FlowStep = "REQUEST_TOKEN" | "RESET_PASSWORD";
 
@@ -17,6 +18,7 @@ const ForgotPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const navigate = useNavigate();
   // Step 1: Request the OTP Token
   const handleRequestToken = async () => {
     if (!email) {
@@ -63,6 +65,7 @@ const ForgotPassword = () => {
         setSuccessMessage(
           "تم تغيير كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.",
         );
+        navigate("/login");
         // Optional: Redirect to login page here after a brief timeout
       } else {
         setError(
