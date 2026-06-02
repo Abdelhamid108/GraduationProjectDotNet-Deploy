@@ -1,4 +1,4 @@
-using GraduationProjectWebApplication.Models.DTOs;
+﻿using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.AuthenticationSerivce;
 using GraduationProjectWebApplication.Services.EmailService;
@@ -484,7 +484,17 @@ namespace GraduationProjectWebApplication.Controllers
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 _logger.LogDebug("External authentication cookie cleared.");
 
-                return Ok(SuccessResponse<ExternalLoginResponseDTO>(response));
+                // TODO: خليه في config
+                var frontendBaseUrl = "https://backup.ema2a.website/";
+
+                var redirectUrl =
+                    $"{frontendBaseUrl}/google-callback" +
+                    $"?accessToken={Uri.EscapeDataString(response.TokenResponseDTO.AccessToken)}" +
+                    $"&refreshToken={Uri.EscapeDataString(response.TokenResponseDTO.RefreshToken)}";
+
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+                return Redirect(redirectUrl);
             }
             catch (Exception ex)
             {
