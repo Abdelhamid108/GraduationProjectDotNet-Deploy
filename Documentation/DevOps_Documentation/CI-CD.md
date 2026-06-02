@@ -40,6 +40,10 @@
 
 The Ema2a CI/CD system consists of **four GitHub Actions workflows**, each with a distinct scope of responsibility:
 
+![Ema2a CI/CD Workflow — 9-job GitHub Actions pipeline with SAST, security scanning, integration testing, quality gates, and dual-cloud deployment](./images/cicd-pipeline-workflow-detailed.png)
+
+*Complete CI/CD pipeline workflow showing all 9 jobs, triggers, tools, pipeline dependency graph, deployment environments, and key features.*
+
 | Workflow File | Name | Trigger | Purpose |
 |--------------|------|---------|---------|
 | `main.yml` | `Ema2a-Pipeline` | Push to `DEV`/`main` (backend, frontend, DevOps paths) | Full CI/CD pipeline: SAST → Build → Security Scan → Test → Deploy |
@@ -1035,6 +1039,12 @@ Hardware-Service/** ──► sonar-hardware.yml (Python SonarCloud)
 main push ──► CodeQl.yml              (Deep semantic analysis)
 ```
 
+### End-to-End CI/CD Flow
+
+![End-to-End CI/CD Flow — From developer push through all pipeline stages to Azure and AWS deployment targets](./images/cicd-pipeline-end-to-end.png)
+
+*End-to-end view of the CI/CD pipeline combined with the deployment infrastructure, showing the complete flow from Developer push through GitHub Actions, SAST, Docker builds, security scans, integration tests, manual approval, and deployment to both Azure Container Apps (Primary) and AWS EC2 (Backup).*
+
 ---
 
 ## 7. Secrets & Environment Variables
@@ -1224,3 +1234,11 @@ Both `sonar-backend` and `sonar-frontend-devops` must **exit 0** for `backend-bu
 ### Production Deployment Gate
 
 The `deploy` job is protected by the `Production` GitHub Environment — a human reviewer must explicitly approve the deployment before it runs. This provides a final manual safety check even after all automated gates pass.
+
+---
+
+## 12. Deployment Promotion Flow
+
+![Deployment Promotion Flow — Branch-Based Deployment with Environment Gates & Dual-Cloud Promotion](./images/deployment-promotion-flow.png)
+
+*Deployment promotion flow detailing how code moves from the DEV branch (CI validation only) to the main branch (CI/CD pipeline), passing through quality gates and manual approvals before reaching the Azure (Primary) and AWS (Backup) production environments.*
