@@ -320,37 +320,31 @@ Serves as Nginx's virtual-host configuration. It handles four distinct concerns:
 ```nginx
 server {
     listen 8080;
-    server_name ema2a.ddns.net www.ema2a.ddns.net;
+    server_name backup.ema2a.website www.backup.ema2a.website;
 
-    # Serve the compiled React SPA from this directory
+    # Root directory for your frontend build files
     root /usr/share/nginx/html;
     index index.html;
 
-    # ── 1. ACME Challenge Support ─────────────────────────────
-    # Allows Let's Encrypt / Certbot HTTP-01 challenges when
-    # running in local or manual-cert mode.
+    # 1. ACME Challenge (Optional if using Azure Managed Certs, but good for local/manual tests)
     location /.well-known/acme-challenge/ {
         root /usr/share/nginx/html;
     }
-
-    # ── 2. SPA Routing (Client-Side Router Support) ───────────
-    # Any path that does not match a physical file falls back to
-    # index.html so React Router handles the route client-side.
+    
+    # 2. Frontend Routing (SPA Support)
     location / {
+       
         try_files $uri /index.html;
     }
-
-    # ── 3. Bot / Threat Blocking ───────────────────────────────
-    # Silently drops (444 = no response) requests probing for
-    # common WordPress, PHP, and git/env exposure paths.
+ 
+    # 3. Prevent Scammers and Hackers Bots 
     location ~* (wp-admin|wp-includes|wp-login|wp-content|setup-config|install\.php|xmlrpc\.php|\.env|\.git|\.php$) {
-        return 444;
+        return 444; 
     }
 
-    # ── 4. API Reverse Proxy ───────────────────────────────────
-    # All requests to /api/ are forwarded to the backend container.
+    # 4. API Proxying
     location /api/ {
-        # CORS Preflight — answered by Nginx directly, no backend round-trip
+        # CORS Preflight Handling
         if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' '*' always;
             add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
@@ -361,49 +355,57 @@ server {
             return 204;
         }
 
-        proxy_pass ${BACKEND_URL};           # e.g. http://backend:5001
+        proxy_pass ${BACKEND_URL};
+        
+        # Identity Headers
+        # FIX: Use $host (the public domain the client sent) NOT $proxy_host (the internal backend hostname).
+        # This ensures X-Forwarded-Host and the actual Host header reflect the public domain,
+        # so ASP.NET's UseForwardedHeaders() builds the correct Google OAuth redirect URI.
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        
+        # FIX: TLS is terminated upstream (Cloudflare / load-balancer) before reaching this Nginx.
+        # At this point $scheme is always "http" because Nginx receives plain HTTP internally.
+        # We must hardcode "https" so ASP.NET Core builds the correct OAuth redirect URI:
+        # https://backup.ema2a.website/api/signin-google  (not http://)
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_set_header Authorization $http_authorization;
 
-        # Identity headers — tell backend the real client IP and protocol
-        proxy_set_header Host              $proxy_host;
-        proxy_set_header X-Forwarded-Host  $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port  $server_port;
-        proxy_set_header Authorization     $http_authorization;
-
-        # HTTP/1.1 required for connection upgrade support
+        # Connection Upgrades (Crucial for performance/stability)
         proxy_http_version 1.1;
-        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-
-        # SNI — required when proxying to Azure Container Apps over HTTPS
+        
+        # SNI support for Azure-to-Azure communication
         proxy_ssl_server_name on;
     }
 
-    # ── 5. WebSocket Proxy (SignalR Hub) ──────────────────────
-    # /signHub is the ASP.NET Core SignalR endpoint.
-    # Long-lived connections require: no buffering + extended timeouts.
+    # 5. WebSockets (SignHub)
     location /signHub {
         proxy_pass ${BACKEND_URL};
-
+        
+        # Standard WebSocket Headers
         proxy_http_version 1.1;
-        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
 
-        proxy_set_header Host              $proxy_host;
-        proxy_set_header X-Forwarded-Host  $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Disable response buffering for real-time streaming
+        # Disable buffering for real-time data
         proxy_buffering off;
 
-        # 24-hour timeouts to keep WebSocket connections alive
+        # Long timeouts for persistent connections
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
 
+        # SNI support for Azure-to-Azure communication
         proxy_ssl_server_name on;
     }
 }
@@ -509,8 +511,8 @@ database:
   networks:
     - local
   restart: always
-  healthcheck:
-    test: ["/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER} -P ${DB_ADMIN_PASS} -C -Q 'SELECT 1' || exit 1"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U ${DB_USER} -P ${DB_ADMIN_PASS} -C -Q 'SELECT 1' || exit 1"]
     interval: 30s
     timeout: 10s
     retries: 5
@@ -589,7 +591,7 @@ Used on the AWS EC2 backup deployment server. Compared to the main production co
 | Frontend image | `graduationproject-frontend` | `graduationproject-nginx` (separate image) |
 | Frontend ports | `80:8080` | `80:80`, `443:443` |
 | Backend memory limit | `256M` | `512M` (reserved) |
-| Backend env_file | `./.env` loaded | Environment vars injected directly |
+| Backend env_file | `./.env` loaded | Uses `.env` generated at runtime by Infisical CLI |
 
 ### Key Difference — Nginx Image
 
