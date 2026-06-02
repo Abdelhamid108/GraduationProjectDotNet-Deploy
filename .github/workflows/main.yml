@@ -478,7 +478,7 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_ACCOUNT }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          from: "Ema2a CI/CD <${{ secrets.MAIL_USERNAME }}>"
+          from: Ema2a CI/CD <${{ secrets.EMAIL_USERNAME }}>
           to: ${{ secrets.TARGET_EMAIL }}
           subject: Ema2a Pipeline Test Results (${{ steps.test_results.outputs.pass_rate }})
           body: |
