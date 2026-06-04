@@ -104,6 +104,7 @@ export default function SignToText() {
   const [assembledWord, setAssembledWord] = useState("");
   const [detectedSentence, setDetectedSentence] = useState("");
   const [note, setNote] = useState("انقر على بداية التسجيل لتشغيل الكاميرا");
+  const [isAICorrecting, setIsAICorrecting] = useState(false);
 
   const stopDetection = () => {
     setIsDetecting(false);
@@ -256,8 +257,8 @@ export default function SignToText() {
   };
 
   const speakSentence = () => {
-    if (!detectedSentence) return;
-    const utter = new SpeechSynthesisUtterance(detectedSentence);
+    if (!assembledWord) return;
+    const utter = new SpeechSynthesisUtterance(assembledWord);
     utter.lang = "ar";
     window.speechSynthesis.speak(utter);
   };
@@ -265,12 +266,15 @@ export default function SignToText() {
   const aiCorrect = async () => {
     if (!detectedSentence) return;
 
+    setIsAICorrecting(true);
     try {
       const data = await finalizeSentence({ sentence: detectedSentence });
-      setDetectedSentence(data?.data || detectedSentence);
+      setAssembledWord(data?.data || detectedSentence);
       setNote("تم تصحيح الجملة");
     } catch {
       setNote("تعذر تصحيح الجملة");
+    } finally {
+      setIsAICorrecting(false);
     }
   };
 
@@ -378,13 +382,17 @@ export default function SignToText() {
 
           <button
             onClick={aiCorrect}
-            disabled={!detectedSentence}
+            disabled={!detectedSentence || isAICorrecting}
             className="flex h-14 w-[200px] items-center justify-center gap-2 rounded-[25px] border-2 border-[#19156C] text-[#19156C] disabled:opacity-50 drop-shadow-[0_6px_10px_rgba(0,0,0,0.25)]"
           >
             <span className="text-base font-normal leading-[30px]">
-              تصحيح الجملة
+              {isAICorrecting ? "جاري التصحيح..." : "تصحيح الجملة"}
             </span>
-            <EditIcon />
+            {isAICorrecting ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#19156C] border-t-transparent" />
+            ) : (
+              <EditIcon />
+            )}
           </button>
         </div>
 

@@ -41,6 +41,10 @@
 
 ## 1. Overall Infrastructure Architecture
 
+![Ema2a Infrastructure Provisioning Workflow — Terraform-driven dual-cloud provisioning with Packer AMI building and Ansible configuration](./images/infrastructure-provisioning-workflow.png)
+
+*Dual-cloud provisioning workflow showing the complete IaC flow: Developer → Push Code → GitHub Actions → Terraform Apply → Packer Build → Ansible Configure → Infrastructure Ready, with numbered Azure and AWS resource components.*
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  AZURE (Primary — Serverless Container Apps)                            │
@@ -95,6 +99,10 @@
 ## 2. Azure Infrastructure — Terraform
 
 **Directory:** `DevOps/Terraform/main-azure/`
+
+![Azure Infrastructure Provisioning — Serverless Container Apps stack with managed services, auto-scaling, and Cloudflare DNS](./images/azure-infrastructure-provisioning.png)
+
+*Azure-specific infrastructure provisioning: 5-step Terraform workflow, Container Apps environment with frontend/backend, managed services (SQL, Storage, Speech, Log Analytics), benefits, and domain flow.*
 
 The Azure Terraform configuration provisions a fully serverless, auto-scaled application stack using Azure Container Apps with Cloudflare DNS and managed TLS certificates.
 
@@ -361,6 +369,10 @@ Azure provisions and automatically renews a TLS certificate for the custom domai
 
 **Directory:** `DevOps/Terraform/backup-aws/`
 
+![AWS Backup Infrastructure Provisioning — Cost-optimized EC2 deployment with Lambda wake-on-request, CloudWatch auto-stop, and Infisical secrets](./images/aws-backup-infrastructure-provisioning.png)
+
+*AWS-specific infrastructure provisioning: 5-step Terraform workflow, VPC/EC2/Docker Compose topology, automation & monitoring sidebar (API Gateway, Lambda, CloudWatch), secrets management via Infisical, and key benefits.*
+
 The AWS configuration provisions a low-cost, auto-stopping EC2 backup server with a serverless wake-on-request mechanism via API Gateway and Lambda.
 
 ### 3.1 Providers (embedded in `main.tf`)
@@ -399,7 +411,7 @@ provider "infisical" {
 | `cloudflare_zone_id` | `6203992…` | No | Cloudflare zone ID (shared with Azure) |
 | `server_dns_record_name` | `backup` | No | Server subdomain (⇒ `backup.ema2a.website`) |
 | `infisical_identity_id` | `dd22bb8a-…` | No | Infisical machine identity ID |
-| `infisical_allowed_account_id` | `863030157396` | No | AWS account ID for Infisical IAM auth |
+| `account_id` | `069089526123` | No | AWS account ID for Infisical IAM auth |
 | `cloudflare_api_token` | — | **Yes** | Cloudflare API token |
 | `infisical_client_id` | — | **Yes** | Infisical machine identity client ID |
 | `infisical_client_secret` | — | **Yes** | Infisical machine identity client secret |
@@ -409,9 +421,12 @@ provider "infisical" {
 #### Data Sources
 
 ```hcl
-# Use the default VPC and its subnets (no custom VPC required)
+# Use the default VPC and a specific subnet
 data "aws_vpc"     "default" { default = true }
-data "aws_subnets" "default" { filter { name = "vpc-id" } }
+data "aws_subnet"  "selected" { 
+  vpc_id            = data.aws_vpc.default.id
+  availability_zone = "us-east-1a" 
+}
 
 # Auto-discover the most recent Packer-built AMI by tag filter
 data "aws_ami" "ema2a_ami" {
@@ -441,6 +456,11 @@ module "iam_role" {
   source = "terraform-aws-modules/iam/aws//modules/iam-role"
   name   = "ema2a-instance-profile"
   create_instance_profile = true
+  
+  custom_role_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  ]
+
   trust_policy_permissions = {
     TrustRoleAndServiceToAssume = {
       actions    = ["sts:AssumeRole", "sts:TagSession"]
@@ -450,7 +470,7 @@ module "iam_role" {
 }
 ```
 
-Creates an IAM role that EC2 can assume. This role is linked to Infisical's AWS IAM authentication, allowing the EC2 instance to fetch secrets from Infisical without storing any credentials on disk.
+Creates an IAM role that EC2 can assume. This role is linked to Infisical's AWS IAM authentication, allowing the EC2 instance to fetch secrets from Infisical without storing any credentials on disk. The `AmazonSSMManagedInstanceCore` policy allows the instance to be managed by AWS Systems Manager (SSM) for remote deployment execution.
 
 #### EC2 Instance
 
@@ -461,7 +481,7 @@ module "ec2_instance" {
   instance_type = var.instance_type           # c7i-flex.large
   name          = "ema2a-backup-deployment-server"
 
-  subnet_id                   = data.aws_subnets.default.ids[0]
+  subnet_id                   = data.aws_subnet.selected.id
   associate_public_ip_address = true
   create_eip                  = true           # Persistent Elastic IP
   iam_instance_profile        = module.iam_role.instance_profile_name
@@ -578,13 +598,44 @@ A simple HTTP API Gateway with a single `GET /` route that invokes the Lambda. T
 resource "infisical_identity_aws_auth" "aws-auth" {
   identity_id            = var.infisical_identity_id
   sts_endpoint           = "https://sts.us-east-1.amazonaws.com/"
-  allowed_account_ids    = [var.infisical_allowed_account_id]
+  allowed_account_ids    = [var.account_id]
   allowed_principal_arns = [module.iam_role.arn]
   access_token_ttl       = 2592000   # 30 days
 }
 ```
 
 Configures Infisical to trust the EC2 instance's IAM role for secret retrieval. At runtime, the EC2 instance calls AWS STS to get a token, then exchanges it with Infisical for an API access token — no static credentials are stored.
+
+#### GitHub Actions OIDC Federation
+
+```hcl
+module "iam_oidc_provider" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-provider"
+}
+
+module "github_oidc_role" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-role"
+  name   = "github_actions_aws_auth"
+
+  subjects = ["Abdelhamid108/GraduationProjectDotNet-Deploy:*"]
+  
+  policies = {
+    DeployPolicy = aws_iam_policy.ema2a_github_policy.arn
+  }
+}
+```
+
+Configures OIDC identity federation between GitHub Actions and AWS. This allows the CI/CD pipeline's `deploy_backup` job to authenticate with AWS securely without static, long-lived credentials. The IAM policy (`ema2a_github_policy`) attached to this role explicitly grants `ec2:DescribeInstances` to check the EC2 state, and `ssm:SendCommand` to restart the application via systemd remotely.
+
+#### AWS Terraform Outputs
+
+| Output Name | Value | Description |
+|-------------|-------|-------------|
+| `cloudflare_target_url` | `start.ema2a.website` | API Gateway domain for Lambda wake endpoint |
+| `ema2a_server_ip` | `backup.ema2a.website` | Public domain of the EC2 backup instance |
+| `iam_role_arn` | `arn:aws:iam::...` | The EC2 instance profile IAM role ARN |
+| `github_role_arn` | `arn:aws:iam::...` | The OIDC role ARN used by GitHub Actions |
+| `instance_id` | `i-0abcd1234efgh...` | The EC2 instance ID for deployment scripts |
 
 ### 3.4 Lambda Function
 
@@ -629,6 +680,10 @@ def lambda_handler(event, context):
 ## 4. VM Image Building — Packer
 
 **File:** `DevOps/packer-ansible/ema2a.pkr.hcl`
+
+![Ansible Execution & AMI Lifecycle — From Image Build to Production Deployment](./images/packer-ansible-ami-lifecycle.png)
+
+*The complete VM image lifecycle: Packer initializes a temporary EC2 instance, Ansible provisions it with the full application stack, an EBS snapshot and AMI are created, and Terraform discovers and deploys the new AMI to the production EC2 backup instance.*
 
 ### Purpose
 
@@ -1024,7 +1079,7 @@ WantedBy=multi-user.target
 | **Database** | Azure SQL (managed PaaS) | MS SQL Server in Docker container |
 | **TLS** | Azure Managed Certificates | Self-managed / Let's Encrypt |
 | **Secrets** | Azure Container Apps secrets (Terraform-managed) | Infisical (pulled at boot via AWS IAM auth) |
-| **Deployment trigger** | GitHub Actions → `Azure/container-apps-deploy-action` | GitHub Actions → SSH → `docker compose pull && up` |
+| **Deployment trigger** | GitHub Actions → `Azure/container-apps-deploy-action` | GitHub Actions → AWS SSM via OIDC → `systemctl restart` |
 | **DNS** | Cloudflare A record → Container App static IP | Cloudflare A record (proxied) → EC2 Elastic IP |
 | **Image provisioning** | Not required (Container Apps pull from Docker Hub) | Packer + Ansible bakes AMI with Docker pre-installed |
 | **Storage** | Azure Files (managed) | Docker volume on EBS |

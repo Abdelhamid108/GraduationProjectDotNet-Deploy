@@ -25,6 +25,10 @@
 
 ## 1. System Overview
 
+![System Architecture — High-Level Overview of CI/CD, Infrastructure Provisioning, and Runtime Deployment across Azure and AWS](./images/system-architecture-highlevel.png)
+
+*High-level overview showing the CI/CD pipeline, dual-cloud infrastructure provisioning (Azure + AWS), and runtime architecture with Docker Hub as the central image registry.*
+
 Ema2a is a full-stack application with a multi-cloud deployment strategy. The infrastructure is designed around **cost efficiency** and **reliability**: Azure serves as the primary serverless deployment, while AWS provides a on-demand backup server that auto-starts via a Lambda function when needed and auto-stops when idle.
 
 ```
@@ -147,6 +151,14 @@ GraduationProjectDotNet-Deploy/
 
 ---
 
+## 3. Architecture Overview
+
+![Dual-Cloud Runtime Infrastructure — Azure Container Apps (Primary) and AWS EC2 (Backup) with networking, scaling, and cost optimization](./images/dual-cloud-infrastructure-overview.png)
+
+*Detailed dual-cloud infrastructure architecture showing Azure (Primary) with serverless Container Apps, auto-scaling, and managed services alongside AWS (Backup) with on-demand EC2, Lambda wake-on-request, and CloudWatch auto-stop for cost optimization.*
+
+---
+
 ## 4. Pipeline Summary
 
 The primary pipeline (`main.yml`) runs on every push to `DEV` or `main` that touches backend, frontend, or DevOps files. It is structured in **five sequential stages**:
@@ -169,7 +181,8 @@ Stage 4: Integration Testing (after Stage 3)
                               → email notification → quality gate (≤10 failures)
 
 Stage 5: Deployment (after Stage 4, requires manual approval)
-└── deploy                 → Deploy to Azure Container Apps (Production environment gate)
+├── deploy_main            → Deploy to Azure Container Apps (Production - Main env gate)
+└── deploy_backup          → Deploy to AWS EC2 via SSM (Production - Backup env gate)
 ```
 
 **Additional standalone workflows:**
@@ -286,6 +299,10 @@ Two frontend images are built per pipeline run — each compiled with a differen
 
 ## 8. Secrets Management
 
+![Secrets Management Architecture — Three Independent Secrets Systems with Zero Static Credentials](./images/secrets-management-flow.png)
+
+*Three independent secrets management systems (GitHub Actions, Azure Container Apps, Infisical/AWS) working together to provide a secure, credential-free runtime architecture.*
+
 ### Azure — Container Apps Secrets
 
 Application secrets (API keys, JWT, SMTP credentials, Google OAuth) are stored directly as **Azure Container Apps secrets** and injected as environment variables into the backend container at runtime. Terraform provisions these secrets using the `backend_secrets_values` variable map.
@@ -305,17 +322,29 @@ Pipeline credentials are stored as **GitHub repository secrets** and never logge
 
 ---
 
-## 9. Environments
+## 9. Cost Optimization Strategy
+
+The Ema2a application implements a dual-cloud cost optimization strategy that balances high availability with minimal idle costs.
+
+![Cost Optimization Strategy — Dual-Cloud Cost Optimization with Auto-Scaling, Auto-Stop & Pay-for-Use](./images/cost-optimization-strategy.png)
+
+*Dual-cloud cost optimization strategy showing Azure's scale-to-zero serverless architecture alongside AWS's auto-stop EC2 lifecycle and Lambda wake-on-request architecture.*
+
+By combining Azure's serverless pay-for-use model with AWS's aggressive auto-stop and wake-on-request, the system maintains a highly available dual-cloud presence while driving idle compute costs down to nearly zero.
+
+---
+
+## 10. Environments
 
 | Environment | Branch | Deployment Target | Protection |
 |-------------|--------|-------------------|------------|
 | Development | `DEV` | *(CI tests only, no auto-deploy)* | None |
-| Production | `main` | Azure Container Apps | Manual approval required via GitHub Environments |
-| Backup | Manual / `main` | AWS EC2 | Manual SSH or auto-deploy via GitHub Actions (SSH) |
+| Production - Main | `main` | Azure Container Apps | Manual approval required via GitHub Environments |
+| Production - Backup | `main` | AWS EC2 | Auto-deploy via GitHub Actions (AWS SSM + OIDC) |
 
 ---
 
-## 10. Documentation Index
+## 11. Documentation Index
 
 Detailed documentation for each DevOps domain is available in the files below:
 

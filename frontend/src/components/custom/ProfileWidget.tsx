@@ -138,7 +138,7 @@ export default function ProfileWidget({ close }: ProfileWidgetProps) {
   }, []);
 
   const handleChangePassword = () => {
-    navigate("/forgot-password");
+    navigate("/change-password");
     close();
   };
 

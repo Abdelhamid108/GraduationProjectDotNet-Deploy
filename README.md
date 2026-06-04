@@ -57,6 +57,10 @@ Ema2a provides:
 
 ## 2. System Architecture
 
+![System Architecture — CI/CD Pipeline, Infrastructure Provisioning, and Dual-Cloud Runtime Deployment](./Documentation/DevOps_Documentation/images/system-architecture-highlevel.png)
+
+*High-level DevOps architecture showing the CI/CD pipeline (GitHub Actions → SonarCloud → Docker → Trivy → Testing → Deployment), infrastructure provisioning (Terraform for Azure + AWS), and runtime architecture across Azure Container Apps (Primary) and AWS EC2 (Backup).*
+
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                         CLIENT LAYER                                 │
@@ -336,7 +340,7 @@ The backend Docker image sets a **hard memory cap** on the GC heap to force more
 
 ```dockerfile
 # backend/Dockerfile
-ENV DOTNET_GCHeapHardLimit=209715200   # 200 MB GC heap hard limit
+ENV DOTNET_GCHeapHardLimit=0x60000000   # ~1.5 GB GC heap hard limit
 ```
 
 This prevents unmanaged ONNX memory (~200–400 MB for the models) from starving the container when Azure/AWS sets a memory limit on the pod/instance.
@@ -657,16 +661,17 @@ trivy-backend        trivy-frontend
      │                 │
      └───────┬──────────┘
              │
-           test
+         test
   (docker compose up → API tests
    → quality gate ≤10 failures
    → email notification
    → SAS artifact upload to Azure)
              │
-          deploy
-  (Production environment gate
-   → human approval required
-   → Azure Container Apps deploy)
+     ┌───────┴─────────┐
+     │                 │
+deploy_main       deploy_backup
+  (Azure            (AWS EC2
+ Container Apps)    via SSM)
 ```
 
 **Additional standalone workflows:**
@@ -686,7 +691,7 @@ GraduationProjectDotNet-Deploy/
 │
 ├── .github/
 │   ├── workflows/
-│   │   ├── main.yml                   ← Primary CI/CD pipeline (8 jobs)
+│   │   ├── main.yml                   ← Primary CI/CD pipeline (9 jobs)
 │   │   ├── CodeQl.yml                 ← Deep CodeQL security analysis
 │   │   ├── sonar-flutter.yml          ← Flutter code quality
 │   │   └── sonar-hardware.yml         ← Hardware service code quality
@@ -846,7 +851,6 @@ The AI model is documented directly in this README under **[Section 5 — AI Mod
 | [`Docker.md`](./Documentation/DevOps_Documentation/Docker.md) | **Containerization** — backend Dockerfile (multi-stage, ONNX GC tuning, non-root user), frontend Dockerfile (Vite build → Nginx runtime), Nginx proxy config (SPA + API + WebSocket + CORS), all 3 Compose files compared |
 | [`Provisioning&&Infra.md`](./Documentation/DevOps_Documentation/Provisioning&&Infra.md) | **Infrastructure** — Azure Terraform (Container Apps, SQL, Storage, Speech, DNS, TLS), AWS Terraform (EC2, Lambda, API Gateway, CloudWatch auto-stop), Packer AMI build, all 4 Ansible roles step-by-step, systemd service template |
 | [`CI-CD.md`](./Documentation/DevOps_Documentation/CI-CD.md) | **CI/CD Pipeline** — all 4 GitHub Actions workflows, every job/step explained, pipeline dependency graph, immutable image tag formula, quality gate logic, secrets reference |
-| [`Google_OAuth_Debug.md`](./Documentation/DevOps_Documentation/Google_OAuth_Debug.md) | **OAuth Fix** — full root cause analysis of 8 OAuth bugs, fixes applied for backend (ForwardedHeaders, CallbackPath, absolute RedirectUri, cookie scheme), remaining frontend work |
 
 ---
 

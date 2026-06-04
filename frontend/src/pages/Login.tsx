@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { AuthFormCard } from "@/components/auth/AuthFormCard";
-import { FormInput } from "@/components/auth/FormInput";
-import AuthPagesLayout from "@/Layouts/AuthPagesLayout";
-import girlKidImg from "@/assets/gril kid.jpg";
-import { loginGoogle, loginUser } from "@/Api/APICalls";
+import { loginUser } from "@/Api/APICalls";
 import {
   clearAuthSession,
   hasUsableRefreshToken,
   persistAuthSession,
   type TokenResponseDTO,
 } from "@/Api/AuthSession";
-import { toast } from "sonner";
+import girlKidImg from "@/assets/gril kid.jpg";
+import { AuthFormCard } from "@/components/auth/AuthFormCard";
+import { FormInput } from "@/components/auth/FormInput";
 import GoogleButton from "@/components/custom/GoogleButton";
+import AuthPagesLayout from "@/Layouts/AuthPagesLayout";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,24 +72,16 @@ const Login = () => {
   async function loginWithGoogle() {
     try {
       setIsSubmitting(true);
-      const response = await loginGoogle();
-      if (!response?.success || !response?.data) {
-        toast.error(
-          response?.errorMessage || "فشل تسجيل الدخول عبر جوجل. حاول مرة أخرى.",
-        );
-        return;
-      }
-      if (!persistAuthSession(response.data as TokenResponseDTO)) {
-        clearAuthSession();
-        toast.error("استجابة تسجيل الدخول غير مكتملة.");
-        return;
-      }
-    } catch (error) {
+
+      // 1. Call your API to get the Google Login URL
+      window.location.href = `${import.meta.env.VITE_BASE_URI}/api/Auth/login-google`;
+    } catch {
       toast.error("حدث خطأ أثناء تسجيل الدخول عبر جوجل. حاول مرة أخرى.");
     } finally {
       setIsSubmitting(false);
     }
   }
+
   return (
     <AuthPagesLayout img={girlKidImg}>
       <AuthFormCard
@@ -108,11 +100,7 @@ const Login = () => {
             </div>
             {/* Sign up link */}
 
-            <GoogleButton
-              onClick={() => {
-                loginWithGoogle();
-              }}
-            />
+            <GoogleButton onClick={loginWithGoogle} />
             <div className="flex flex-row justify-center items-center gap-2 w-full">
               <span className="font-['Cairo'] font-normal text-xs leading-[22px] text-[#757373]">
                 ليس لديك حساب؟

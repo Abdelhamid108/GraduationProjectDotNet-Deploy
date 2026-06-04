@@ -206,7 +206,6 @@ const request = async <T>(
     includeAuth?: boolean;
   },
 ): Promise<T> => {
-  console.log(BASE_URL);
   const url = new URL(`${normalizeBaseUrl(BASE_URL)}${path}`);
   if (options?.query) {
     Object.entries(options.query).forEach(([key, value]) => {
