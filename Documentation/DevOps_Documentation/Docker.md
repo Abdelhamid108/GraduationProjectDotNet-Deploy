@@ -28,27 +28,9 @@
 
 The Ema2a application is a three-tier containerised system:
 
-```
-Internet
-   │
-   ▼
-┌──────────────────────────────┐
-│   Frontend (Nginx + React)   │  ← Serves static SPA, proxies /api & /signHub
-│   Port 8080 (HTTP)           │
-└──────────────┬───────────────┘
-               │ docker network: api_network
-               ▼
-┌──────────────────────────────┐
-│   Backend (.NET 8 / ASP.NET) │  ← REST API + SignalR hub
-│   Port 5001                  │
-└──────────────┬───────────────┘
-               │ docker network: local (internal, no external access)
-               ▼
-┌──────────────────────────────┐
-│   Database (MS SQL Server)   │  ← Isolated; health-checked before backend start
-│   Port 1433 (internal only)  │
-└──────────────────────────────┘
-```
+![Ema2a Docker Container Architecture](./images/docker-container-architecture.png)
+
+*Three-tier Docker container architecture showing the Frontend (Nginx+React), Backend (.NET 8+ONNX), and Database (MSSQL) with their network isolation and volume mounts.*
 
 | Component | Base Image | Role |
 |-----------|-----------|------|
@@ -642,23 +624,9 @@ Create a `.env` file at the repository root based on `backend/.env.example`:
 
 Two Docker networks are defined in all compose files:
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  api_network (bridge)                                        │
-│  ┌──────────────┐    ┌──────────────────────────────────┐    │
-│  │   frontend   │◄──►│         backend                  │    │
-│  │ (nginx:8080) │    │ (.NET 8:5001)                    │    │
-│  └──────────────┘    └──────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │  local (bridge) │  ← internal: true
-                        │ ┌─────────────┐ │
-                        │ │  database   │ │
-                        │ │ (mssql:1433)│ │
-                        │ └─────────────┘ │
-                        └─────────────────┘
-```
+![Docker Networking Model — Network Segmentation & Security Isolation](./images/docker-networking-model.png)
+
+*Docker networking model showing the `api_network` (bridge) for public-facing communication and the isolated `local` network (internal: true) protecting the database.*
 
 | Network | Driver | Internal | Members |
 |---------|--------|----------|---------|

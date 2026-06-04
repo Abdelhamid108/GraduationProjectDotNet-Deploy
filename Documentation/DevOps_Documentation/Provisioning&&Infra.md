@@ -41,6 +41,10 @@
 
 ## 1. Overall Infrastructure Architecture
 
+![Ema2a Infrastructure Provisioning Workflow — Terraform-driven dual-cloud provisioning with Packer AMI building and Ansible configuration](./images/infrastructure-provisioning-workflow.png)
+
+*Dual-cloud provisioning workflow showing the complete IaC flow: Developer → Push Code → GitHub Actions → Terraform Apply → Packer Build → Ansible Configure → Infrastructure Ready, with numbered Azure and AWS resource components.*
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  AZURE (Primary — Serverless Container Apps)                            │
@@ -95,6 +99,10 @@
 ## 2. Azure Infrastructure — Terraform
 
 **Directory:** `DevOps/Terraform/main-azure/`
+
+![Azure Infrastructure Provisioning — Serverless Container Apps stack with managed services, auto-scaling, and Cloudflare DNS](./images/azure-infrastructure-provisioning.png)
+
+*Azure-specific infrastructure provisioning: 5-step Terraform workflow, Container Apps environment with frontend/backend, managed services (SQL, Storage, Speech, Log Analytics), benefits, and domain flow.*
 
 The Azure Terraform configuration provisions a fully serverless, auto-scaled application stack using Azure Container Apps with Cloudflare DNS and managed TLS certificates.
 
@@ -360,6 +368,10 @@ Azure provisions and automatically renews a TLS certificate for the custom domai
 ## 3. AWS Backup Infrastructure — Terraform
 
 **Directory:** `DevOps/Terraform/backup-aws/`
+
+![AWS Backup Infrastructure Provisioning — Cost-optimized EC2 deployment with Lambda wake-on-request, CloudWatch auto-stop, and Infisical secrets](./images/aws-backup-infrastructure-provisioning.png)
+
+*AWS-specific infrastructure provisioning: 5-step Terraform workflow, VPC/EC2/Docker Compose topology, automation & monitoring sidebar (API Gateway, Lambda, CloudWatch), secrets management via Infisical, and key benefits.*
 
 The AWS configuration provisions a low-cost, auto-stopping EC2 backup server with a serverless wake-on-request mechanism via API Gateway and Lambda.
 
@@ -668,6 +680,10 @@ def lambda_handler(event, context):
 ## 4. VM Image Building — Packer
 
 **File:** `DevOps/packer-ansible/ema2a.pkr.hcl`
+
+![Ansible Execution & AMI Lifecycle — From Image Build to Production Deployment](./images/packer-ansible-ami-lifecycle.png)
+
+*The complete VM image lifecycle: Packer initializes a temporary EC2 instance, Ansible provisions it with the full application stack, an EBS snapshot and AMI are created, and Terraform discovers and deploys the new AMI to the production EC2 backup instance.*
 
 ### Purpose
 

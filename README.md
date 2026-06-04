@@ -57,6 +57,10 @@ Ema2a provides:
 
 ## 2. System Architecture
 
+![System Architecture — CI/CD Pipeline, Infrastructure Provisioning, and Dual-Cloud Runtime Deployment](./Documentation/DevOps_Documentation/images/system-architecture-highlevel.png)
+
+*High-level DevOps architecture showing the CI/CD pipeline (GitHub Actions → SonarCloud → Docker → Trivy → Testing → Deployment), infrastructure provisioning (Terraform for Azure + AWS), and runtime architecture across Azure Container Apps (Primary) and AWS EC2 (Backup).*
+
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                         CLIENT LAYER                                 │
