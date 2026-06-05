@@ -10,6 +10,7 @@ import Instructions from "./pages/Instructions";
 import Letters from "./pages/Letters";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import GoogleCallbackPage from "./pages/GoogleCallbackPage";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/check-code" element={<CheckCode />} />
+        <Route path="/google-callback" element={<GoogleCallbackPage />} />
       </Routes>
       <Toaster richColors position="top-center" />
     </BrowserRouter>
