@@ -312,7 +312,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Scan Backend Image
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: needs.backend-build-push.outputs.backend_tag != ''
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ needs.backend-build-push.outputs.backend_tag }}
@@ -353,7 +353,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Scan Frontend Image
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         if: needs.frontend-build-push.outputs.frontend_azure_tag != ''
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ needs.frontend-build-push.outputs.frontend_azure_tag }}
