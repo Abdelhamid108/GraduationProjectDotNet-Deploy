@@ -485,7 +485,7 @@ namespace GraduationProjectWebApplication.Controllers
                 _logger.LogDebug("External authentication cookie cleared.");
 
                 // TODO: خليه في config
-                var frontendBaseUrl = "https://backup.ema2a.website/";
+                var frontendBaseUrl = "https://backup.ema2a.website";
 
                 var redirectUrl =
                     $"{frontendBaseUrl}/google-callback" +
