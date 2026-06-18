@@ -3,16 +3,16 @@ export const AUTH_STORAGE_KEY = "auth.session.v1";
 export interface TokenResponseDTO {
   accessToken?: string | null;
   refreshToken?: string | null;
-  accessTokenExpires?: string;
-  refreshTokenExpires?: string;
+  accessTokenExpires?: string | null;
+  refreshTokenExpires?: string | null;
 }
 
 export interface StoredAuthSession {
   accessToken: string;
   refreshToken: string;
-  accessTokenExpires: string;
-  refreshTokenExpires: string;
-  receivedAt: string;
+  accessTokenExpires?: string;
+  refreshTokenExpires?: string;
+  receivedAt?: string;
 }
 
 const toTime = (value?: string | null) => {
