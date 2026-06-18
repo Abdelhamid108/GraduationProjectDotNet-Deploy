@@ -490,7 +490,9 @@ namespace GraduationProjectWebApplication.Controllers
                 var redirectUrl =
                     $"{frontendBaseUrl}/google-callback" +
                     $"?accessToken={Uri.EscapeDataString(response.TokenResponseDTO.AccessToken)}" +
-                    $"&refreshToken={Uri.EscapeDataString(response.TokenResponseDTO.RefreshToken)}";
+                    $"&refreshToken={Uri.EscapeDataString(response.TokenResponseDTO.RefreshToken)}" +
+                    $"&accessTokenExpires={Uri.EscapeDataString(response.TokenResponseDTO.AccessTokenExpires.ToString("o"))}" +
+                    $"&refreshTokenExpires={Uri.EscapeDataString(response.TokenResponseDTO.RefreshTokenExpires.ToString("o"))}";
 
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
