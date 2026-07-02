@@ -27,6 +27,7 @@ namespace GraduationProjectWebApplication.Controllers
         private readonly string? hardwareCorrectSentenceKey;
         private readonly string? hardwareCorrectSentenceBackUpKey;
         private readonly string? hardwareTTSKey;
+        private readonly string? hardwareTTSBackupKey;
         private readonly IModelService _modelService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignLanguageTranslatorController> _logger;
@@ -50,6 +51,7 @@ namespace GraduationProjectWebApplication.Controllers
             hardwareCorrectSentenceKey = configuration["HARDWARE_CORRECT_SENTENCE_KEY"];
             hardwareCorrectSentenceBackUpKey = configuration["HARDWARE_CORRECT_SENTENCE_BACKUP_KEY"];
             hardwareTTSKey = configuration["HARDWARE_TTS_KEY"];
+            hardwareTTSBackupKey = configuration["HARDWARE_TTS_BACKUP_KEY"];
             _modelService = modelService;
             _context = context;
             _logger = logger;
@@ -306,7 +308,130 @@ namespace GraduationProjectWebApplication.Controllers
                         UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                     });
 
-                    await _context.SaveChangesAsync();   
+                    await _context.SaveChangesAsync();
+
+                    return Ok(SuccessResponse(ttsResponse));
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "GenerateAudio: Error calling Gemini API");
+                    return StatusCode(
+                        (int)HttpStatusCode.InternalServerError,
+                        ErrorResponse<string>($"Error calling Gemini API: {ex.Message}"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
+                return StatusCode(
+                   (int)HttpStatusCode.InternalServerError,
+                   ErrorResponse<string>($"An unexpected error occurred."));
+            }
+        }
+
+
+        [HttpPost("generate-audio-hardware")]
+        //[EnableRateLimiting("GeminiLimiter")]
+        public async Task<ActionResult<APIResponseDTO<TTSResponse>>> GenerateAudioHardware([FromBody] TTSRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request?.Text))
+                {
+                    _logger.LogWarning("GenerateAudio: Missing 'text' field");
+                    return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
+                }
+
+                _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
+
+                const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+
+                var payload = new
+                {
+                    contents = new[]
+                    {
+                    new
+                    {
+                        parts = new[]
+                        {
+                            new { text = $"Say this in a clear, friendly voice: {request.Text}" }
+                        }
+                    }
+                },
+                    generationConfig = new
+                    {
+                        responseModalities = new[] { "AUDIO" },
+                        speechConfig = new
+                        {
+                            voiceConfig = new
+                            {
+                                prebuiltVoiceConfig = new { voiceName = "Kore" }
+                            }
+                        }
+                    }
+                };
+
+                var jsonPayload = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                try
+                {
+
+
+                    var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+
+                    geminiRequest.Headers.Add("x-goog-api-key", hardwareTTSKey);
+                    geminiRequest.Content = content;
+
+                    HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
+
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
+                        var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+
+                        backupRequest.Headers.Add("x-goog-api-key", hardwareTTSBackupKey);
+                        backupRequest.Content = content;
+
+                        response = await _httpClient.SendAsync(backupRequest);
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                    var geminiResult = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
+
+                    var audioPart = geminiResult
+                        .GetProperty("candidates")[0]
+                        .GetProperty("content")
+                        .GetProperty("parts")[0];
+
+                    var audioData = audioPart
+                        .GetProperty("inlineData")
+                        .GetProperty("data")
+                        .GetString();
+
+                    var mimeType = audioPart
+                        .GetProperty("inlineData")
+                        .GetProperty("mimeType")
+                        .GetString();
+
+                    var sampleRate = 24000;
+                    var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
+                    if (rateMatch.Success)
+                    {
+                        sampleRate = int.Parse(rateMatch.Groups[1].Value);
+                    }
+
+                    var ttsResponse = new TTSResponse
+                    {
+                        AudioData = audioData,
+                        SampleRate = sampleRate
+                    };
+
+                    _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
 
                     return Ok(SuccessResponse(ttsResponse));
                 }
