@@ -27,6 +27,8 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
+    volumes:
+      - images:/app/wwwroot/Images    
     environment:
       - ASPNETCORE_URLS=http://+:5001
       - DEFAULT_CONNECTION=Server=${DB_HOST},1433;Database=${DB_NAME};User Id=${DB_USER};Password=${DB_ADMIN_PASS};Trust Server Certificate=True
@@ -97,3 +99,4 @@ networks:
 
 volumes:
   db:
+  images:  
