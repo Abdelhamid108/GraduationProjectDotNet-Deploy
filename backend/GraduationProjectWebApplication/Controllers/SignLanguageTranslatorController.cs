@@ -3,15 +3,11 @@ using GraduationProjectWebApplication.Models.DTOs;
 using GraduationProjectWebApplication.Models.Entities;
 using GraduationProjectWebApplication.Services.LettersModelService;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace GraduationProjectWebApplication.Controllers
 {
@@ -62,7 +58,7 @@ namespace GraduationProjectWebApplication.Controllers
         //[EnableRateLimiting("GeminiLimiter")]
         public async Task<ActionResult<APIResponseDTO<string>>> FinalizeSentence([FromBody] SentenceData data, [FromQuery] string client = "frontend")
         {
-           
+
             try
             {
 
@@ -121,7 +117,7 @@ namespace GraduationProjectWebApplication.Controllers
                 string mainApiKey = correctSentenceAPIKey;
                 string backupApiKey = correctSentenceBackUpAPIKey;
 
-                if(client == "hardware")
+                if (client == "hardware")
                 {
                     mainApiKey = hardwareCorrectSentenceKey;
                     backupApiKey = hardwareCorrectSentenceBackUpKey;
@@ -204,28 +200,33 @@ namespace GraduationProjectWebApplication.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(request?.Text))
+                // Use IsNullOrWhiteSpace to prevent sending empty strings after trimming
+                if (string.IsNullOrWhiteSpace(request?.Text))
                 {
-                    _logger.LogWarning("GenerateAudio: Missing 'text' field");
-                    return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
+                    _logger.LogWarning("GenerateAudio: Missing or whitespace-only 'text' field");
+                    return BadRequest(ErrorResponse<TTSResponse>("Please provide valid text to convert to audio."));
                 }
 
-                _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
+                var cleanText = request.Text.Trim();
+                _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", cleanText);
 
                 const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
                 var payload = new
                 {
                     contents = new[]
-                    {
-                    new
-                    {
-                        parts = new[]
                         {
-                            new { text = $"Say this in a clear, friendly voice: {request.Text}" }
-                        }
-                    }
-                },
+                            new
+                            {
+                                role = "user",
+                                parts = new[]
+                                {
+                                    // Unambiguously instruct the model inside the user turn 
+                                    // to generate audio verbatim without answering or generating text
+                                    new { text = $"Generate spoken audio for the following text transcript verbatim:\n\n{cleanText}" }
+                                }
+                            }
+                        },
                     generationConfig = new
                     {
                         responseModalities = new[] { "AUDIO" },
@@ -240,92 +241,174 @@ namespace GraduationProjectWebApplication.Controllers
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                var currentApiKey = generateAudioAPIKey;
+                const int maxAttempts = 2;
 
-                try
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
                 {
-
-
-                    var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
-
-                    geminiRequest.Headers.Add("x-goog-api-key", generateAudioAPIKey);
-                    geminiRequest.Content = content;
-
-                    HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
-
-
-                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    try
                     {
-                        _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
-                        var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                        var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                        geminiRequest.Headers.Add("x-goog-api-key", currentApiKey);
+                        geminiRequest.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                        backupRequest.Headers.Add("x-goog-api-key", generateAudioBackUpAPIKey);
-                        backupRequest.Content = content;
+                        HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
 
-                        response = await _httpClient.SendAsync(backupRequest);
+                        // Handle rate limiting (429) by failing over to backup key immediately
+                        if (response.StatusCode == HttpStatusCode.TooManyRequests && currentApiKey == generateAudioAPIKey)
+                        {
+                            _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
+                            currentApiKey = generateAudioBackUpAPIKey;
+
+                            var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                            backupRequest.Headers.Add("x-goog-api-key", currentApiKey);
+                            backupRequest.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                            response = await _httpClient.SendAsync(backupRequest);
+                        }
+
+                        // Explicitly intercept non-2xx responses to log Google's exact error details
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var errorBody = await response.Content.ReadAsStringAsync();
+                            _logger.LogError("GenerateAudio: API returned HTTP {Status} on attempt {Attempt}. Error details: {ErrorBody}",
+                                (int)response.StatusCode, attempt, errorBody);
+
+                            // If it's a 400 Bad Request, do not retry—it's a client/payload error
+                            if (response.StatusCode == HttpStatusCode.BadRequest)
+                            {
+                                return StatusCode((int)HttpStatusCode.BadRequest,
+                                    ErrorResponse<string>($"Google API rejected the request payload: {errorBody}"));
+                            }
+
+                            if (attempt == maxAttempts)
+                            {
+                                return StatusCode((int)response.StatusCode,
+                                    ErrorResponse<string>($"External AI service error: {response.ReasonPhrase}"));
+                            }
+
+                            await Task.Delay(500);
+                            continue;
+                        }
+
+                        var jsonResponse = await response.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(jsonResponse);
+                        var root = doc.RootElement;
+
+                        // Check if prompt was blocked at top-level
+                        if (root.TryGetProperty("promptFeedback", out var promptFeedback) &&
+                            promptFeedback.TryGetProperty("blockReason", out var blockReason))
+                        {
+                            _logger.LogWarning("GenerateAudio blocked by promptFeedback: {Reason}", blockReason.GetString());
+                            return BadRequest(ErrorResponse<TTSResponse>($"Audio generation blocked: {blockReason.GetString()}"));
+                        }
+
+                        if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                        {
+                            _logger.LogError("GenerateAudio: No candidates returned. Raw response: {Raw}", jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("No generation candidates returned from AI service."));
+                        }
+
+                        var firstCandidate = candidates[0];
+
+                        // Inspect finish reason
+                        if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
+                        {
+                            var reasonStr = finishReason.GetString();
+                            if (reasonStr != "STOP" && reasonStr != null)
+                            {
+                                _logger.LogWarning("GenerateAudio attempt {Attempt} ended with finishReason: {Reason}", attempt, reasonStr);
+
+                                if (reasonStr == "SAFETY" || reasonStr == "RECITATION")
+                                {
+                                    return BadRequest(ErrorResponse<TTSResponse>("Audio generation blocked by content safety policies."));
+                                }
+
+                                // If finishReason is "OTHER", it's often a transient preview model drop. Retry once.
+                                if (reasonStr == "OTHER")
+                                {
+                                    if (attempt < maxAttempts)
+                                    {
+                                        _logger.LogInformation("Transient 'OTHER' error encountered. Retrying audio generation in 500ms...");
+                                        await Task.Delay(500);
+                                        continue;
+                                    }
+                                    return StatusCode((int)HttpStatusCode.BadGateway, ErrorResponse<TTSResponse>("AI audio synthesis temporarily failed. Please try again."));
+                                }
+                            }
+                        }
+
+                        if (!firstCandidate.TryGetProperty("content", out var content) ||
+                            !content.TryGetProperty("parts", out var parts) || parts.GetArrayLength() == 0)
+                        {
+                            _logger.LogError("GenerateAudio: Missing content/parts. Raw response: {Raw}", jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("Failed to retrieve audio payload from AI response."));
+                        }
+
+                        var firstPart = parts[0];
+
+                        if (!firstPart.TryGetProperty("inlineData", out var inlineData))
+                        {
+                            var fallbackText = firstPart.TryGetProperty("text", out var textProp) ? textProp.GetString() : "Unknown format";
+                            _logger.LogError("GenerateAudio: Expected inlineData but got text. Text: {Text}. Raw: {Raw}", fallbackText, jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("The AI returned text instead of audio data."));
+                        }
+
+                        var audioData = inlineData.GetProperty("data").GetString();
+                        var mimeType = inlineData.GetProperty("mimeType").GetString();
+
+                        var sampleRate = 24000;
+                        var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
+                        if (rateMatch.Success)
+                        {
+                            sampleRate = int.Parse(rateMatch.Groups[1].Value);
+                        }
+
+                        var ttsResponse = new TTSResponse
+                        {
+                            AudioData = audioData,
+                            SampleRate = sampleRate
+                        };
+
+                        _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
+
+
+                        _context.UserRecords.Add(new UserRecord
+
+                        {
+
+                            FormedAt = DateTime.Now,
+
+                            FormedSentence = request.Text,
+
+                            UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+
+                        });
+
+
+
+                        await _context.SaveChangesAsync();
+
+
+                        return Ok(SuccessResponse(ttsResponse));
                     }
-
-                    response.EnsureSuccessStatusCode();
-
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-
-                    var geminiResult = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
-
-                    var audioPart = geminiResult
-                        .GetProperty("candidates")[0]
-                        .GetProperty("content")
-                        .GetProperty("parts")[0];
-
-                    var audioData = audioPart
-                        .GetProperty("inlineData")
-                        .GetProperty("data")
-                        .GetString();
-
-                    var mimeType = audioPart
-                        .GetProperty("inlineData")
-                        .GetProperty("mimeType")
-                        .GetString();
-
-                    var sampleRate = 24000;
-                    var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
-                    if (rateMatch.Success)
+                    catch (HttpRequestException ex)
                     {
-                        sampleRate = int.Parse(rateMatch.Groups[1].Value);
+                        _logger.LogError(ex, "GenerateAudio: Network or HTTP transport error on attempt {Attempt}", attempt);
+                        if (attempt == maxAttempts)
+                        {
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>($"Error communicating with AI service: {ex.Message}"));
+                        }
+                        await Task.Delay(500);
                     }
-
-                    var ttsResponse = new TTSResponse
-                    {
-                        AudioData = audioData,
-                        SampleRate = sampleRate
-                    };
-
-                    _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
-
-                    _context.UserRecords.Add(new UserRecord
-                    {
-                        FormedAt = DateTime.Now,
-                        FormedSentence = request.Text,
-                        UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                    });
-
-                    await _context.SaveChangesAsync();
-
-                    return Ok(SuccessResponse(ttsResponse));
                 }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogError(ex, "GenerateAudio: Error calling Gemini API");
-                    return StatusCode(
-                        (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<string>($"Error calling Gemini API: {ex.Message}"));
-                }
+
+                return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("Failed to generate audio after maximum attempts."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
-                return StatusCode(
-                   (int)HttpStatusCode.InternalServerError,
-                   ErrorResponse<string>($"An unexpected error occurred."));
+                return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("An unexpected error occurred."));
             }
         }
 
@@ -336,28 +419,33 @@ namespace GraduationProjectWebApplication.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(request?.Text))
+                // Use IsNullOrWhiteSpace to prevent sending empty strings after trimming
+                if (string.IsNullOrWhiteSpace(request?.Text))
                 {
-                    _logger.LogWarning("GenerateAudio: Missing 'text' field");
-                    return BadRequest(ErrorResponse<TTSResponse>("Missing 'text' field. Please provide the text to convert to audio."));
+                    _logger.LogWarning("GenerateAudio: Missing or whitespace-only 'text' field");
+                    return BadRequest(ErrorResponse<TTSResponse>("Please provide valid text to convert to audio."));
                 }
 
-                _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", request.Text);
+                var cleanText = request.Text.Trim();
+                _logger.LogInformation("GenerateAudio: Generating audio for text - {Text}", cleanText);
 
                 const string ApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
                 var payload = new
                 {
                     contents = new[]
-                    {
-                    new
-                    {
-                        parts = new[]
-                        {
-                            new { text = $"Say this in a clear, friendly voice: {request.Text}" }
-                        }
-                    }
-                },
+    {
+        new
+        {
+            role = "user",
+            parts = new[]
+            {
+                // Unambiguously instruct the model inside the user turn 
+                // to generate audio verbatim without answering or generating text
+                new { text = $"Generate spoken audio for the following text transcript verbatim:\n\n{cleanText}" }
+            }
+        }
+    },
                     generationConfig = new
                     {
                         responseModalities = new[] { "AUDIO" },
@@ -372,83 +460,156 @@ namespace GraduationProjectWebApplication.Controllers
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
-                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                var currentApiKey = hardwareTTSKey;
+                const int maxAttempts = 2;
 
-                try
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
                 {
-
-
-                    var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
-
-                    geminiRequest.Headers.Add("x-goog-api-key", hardwareTTSKey);
-                    geminiRequest.Content = content;
-
-                    HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
-
-
-                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    try
                     {
-                        _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
-                        var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                        var geminiRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                        geminiRequest.Headers.Add("x-goog-api-key", currentApiKey);
+                        geminiRequest.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                        backupRequest.Headers.Add("x-goog-api-key", hardwareTTSBackupKey);
-                        backupRequest.Content = content;
+                        HttpResponseMessage response = await _httpClient.SendAsync(geminiRequest);
 
-                        response = await _httpClient.SendAsync(backupRequest);
+                        // Handle rate limiting (429) by failing over to backup key immediately
+                        if (response.StatusCode == HttpStatusCode.TooManyRequests && currentApiKey == hardwareTTSKey)
+                        {
+                            _logger.LogWarning("GenerateAudio: Rate limit exceeded for primary API key, switching to backup key");
+                            currentApiKey = hardwareTTSBackupKey;
+
+                            var backupRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
+                            backupRequest.Headers.Add("x-goog-api-key", currentApiKey);
+                            backupRequest.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                            response = await _httpClient.SendAsync(backupRequest);
+                        }
+
+                        // Explicitly intercept non-2xx responses to log Google's exact error details
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var errorBody = await response.Content.ReadAsStringAsync();
+                            _logger.LogError("GenerateAudio: API returned HTTP {Status} on attempt {Attempt}. Error details: {ErrorBody}",
+                                (int)response.StatusCode, attempt, errorBody);
+
+                            // If it's a 400 Bad Request, do not retry—it's a client/payload error
+                            if (response.StatusCode == HttpStatusCode.BadRequest)
+                            {
+                                return StatusCode((int)HttpStatusCode.BadRequest,
+                                    ErrorResponse<string>($"Google API rejected the request payload: {errorBody}"));
+                            }
+
+                            if (attempt == maxAttempts)
+                            {
+                                return StatusCode((int)response.StatusCode,
+                                    ErrorResponse<string>($"External AI service error: {response.ReasonPhrase}"));
+                            }
+
+                            await Task.Delay(500);
+                            continue;
+                        }
+
+                        var jsonResponse = await response.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(jsonResponse);
+                        var root = doc.RootElement;
+
+                        // Check if prompt was blocked at top-level
+                        if (root.TryGetProperty("promptFeedback", out var promptFeedback) &&
+                            promptFeedback.TryGetProperty("blockReason", out var blockReason))
+                        {
+                            _logger.LogWarning("GenerateAudio blocked by promptFeedback: {Reason}", blockReason.GetString());
+                            return BadRequest(ErrorResponse<TTSResponse>($"Audio generation blocked: {blockReason.GetString()}"));
+                        }
+
+                        if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                        {
+                            _logger.LogError("GenerateAudio: No candidates returned. Raw response: {Raw}", jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("No generation candidates returned from AI service."));
+                        }
+
+                        var firstCandidate = candidates[0];
+
+                        // Inspect finish reason
+                        if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
+                        {
+                            var reasonStr = finishReason.GetString();
+                            if (reasonStr != "STOP" && reasonStr != null)
+                            {
+                                _logger.LogWarning("GenerateAudio attempt {Attempt} ended with finishReason: {Reason}", attempt, reasonStr);
+
+                                if (reasonStr == "SAFETY" || reasonStr == "RECITATION")
+                                {
+                                    return BadRequest(ErrorResponse<TTSResponse>("Audio generation blocked by content safety policies."));
+                                }
+
+                                // If finishReason is "OTHER", it's often a transient preview model drop. Retry once.
+                                if (reasonStr == "OTHER")
+                                {
+                                    if (attempt < maxAttempts)
+                                    {
+                                        _logger.LogInformation("Transient 'OTHER' error encountered. Retrying audio generation in 500ms...");
+                                        await Task.Delay(500);
+                                        continue;
+                                    }
+                                    return StatusCode((int)HttpStatusCode.BadGateway, ErrorResponse<TTSResponse>("AI audio synthesis temporarily failed. Please try again."));
+                                }
+                            }
+                        }
+
+                        if (!firstCandidate.TryGetProperty("content", out var content) ||
+                            !content.TryGetProperty("parts", out var parts) || parts.GetArrayLength() == 0)
+                        {
+                            _logger.LogError("GenerateAudio: Missing content/parts. Raw response: {Raw}", jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("Failed to retrieve audio payload from AI response."));
+                        }
+
+                        var firstPart = parts[0];
+
+                        if (!firstPart.TryGetProperty("inlineData", out var inlineData))
+                        {
+                            var fallbackText = firstPart.TryGetProperty("text", out var textProp) ? textProp.GetString() : "Unknown format";
+                            _logger.LogError("GenerateAudio: Expected inlineData but got text. Text: {Text}. Raw: {Raw}", fallbackText, jsonResponse);
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("The AI returned text instead of audio data."));
+                        }
+
+                        var audioData = inlineData.GetProperty("data").GetString();
+                        var mimeType = inlineData.GetProperty("mimeType").GetString();
+
+                        var sampleRate = 24000;
+                        var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
+                        if (rateMatch.Success)
+                        {
+                            sampleRate = int.Parse(rateMatch.Groups[1].Value);
+                        }
+
+                        var ttsResponse = new TTSResponse
+                        {
+                            AudioData = audioData,
+                            SampleRate = sampleRate
+                        };
+
+                        _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
+
+                        return Ok(SuccessResponse(ttsResponse));
                     }
-
-                    response.EnsureSuccessStatusCode();
-
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-
-                    var geminiResult = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
-
-                    var audioPart = geminiResult
-                        .GetProperty("candidates")[0]
-                        .GetProperty("content")
-                        .GetProperty("parts")[0];
-
-                    var audioData = audioPart
-                        .GetProperty("inlineData")
-                        .GetProperty("data")
-                        .GetString();
-
-                    var mimeType = audioPart
-                        .GetProperty("inlineData")
-                        .GetProperty("mimeType")
-                        .GetString();
-
-                    var sampleRate = 24000;
-                    var rateMatch = System.Text.RegularExpressions.Regex.Match(mimeType ?? "", @"rate=(\d+)");
-                    if (rateMatch.Success)
+                    catch (HttpRequestException ex)
                     {
-                        sampleRate = int.Parse(rateMatch.Groups[1].Value);
+                        _logger.LogError(ex, "GenerateAudio: Network or HTTP transport error on attempt {Attempt}", attempt);
+                        if (attempt == maxAttempts)
+                        {
+                            return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>($"Error communicating with AI service: {ex.Message}"));
+                        }
+                        await Task.Delay(500);
                     }
-
-                    var ttsResponse = new TTSResponse
-                    {
-                        AudioData = audioData,
-                        SampleRate = sampleRate
-                    };
-
-                    _logger.LogInformation("GenerateAudio: Audio generated successfully with sample rate {SampleRate}", sampleRate);
-
-                    return Ok(SuccessResponse(ttsResponse));
                 }
-                catch (HttpRequestException ex)
-                {
-                    _logger.LogError(ex, "GenerateAudio: Error calling Gemini API");
-                    return StatusCode(
-                        (int)HttpStatusCode.InternalServerError,
-                        ErrorResponse<string>($"Error calling Gemini API: {ex.Message}"));
-                }
+
+                return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("Failed to generate audio after maximum attempts."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "GenerateAudio: Unexpected error occurred");
-                return StatusCode(
-                   (int)HttpStatusCode.InternalServerError,
-                   ErrorResponse<string>($"An unexpected error occurred."));
+                return StatusCode((int)HttpStatusCode.InternalServerError, ErrorResponse<string>("An unexpected error occurred."));
             }
         }
 
