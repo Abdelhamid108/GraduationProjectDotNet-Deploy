@@ -1,0 +1,78 @@
+Date : 2026-07-04 20:56:17
+Directory : d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src
+Total : 41 files,  3554 codes, 57 comments, 471 blanks, all 4082 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| TypeScript JSX |         35 |      2,899 |         53 |        373 |      3,325 |
+| TypeScript     |          3 |        451 |          4 |         80 |        535 |
+| PostCSS        |          2 |        203 |          0 |         18 |        221 |
+| XML            |          1 |          1 |          0 |          0 |          1 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                 | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                    |         41 |      3,554 |         57 |        471 |      4,082 |
+| . (Files)                                                                                                            |          4 |        245 |          0 |         24 |        269 |
+| Api                                                                                                                  |          2 |        446 |          4 |         78 |        528 |
+| Layouts                                                                                                              |          4 |         98 |          2 |         15 |        115 |
+| assets                                                                                                               |          3 |         71 |          4 |          6 |         81 |
+| components                                                                                                           |         17 |      1,916 |         21 |        243 |      2,180 |
+| components\auth                                                                                                      |          3 |        102 |          5 |         13 |        120 |
+| components\custom                                                                                                    |         11 |      1,676 |         16 |        212 |      1,904 |
+| components\ui                                                                                                        |          3 |        138 |          0 |         18 |        156 |
+| lib                                                                                                                  |          1 |          5 |          0 |          2 |          7 |
+| pages                                                                                                                |         10 |        773 |         26 |        103 |        902 |
++----------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                                                             | language       | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Api\APICalls.ts                          | TypeScript     |        355 |          4 |         62 |        421 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Api\AuthSession.ts                       | TypeScript     |         91 |          0 |         16 |        107 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\App.css                                  | PostCSS        |         36 |          0 |          6 |         42 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\App.tsx                                  | TypeScript JSX |         33 |          0 |          4 |         37 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Layouts\AuthPagesLayout.tsx              | TypeScript JSX |         41 |          2 |          5 |         48 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Layouts\BlurWrapper.tsx                  | TypeScript JSX |         14 |          0 |          3 |         17 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Layouts\MainLayout.tsx                   | TypeScript JSX |         27 |          0 |          4 |         31 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\Layouts\ScreenWrapper.tsx                | TypeScript JSX |         16 |          0 |          3 |         19 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\assets\AuthBackground.tsx                | TypeScript JSX |         35 |          2 |          3 |         40 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\assets\MainBackground.tsx                | TypeScript JSX |         35 |          2 |          3 |         40 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\assets\react.svg                         | XML            |          1 |          0 |          0 |          1 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\auth\AuthFormCard.tsx         | TypeScript JSX |         53 |          5 |          5 |         63 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\auth\FormInput.tsx            | TypeScript JSX |         34 |          0 |          6 |         40 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\auth\LoginButton.tsx          | TypeScript JSX |         15 |          0 |          2 |         17 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\DisplayCardLetters.tsx | TypeScript JSX |         36 |          0 |          3 |         39 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\DisplaySign.tsx        | TypeScript JSX |         43 |          0 |          3 |         46 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\GoogleButton.tsx       | TypeScript JSX |         42 |          6 |          3 |         51 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\HowToUse.tsx           | TypeScript JSX |         93 |          0 |         12 |        105 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\Keyboard.tsx           | TypeScript JSX |        216 |          2 |         32 |        250 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\Navbar.tsx             | TypeScript JSX |        111 |          8 |         17 |        136 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\ProfileWidget.tsx      | TypeScript JSX |        203 |          0 |         22 |        225 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\SignToText.tsx         | TypeScript JSX |        367 |          0 |         46 |        413 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\TabComponent.tsx       | TypeScript JSX |        134 |          0 |          7 |        141 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\Table.tsx              | TypeScript JSX |        226 |          0 |         27 |        253 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\custom\TextToSign.tsx         | TypeScript JSX |        205 |          0 |         40 |        245 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\ui\button.tsx                 | TypeScript JSX |         51 |          0 |          6 |         57 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\ui\input-otp.tsx              | TypeScript JSX |         68 |          0 |          8 |         76 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\components\ui\input.tsx                  | TypeScript JSX |         19 |          0 |          4 |         23 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\index.css                                | PostCSS        |        167 |          0 |         12 |        179 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\lib\utils.ts                             | TypeScript     |          5 |          0 |          2 |          7 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\main.tsx                                 | TypeScript JSX |          9 |          0 |          2 |         11 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\ChangePassword.tsx                 | TypeScript JSX |        110 |          6 |         15 |        131 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\CheckCode.tsx                      | TypeScript JSX |         40 |          1 |          3 |         44 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\ForgotPassword.tsx                 | TypeScript JSX |        135 |          3 |         16 |        154 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\GoogleCallbackPage.tsx             | TypeScript JSX |        185 |         12 |         22 |        219 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\History.tsx                        | TypeScript JSX |         10 |          0 |          3 |         13 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\Home.tsx                           | TypeScript JSX |         10 |          0 |          2 |         12 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\Instructions.tsx                   | TypeScript JSX |         13 |          0 |          3 |         16 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\Letters.tsx                        | TypeScript JSX |         32 |          0 |          6 |         38 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\Login.tsx                          | TypeScript JSX |        127 |          4 |         17 |        148 |
+| d:\work\web developemt\projects\GraduationProjectDotNet-Deploy\frontend\src\pages\Signup.tsx                         | TypeScript JSX |        111 |          0 |         16 |        127 |
+| Total                                                                                                                |                |      3,554 |         57 |        471 |      4,082 |
++----------------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+

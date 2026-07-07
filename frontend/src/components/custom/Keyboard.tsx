@@ -42,7 +42,7 @@ function PauseIcon({ className }: { className?: string }) {
 }
 
 // ─── Keyboard layout (Arabic, right-to-left visual order) ───────────────────
-const ROW_1 = ["ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "J"];
+const ROW_1 = ["ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر"];
 const ROW_2 = ["ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف"];
 const ROW_3 = ["ق", "ك", "ل", "م", "ن", "ه", "و", "ي", "ة", "ئ"];
 
