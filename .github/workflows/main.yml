@@ -439,7 +439,7 @@ jobs:
         if: always()
         id: upload_blob  
         continue-on-error: true
-        uses: azure/CLI@v2
+        uses: azure/CLI@v3
         with:
           azcliversion: latest
           inlineScript: |
