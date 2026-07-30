@@ -40,7 +40,7 @@ jobs:
     # We only run this step if the current matrix language is C#.
     - name: Setup .NET (for C#)
       if: matrix.language == 'csharp'
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '8.0.x' # Matches your backend version in the main pipeline
 
